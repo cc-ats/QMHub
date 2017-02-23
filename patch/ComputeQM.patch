@@ -1,0 +1,172 @@
+--- ComputeQM.C.ORIG	2017-02-23 14:14:49.058687030 -0600
++++ ComputeQM.C	2017-02-23 14:24:05.528143327 -0600
+@@ -4118,7 +4118,7 @@
+             numPntChrgs++;
+     }
+     
+-    iret = fprintf(inputFile,"%d %d\n",msg->numAllAtoms, numPntChrgs);
++    iret = fprintf(inputFile,"%d %d %d\n",msg->numAllAtoms, numPntChrgs, msg->numAllAtoms - msg->numQMAtoms);
+     if ( iret < 0 ) { NAMD_die(strerror(errno)); }
+     
+     DebugM(4, "Writing " << msg->numAllAtoms << " QM atom coords in file " << 
+@@ -4133,8 +4133,8 @@
+         double y = atmP->position.y;
+         double z = atmP->position.z;
+         
+-        iret = fprintf(inputFile,"%f %f %f %s\n",
+-                       x,y,z,atmP->element);
++        iret = fprintf(inputFile,"%f %f %f %s %f\n",
++                       x,y,z,atmP->element,atmP->charge);
+         if ( iret < 0 ) { NAMD_die(strerror(errno)); }
+         
+     }
+@@ -4143,17 +4143,19 @@
+     pcP = msg->data + msg->numAllAtoms ;
+     for ( size_t j=0; j < msg->numAllPntChrgs; j++, ++pcP) {
+         
+-        if (pcP->type == QMPCTYPE_IGNORE)
+-                continue;
+-        
+         double charge = pcP->charge;
++        if (pcP->type == QMPCTYPE_IGNORE) {
++            charge = 0.0;
++        }
++        
++        int id = pcP->id;
+         
+         double x = pcP->position.x;
+         double y = pcP->position.y;
+         double z = pcP->position.z;
+         
+-        iret = fprintf(inputFile,"%f %f %f %f\n",
+-                       x,y,z,charge);
++        iret = fprintf(inputFile,"%f %f %f %f %d\n",
++                       x,y,z,charge,id);
+         if ( iret < 0 ) { NAMD_die(strerror(errno)); }
+     }
+     
+@@ -4306,37 +4308,40 @@
+             Force mmForce(0), qmForce(0), 
+                 linkForce(localForce[0], localForce[1], localForce[2]);
+             
+-            Vector base = (linkDist/(mmqmDist*mmqmDist*mmqmDist))*dir;
+-            // Unit vectors
+-            Vector xuv(1,0,0), yuv(0,1,0), zuv(0,0,1);
+-            Real xDelta = pcP[mmInd].position.x - atmP[qmInd].position.x;
+-            Real yDelta = pcP[mmInd].position.y - atmP[qmInd].position.y;
+-            Real zDelta = pcP[mmInd].position.z - atmP[qmInd].position.z;
+-            
+-            qmForce += (linkForce*((1 - linkDist/mmqmDist)*xuv + 
+-                        (xDelta)*base) )*xuv;
+-            
+-            qmForce += (linkForce*((1 - linkDist/mmqmDist)*yuv + 
+-                        (yDelta)*base) )*yuv;
+-            
+-            qmForce += (linkForce*((1 - linkDist/mmqmDist)*zuv + 
+-                        (zDelta)*base) )*zuv;
+-            
+-            
+-            mmForce += (linkForce*((linkDist/mmqmDist)*xuv -
+-                        (xDelta)*base) )*xuv;
+-            
+-            mmForce += (linkForce*((linkDist/mmqmDist)*yuv -
+-                        (yDelta)*base) )*yuv;
+-            
+-            mmForce += (linkForce*((linkDist/mmqmDist)*zuv -
+-                        (zDelta)*base) )*zuv;
++            Real prod = (linkForce * dir) * linkDist / (mmqmDist*mmqmDist*mmqmDist);
++
++            qmForce += (1 - linkDist/mmqmDist) * linkForce + prod * dir;
++            mmForce += linkDist/mmqmDist * linkForce - prod * dir;
+             
+             resForce[qmInd].force += qmForce;
+             resForce[msg->numQMAtoms + mmInd].force += mmForce;
+         }
+     }
+     
++    DebugM(4, "Applying forces on " << msg->numRealPntChrgs << " point charges" << std::endl) ;
++
++    // The initial point charge index for the force message is the number of QM
++    // atoms, since the dummy atoms have no representation in NAMD
++    int pcIndx = msg->numQMAtoms;
++    
++    // Reads the data form the output file created by the QM software.
++    // Gradients over the MM atoms will be read.
++    
++    for (size_t i=0; i < msg->numRealPntChrgs; i++, pcIndx++) {
++        
++        iret = fscanf(outputFile,"%lf %lf %lf\n", 
++                      localForce+0,
++                      localForce+1,
++                      localForce+2);
++        if ( iret != 3 ) {
++            NAMD_die("Error reading MM gradient from QM results file.");
++        }
++        
++        resForce[pcIndx].force.x += localForce[0];
++        resForce[pcIndx].force.y += localForce[1];
++        resForce[pcIndx].force.z += localForce[2];
++    }
++
+     fclose(outputFile);
+     
+     // In case charges are not to be read form the QM software output,
+@@ -4371,58 +4376,10 @@
+ //     if ( iret ) { NAMD_die(strerror(errno)); }
+     
+     
+-    DebugM(4, "Applying forces on " << msg->numRealPntChrgs << " point charges" << std::endl) ;
+     
+     atmP = msg->data ;
+     pcP = msg->data + msg->numAllAtoms ;
+     
+-    // The initial point charge index for the force message is the number of QM
+-    // atoms, since the dummy atoms have no representation in NAMD
+-    int pcIndx = msg->numQMAtoms;
+-    
+-    // We only loop over point charges from real atoms, ignoring the ones 
+-    // created to handle QM-MM bonds.
+-    for (size_t i=0; i < msg->numRealPntChrgs; i++, pcIndx++ ) {
+-        
+-        BigReal Force = 0;
+-        
+-        BigReal pntCharge = pcP[i].charge;
+-        
+-        BigReal xMM = pcP[i].position.x;
+-        BigReal yMM = pcP[i].position.y;
+-        BigReal zMM = pcP[i].position.z;
+-        
+-        for (size_t j=0; j<msg->numQMAtoms; ++j ) {
+-            
+-            // Not perfect
+-            // This prevents the MM point charge of a MM-QM bond from feeling 
+-            // the influence from the QM atom it is bount to. 
+-            if ( pcP[i].bountToIndx == j ) continue ;
+-            
+-            BigReal qmCharge = atmP[j].charge ;
+-            
+-            Force = pntCharge*qmCharge*constants ;
+-            
+-            BigReal xQM = atmP[j].position.x;
+-            BigReal yQM = atmP[j].position.y;
+-            BigReal zQM = atmP[j].position.z;
+-            
+-            BigReal x_ij = (xMM - xQM);
+-            BigReal y_ij = (yMM - yQM);
+-            BigReal z_ij = (zMM - zQM);
+-            
+-            BigReal r2 = (x_ij*x_ij + y_ij*y_ij + z_ij*z_ij);
+-            BigReal rNorm = sqrt(r2) ;
+-            
+-            Force /= r2;
+-            
+-            resForce[pcIndx].force.x += Force*x_ij/rNorm;
+-            resForce[pcIndx].force.y += Force*y_ij/rNorm;
+-            resForce[pcIndx].force.z += Force*z_ij/rNorm;
+-        }
+-        
+-    }
+-    
+     // Adjusts forces from PME, canceling contributions from the QM and 
+     // direct Coulomb forces calculated here.
+     if (msg->PMEOn) {

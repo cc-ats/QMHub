@@ -1,5 +1,5 @@
 --- ComputeQM.C.ORIG	2017-02-23 14:14:49.058687030 -0600
-+++ ComputeQM.C	2017-02-23 14:24:05.528143327 -0600
++++ ComputeQM.C	2017-02-24 00:15:44.808324628 -0600
 @@ -4118,7 +4118,7 @@
              numPntChrgs++;
      }
@@ -111,12 +111,22 @@
      fclose(outputFile);
      
      // In case charges are not to be read form the QM software output,
-@@ -4371,58 +4376,10 @@
- //     if ( iret ) { NAMD_die(strerror(errno)); }
+@@ -4366,63 +4371,14 @@
+     }
      
-     
+     // remove force file
+-//     DebugM(4, "Removing output file: " << outputFileName << std::endl) ;
+-//     iret = remove(outputFileName);
+-//     if ( iret ) { NAMD_die(strerror(errno)); }
+-    
+-    
 -    DebugM(4, "Applying forces on " << msg->numRealPntChrgs << " point charges" << std::endl) ;
-     
+-    
++    DebugM(4, "Removing output file: " << outputFileName.c_str() << std::endl) ;
++    iret = remove(outputFileName.c_str());
++    if ( iret ) { NAMD_die(strerror(errno)); }
++   
++    // Resets the pointers.
      atmP = msg->data ;
      pcP = msg->data + msg->numAllAtoms ;
      

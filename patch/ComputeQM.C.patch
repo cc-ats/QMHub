@@ -1,26 +1,41 @@
 --- ComputeQM.C.ORIG	2017-02-23 14:14:49.058687030 -0600
-+++ ComputeQM.C	2017-02-24 00:15:44.808324628 -0600
-@@ -4118,7 +4118,7 @@
-             numPntChrgs++;
-     }
++++ ComputeQM.C	2017-02-24 09:30:42.056961871 -0600
+@@ -4111,14 +4111,9 @@
+     outputFileName = inputFileName ;
+     outputFileName.append(".result") ;
      
+-    int numPntChrgs = 0;
+     QMAtomData *pcP = msg->data + msg->numAllAtoms ;
+-    for (int i=0; i<msg->numAllPntChrgs; i++ ) {
+-        if (pcP[i].type != QMPCTYPE_IGNORE)
+-            numPntChrgs++;
+-    }
+-    
 -    iret = fprintf(inputFile,"%d %d\n",msg->numAllAtoms, numPntChrgs);
-+    iret = fprintf(inputFile,"%d %d %d\n",msg->numAllAtoms, numPntChrgs, msg->numAllAtoms - msg->numQMAtoms);
++
++    iret = fprintf(inputFile,"%d %d\n",msg->numAllAtoms,msg->numAllPntChrgs);
      if ( iret < 0 ) { NAMD_die(strerror(errno)); }
      
      DebugM(4, "Writing " << msg->numAllAtoms << " QM atom coords in file " << 
-@@ -4133,8 +4133,8 @@
+@@ -4129,12 +4124,15 @@
+     QMAtomData *atmP = msg->data ;
+     for (size_t i=0; i<msg->numAllAtoms; ++i, ++atmP ) {
+         
++        double charge = atmP->charge;
++        int id = atmP->id;
++
+         double x = atmP->position.x;
          double y = atmP->position.y;
          double z = atmP->position.z;
          
 -        iret = fprintf(inputFile,"%f %f %f %s\n",
 -                       x,y,z,atmP->element);
-+        iret = fprintf(inputFile,"%f %f %f %s %f\n",
-+                       x,y,z,atmP->element,atmP->charge);
++        iret = fprintf(inputFile,"%f %f %f %s %f %d\n",
++                       x,y,z,atmP->element,charge,id);
          if ( iret < 0 ) { NAMD_die(strerror(errno)); }
          
      }
-@@ -4143,17 +4143,19 @@
+@@ -4143,17 +4141,19 @@
      pcP = msg->data + msg->numAllAtoms ;
      for ( size_t j=0; j < msg->numAllPntChrgs; j++, ++pcP) {
          
@@ -45,7 +60,7 @@
          if ( iret < 0 ) { NAMD_die(strerror(errno)); }
      }
      
-@@ -4306,37 +4308,40 @@
+@@ -4306,37 +4306,40 @@
              Force mmForce(0), qmForce(0), 
                  linkForce(localForce[0], localForce[1], localForce[2]);
              
@@ -111,7 +126,7 @@
      fclose(outputFile);
      
      // In case charges are not to be read form the QM software output,
-@@ -4366,63 +4371,14 @@
+@@ -4366,63 +4369,14 @@
      }
      
      // remove force file

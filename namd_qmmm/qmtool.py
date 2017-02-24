@@ -35,11 +35,7 @@ class QM(object):
         # Number of QM atoms including linking atoms
         self.numQMAtoms = numsList[0]
         # Number of external external point charges including virtual particles
-        self.numPntChrgs = numsList[1] + numsList[2]
-        # Number of MM1 atoms which equals to number of linking atoms
-        self.numMM1 = numsList[2]
-        # Number of Real QM atoms
-        self.numRealQMAtoms = self.numQMAtoms - self.numMM1
+        self.numPntChrgs = numsList[1]
 
         # Positions of QM atoms
         self.qmPos = np.genfromtxt(fin, dtype=float, usecols=(0,1,2),
@@ -51,6 +47,13 @@ class QM(object):
         # Charges of QM atoms
         self.qmChrgs0 = np.genfromtxt(fin, dtype=float, usecols=4,
                                      skip_header=1, max_rows=self.numQMAtoms)
+        # Indexes of QM atoms
+        self.qmIdx = np.genfromtxt(fin, dtype=int, usecols=5,
+                                   skip_header=1, max_rows=self.numQMAtoms)
+        # Number of MM1 atoms which equals to number of linking atoms
+        self.numMM1 = np.count_nonzero(self.qmIdx == -1)
+        # Number of Real QM atoms
+        self.numRealQMAtoms = self.numQMAtoms - self.numMM1
 
         # Positions of external point charges
         self.pntPos = np.genfromtxt(fin, dtype=float, usecols=(0,1,2),

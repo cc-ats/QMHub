@@ -111,9 +111,9 @@ class QMMM(object):
         mmDist = np.zeros(self.numAtoms)
         mmChrgs = np.zeros(self.numAtoms)
 
-        mmScale[pntIdx[0:self.QM.numRPntChrgs]] = self.QM.pntScale[0:self.QM.numRPntChrgs]
-        mmDist[pntIdx[0:self.QM.numRPntChrgs]] = self.QM.pntDist
-        mmChrgs[pntIdx[0:self.QM.numRPntChrgs]] = self.QM.outPntChrgs[0:self.QM.numRPntChrgs]
+        mmScale[self.QM.pntIdx[0:self.QM.numRPntChrgs]] = self.QM.pntScale[0:self.QM.numRPntChrgs]
+        mmDist[self.QM.pntIdx[0:self.QM.numRPntChrgs]] = self.QM.pntDist
+        mmChrgs[self.QM.pntIdx[0:self.QM.numRPntChrgs]] = self.QM.outPntChrgs[0:self.QM.numRPntChrgs]
 
         np.save(self.QM.baseDir + "mmScale", mmScale)
         np.save(self.QM.baseDir + "mmDist", mmDist)

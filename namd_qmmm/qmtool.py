@@ -142,7 +142,7 @@ class QM(object):
         self.outPntChrgs = np.zeros_like(self.pntChrgs)
 
     def get_qmparams(self, method=None, basis=None, scf_guess=None, pop=None,
-                     initial_scc=None):
+                     initial_scc='No'):
         if self.software.lower() == 'qchem':
             if method is not None:
                 self.method = method
@@ -239,7 +239,7 @@ class QM(object):
             self.gen_input(**kwargs)
 
         if 'SLURM_NTASKS' in os.environ:
-            nproc = int(os.environ['SLURM_NTASKS']) - 1
+            nproc = int(os.environ['SLURM_NTASKS']) - 4
         else:
             nproc = 1
 

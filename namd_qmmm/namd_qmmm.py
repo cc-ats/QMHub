@@ -131,6 +131,18 @@ class QMMM(object):
         np.save(self.QM.baseDir + "mmDist", mmDist)
         np.save(self.QM.baseDir + "mmChrgs", mmChrgs)
 
+    def preserve_input(self):
+        import glob
+        import shutil
+        listInputs = glob.glob(self.QM.fin + "_*")
+        if listInputs:
+            idx = max([int(i.split('_')[-1]) for i in listInputs]) + 1
+        else:
+            idx = 0
+
+        if os.path.isfile(self.QM.fin):
+            shutil.copyfile(self.QM.fin, self.QM.fin+"_"+str(idx))
+
 if __name__ == "__main__":
     import sys
 

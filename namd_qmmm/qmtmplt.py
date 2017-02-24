@@ -12,6 +12,7 @@ qm_mm true
 qmmm_charges true
 $pop true
 igdefield 1
+$addparam\
 $$end
 
 """
@@ -101,7 +102,7 @@ if __name__ == "__main__":
     qchem = QMTmplt('qchem')
     print(qchem.gen_qmtmplt().substitute(
               method='hf', basis='6-31g',
-              scf_guess='sad', pop='pop_mulliken'))
+              scf_guess='sad', pop='pop_mulliken', addparam='esp_charges true\nchelpg true\n'))
     dftb = QMTmplt('dftb+')
     print(dftb.gen_qmtmplt().safe_substitute(
               charge=0, numPntChrgs=1000, initial_scc='No'))

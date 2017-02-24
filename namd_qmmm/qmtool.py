@@ -70,6 +70,11 @@ class QM(object):
                                     skip_header=1+self.numQMAtoms,
                                     max_rows=self.numPntChrgs)
 
+        # Sort QM atoms
+        self.map2sorted = np.concatenate((np.argsort(self.qmIdx[0:self.numRealQMAtoms]),
+                                     np.arange(self.numRealQMAtoms, self.numQMAtoms)))
+        self.map2unsorted = np.argsort(self.map2sorted)
+
     def get_dij2(self, qmBondScheme='CS'):
         """Get pair-wise distances between QM and MM atoms."""
         # Number of virtual external point charges per MM2
@@ -145,7 +150,7 @@ class QM(object):
         self.outPntChrgs = np.zeros(self.numPntChrgs)
 
     def get_qmparams(self, method=None, basis=None, scf_guess=None, pop=None,
-                     initial_scc='No'):
+                     addparam=None, initial_scc='No'):
         if self.software.lower() == 'qchem':
             if method is not None:
                 self.method = method
@@ -163,6 +168,14 @@ class QM(object):
                 self.pop = pop
             else:
                 self.pop = 'pop_mulliken'
+            if addparam is not None:
+                if isinstance(addparam, list):
+                    self.addparam = "".join(["%s\n" % i for i in addparam])
+                else:
+                    self.addparam = addparam + '\n'
+            else:
+                self.addparam = ''
+
         elif self.software.lower() == 'dftb+':
             if initial_scc is not None:
                 self.initial_scc = initial_scc
@@ -186,18 +199,21 @@ class QM(object):
         qmtmplt = QMTmplt(self.software)
         qmtmplt.gen_qmtmplt()
 
+        qmElmntsSorted = self.qmElmnts[self.map2sorted]
+        qmPosSorted = self.qmPos[self.map2sorted]
+
         if self.software.lower() == 'qchem':
             with open(self.baseDir+"qchem.inp", "w") as f:
                 f.write(qmtmplt.gen_qmtmplt().substitute(method=self.method, basis=self.basis,
-                        scf_guess=self.scf_guess, pop=self.pop))
+                        scf_guess=self.scf_guess, pop=self.pop, addparam=self.addparam))
                 f.write("$molecule\n")
                 f.write("%d %d\n" % (self.charge, self.mult))
 
                 for i in range(self.numQMAtoms):
-                    f.write("".join(["%3s" % self.qmElmnts[i],
-                                     "%22.14e" % self.qmPos[i,0],
-                                     "%22.14e" % self.qmPos[i,1],
-                                     "%22.14e" % self.qmPos[i,2], "\n"]))
+                    f.write("".join(["%3s" % qmElmntsSorted[i],
+                                     "%22.14e" % qmPosSorted[i,0],
+                                     "%22.14e" % qmPosSorted[i,1],
+                                     "%22.14e" % qmPosSorted[i,2], "\n"]))
                 f.write("$end" + "\n\n")
 
                 f.write("$external_charges\n")
@@ -208,7 +224,7 @@ class QM(object):
                                      " %22.14e" % self.outPntChrgs[i], "\n"]))
                 f.write("$end" + "\n")
         elif self.software.lower() == 'dftb+':
-            listElmnts = np.unique(self.qmElmnts).tolist()
+            listElmnts = np.unique(qmElmntsSorted).tolist()
             outMaxAngularMomentum = "\n    ".join([i+" = "+qmtmplt.MaxAngularMomentum[i] for i in listElmnts])
             outHubbardDerivs = "\n    ".join([i+" = "+qmtmplt.HubbardDerivs[i] for i in listElmnts])
 
@@ -222,10 +238,10 @@ class QM(object):
                 f.write(" ".join(listElmnts) + "\n")
                 for i in range(self.numQMAtoms):
                     f.write("".join(["%6d" % (i+1),
-                                    "%4d" % (listElmnts.index(self.qmElmnts[i])+1),
-                                    "%22.14e" % self.qmPos[i,0],
-                                    "%22.14e" % self.qmPos[i,1],
-                                    "%22.14e" % self.qmPos[i,2], "\n"]))
+                                    "%4d" % (listElmnts.index(qmElmntsSorted[i])+1),
+                                    "%22.14e" % qmPosSorted[i,0],
+                                    "%22.14e" % qmPosSorted[i,1],
+                                    "%22.14e" % qmPosSorted[i,2], "\n"]))
             with open(self.baseDir+"charges.dat", 'w') as f:
                 for i in range(self.numPntChrgs):
                     f.write("".join(["%22.14e" % self.pntPos[i,0],
@@ -291,10 +307,12 @@ class QM(object):
                                          dtype=float, skip_header=5,
                                          max_rows=self.numQMAtoms)
         self.qmForces *= hartree2kcalmol / bohr2angstrom
+        # Unsort QM atoms
+        self.qmForces = self.qmForces[self.map2unsorted]
         return self.qmForces
 
     def get_pntchrgforces(self):
-        """Get external ponit charge forces from output of QM calculation."""
+        """Get external point charge forces from output of QM calculation."""
         if self.software.lower() == 'qchem':
             self.pntChrgForces = (np.genfromtxt(self.baseDir+"efield.dat",
                                                 dtype=float,
@@ -324,6 +342,8 @@ class QM(object):
                     skip_header=(self.numQMAtoms + self.numPntChrgs
                                 + int(np.ceil(self.numQMAtoms/3.))*2 + 13),
                     max_rows=1).flatten())
+        # Unsort QM atoms
+        self.qmChrgs = self.qmChrgs[self.map2unsorted]
         return self.qmChrgs
 
     def get_pntesp(self):

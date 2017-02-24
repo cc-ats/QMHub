@@ -26,9 +26,7 @@ class QMMM(object):
 
         self.QM.get_dij2(self.qmBondScheme)
 
-        if self.qmElecEmbed.lower() == 'off':
-            self.QM.zero_pntChrgs()
-        elif self.qmElecEmbed.lower() == 'on':
+        if self.qmElecEmbed.lower() == 'on':
             if self.qmSwitching.lower() == 'on':
                 if self.qmSwitchingType.lower() == 'shift':
                     self.cutoff = cutoff
@@ -39,6 +37,8 @@ class QMMM(object):
                     self.QM.scale_charges(self.qmSwitchingType, self.cutoff, self.swdist)
                 else:
                     raise ValueError("Only 'shift' and 'switch' are supported currently.")
+        elif self.qmElecEmbed.lower() == 'off':
+            self.QM.zero_pntChrgs()
         else:
             raise ValueError("We need a valid value for 'qmElecEmbed'.")
 
@@ -64,36 +64,38 @@ class QMMM(object):
     def save_results(self):
         if os.path.isfile(self.QM.fin+".result"):
             os.remove(self.QM.fin+".result")
+
+        if self.qmChargeMode == "qm":
+            outQMChrgs = self.QM.qmChrgs
+        elif self.qmChargeMode == "ff":
+            outQMChrgs = self.QM.qmChrgs0
+        elif self.qmChargeMode == "zero":
+            outQMChrgs = np.zeros(self.QM.numQMAtoms)
+
         with open(self.QM.fin + ".result", 'w') as f:
             f.write("%22.14e\n" % self.QM.qmEnergy)
             for i in range(self.QM.numQMAtoms):
-                if self.qmChargeMode == "qm":
-                    f.write(" ".join(format(j, "22.14e") for j in self.QM.qmForces[i])
-                            + "  " + format(self.QM.qmChrgs[i], "22.14e") + "\n")
-                elif self.qmChargeMode == "ff":
-                    f.write(" ".join(format(j, "22.14e") for j in self.QM.qmForces[i])
-                            + "  " + format(self.QM.qmChrgs0[i], "22.14e") + "\n")
-                elif self.qmChargeMode == "zero":
-                    f.write(" ".join(format(j, "22.14e") for j in self.QM.qmForces[i])
-                            + "  " + format(0., "22.14e") + "\n")
+                f.write(" ".join(format(j, "22.14e") for j in self.QM.qmForces[i])
+                        + "  " + format(outQMChrgs[i], "22.14e") + "\n")
             for i in range(self.QM.numRPntChrgs):
                 f.write(" ".join(format(j, "22.14e") for j in self.QM.pntChrgForces[i]) + "\n")
 
     def save_results_old(self):
         if os.path.isfile(self.QM.fin+".result"):
             os.remove(self.QM.fin+".result")
+
+        if self.qmChargeMode == "qm":
+            outQMChrgs = self.QM.qmChrgs
+        elif self.qmChargeMode == "ff":
+            outQMChrgs = self.QM.qmChrgs0
+        elif self.qmChargeMode == "zero":
+            outQMChrgs = np.zeros(self.QM.numQMAtoms)
+
         with open(self.QM.fin + ".result", 'w') as f:
             f.write("%22.14e\n" % self.QM.qmEnergy)
             for i in range(self.QM.numQMAtoms):
-                if self.qmChargeMode == "qm":
-                    f.write(" ".join(format(j, "22.14e") for j in self.QM.qmForces[i])
-                            + "  " + format(self.QM.qmChrgs[i], "22.14e") + "\n")
-                elif self.qmChargeMode == "ff":
-                    f.write(" ".join(format(j, "22.14e") for j in self.QM.qmForces[i])
-                            + "  " + format(self.QM.qmChrgs0[i], "22.14e") + "\n")
-                elif self.qmChargeMode == "zero":
-                    f.write(" ".join(format(j, "22.14e") for j in self.QM.qmForces[i])
-                            + "  " + format(0., "22.14e") + "\n")
+                f.write(" ".join(format(j, "22.14e") for j in self.QM.qmForces[i])
+                        + "  " + format(outQMChrgs[i], "22.14e") + "\n")
 
     def save_extforces(self):
         if os.path.isfile(self.QM.baseDir + "extforce.dat"):
@@ -114,6 +116,16 @@ class QMMM(object):
         mmScale[self.QM.pntIdx[0:self.QM.numRPntChrgs]] = self.QM.pntScale[0:self.QM.numRPntChrgs]
         mmDist[self.QM.pntIdx[0:self.QM.numRPntChrgs]] = self.QM.pntDist
         mmChrgs[self.QM.pntIdx[0:self.QM.numRPntChrgs]] = self.QM.outPntChrgs[0:self.QM.numRPntChrgs]
+
+        if self.qmChargeMode == "qm":
+            outQMChrgs = self.QM.qmChrgs
+        elif self.qmChargeMode == "ff":
+            outQMChrgs = self.QM.qmChrgs0
+        elif self.qmChargeMode == "zero":
+            outQMChrgs = np.zeros(self.QM.numQMAtoms)
+
+        mmScale[self.QM.qmIdx[0:self.QM.numRealQMAtoms]] = np.ones(self.QM.numRealQMAtoms)
+        mmChrgs[self.QM.qmIdx[0:self.QM.numRealQMAtoms]] = outQMChrgs[0:self.QM.numRealQMAtoms]
 
         np.save(self.QM.baseDir + "mmScale", mmScale)
         np.save(self.QM.baseDir + "mmDist", mmDist)

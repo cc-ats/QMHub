@@ -142,7 +142,7 @@ class QM(object):
         self.outPntChrgs = self.pntChrgsScld
 
     def zero_pntChrgs(self):
-        self.outPntChrgs = np.zeros_like(self.pntChrgs)
+        self.outPntChrgs = np.zeros(self.numPntChrgs)
 
     def get_qmparams(self, method=None, basis=None, scf_guess=None, pop=None,
                      initial_scc='No'):

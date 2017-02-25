@@ -40,47 +40,65 @@ class QMMM(object):
         elif self.qmElecEmbed.lower() == 'off':
             self.QM.zero_pntChrgs()
         else:
-            raise ValueError("We need a valid value for 'qmElecEmbed'.")
+            raise ValueError("Need a valid value for 'qmElecEmbed'.")
+
+    def get_namdinput(self):
+        """Get the path of NAMD input file (Unfinished)."""
+        self.pid = os.popen("ps -p %d -oppid=" % os.getpid()).read().strip()
+        self.cmd = os.popen("ps -p %s -ocommand=" % self.pid).read().strip().split()
+        self.cwd = os.popen("pwdx %s" % self.pid).read().strip().split()[1]
 
     def run_qm(self, **kwargs):
+        """Run QM calculation."""
         self.QM.get_qmparams(**kwargs)
-        return self.QM.run()
+        self.QM.run()
+        if self.QM.exitcode != 0:
+            exit(self.QM.exitcode)
 
     def parse_output(self):
-        self.QM.get_qmenergy()
-        self.QM.get_qmforces()
-        self.QM.get_pntchrgforces()
-        self.QM.get_qmchrgs()
-        self.QM.get_pntesp()
+        """Parse the output of QM calculation."""
+        if hasattr(self.QM, 'exitcode'):
+            self.QM.get_qmenergy()
+            self.QM.get_qmforces()
+            self.QM.get_pntchrgforces()
+            self.QM.get_qmchrgs()
+            self.QM.get_pntesp()
 
-        if self.qmSwitching.lower() == 'on':
-            self.QM.corr_pntchrgscale()
+            if self.qmSwitching.lower() == 'on':
+                self.QM.corr_pntchrgscale()
 
-        if self.PME.lower() == 'yes':
-            self.QM.corr_pbc()
+            if self.PME.lower() == 'yes':
+                self.QM.corr_pbc()
 
-        self.QM.corr_vpntchrgs()
+            self.QM.corr_vpntchrgs()
+        else:
+            raise ValueError("Need to run_qm() first.")
 
     def save_results(self):
-        if os.path.isfile(self.QM.fin+".result"):
-            os.remove(self.QM.fin+".result")
+        """Save the results of QM calculation to file."""
+        if hasattr(self.QM, 'qmEnergy'):
+            if os.path.isfile(self.QM.fin+".result"):
+                os.remove(self.QM.fin+".result")
 
-        if self.qmChargeMode == "qm":
-            outQMChrgs = self.QM.qmChrgs
-        elif self.qmChargeMode == "ff":
-            outQMChrgs = self.QM.qmChrgs0
-        elif self.qmChargeMode == "zero":
-            outQMChrgs = np.zeros(self.QM.numQMAtoms)
+            if self.qmChargeMode == "qm":
+                outQMChrgs = self.QM.qmChrgs
+            elif self.qmChargeMode == "ff":
+                outQMChrgs = self.QM.qmChrgs0
+            elif self.qmChargeMode == "zero":
+                outQMChrgs = np.zeros(self.QM.numQMAtoms)
 
-        with open(self.QM.fin + ".result", 'w') as f:
-            f.write("%22.14e\n" % self.QM.qmEnergy)
-            for i in range(self.QM.numQMAtoms):
-                f.write(" ".join(format(j, "22.14e") for j in self.QM.qmForces[i])
-                        + "  " + format(outQMChrgs[i], "22.14e") + "\n")
-            for i in range(self.QM.numRPntChrgs):
-                f.write(" ".join(format(j, "22.14e") for j in self.QM.pntChrgForces[i]) + "\n")
+            with open(self.QM.fin + ".result", 'w') as f:
+                f.write("%22.14e\n" % self.QM.qmEnergy)
+                for i in range(self.QM.numQMAtoms):
+                    f.write(" ".join(format(j, "22.14e") for j in self.QM.qmForces[i])
+                            + "  " + format(outQMChrgs[i], "22.14e") + "\n")
+                for i in range(self.QM.numRPntChrgs):
+                    f.write(" ".join(format(j, "22.14e") for j in self.QM.pntChrgForces[i]) + "\n")
+        else:
+            raise ValueError("Need to parse_output() first.")
 
     def save_results_old(self):
+        """Save the results of QM calculation to file (previous version)."""
         if os.path.isfile(self.QM.fin+".result"):
             os.remove(self.QM.fin+".result")
 
@@ -98,6 +116,7 @@ class QMMM(object):
                         + "  " + format(outQMChrgs[i], "22.14e") + "\n")
 
     def save_extforces(self):
+        """Save the MM forces to extforce.dat (previous version)."""
         if os.path.isfile(self.QM.baseDir + "extforce.dat"):
             os.remove(self.QM.baseDir + "extforce.dat")
         self.mmForces = np.zeros((self.numAtoms, 3))
@@ -109,6 +128,7 @@ class QMMM(object):
             f.write("0.0")
 
     def save_pntchrgs(self):
+        """Save the QM and MM charges to file (for debugging only)."""
         mmScale = np.zeros(self.numAtoms)
         mmDist = np.zeros(self.numAtoms)
         mmChrgs = np.zeros(self.numAtoms)
@@ -132,6 +152,7 @@ class QMMM(object):
         np.save(self.QM.baseDir + "mmChrgs", mmChrgs)
 
     def preserve_input(self):
+        """Preserve the input file passed from NAMD."""
         import glob
         import shutil
         listInputs = glob.glob(self.QM.fin + "_*")

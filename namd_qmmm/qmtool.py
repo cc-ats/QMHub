@@ -152,10 +152,12 @@ class QM(object):
         self.outPntChrgs = self.pntChrgsScld
 
     def zero_pntChrgs(self):
+        """Set all the external point charges to zero."""
         self.outPntChrgs = np.zeros(self.numPntChrgs)
 
     def get_qmparams(self, method=None, basis=None, read_first='no', read_guess=None,
                      pop=None, addparam=None):
+        """Get the parameters for QM calculation."""
         if self.software.lower() == 'qchem':
             if method is not None:
                 self.method = method

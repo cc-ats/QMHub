@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import shutil
 import subprocess as sp
 import numpy as np
 from .qmtmplt import QMTmplt
@@ -153,8 +154,8 @@ class QM(object):
     def zero_pntChrgs(self):
         self.outPntChrgs = np.zeros(self.numPntChrgs)
 
-    def get_qmparams(self, method=None, basis=None, read_guess=None, pop=None,
-                     addparam=None):
+    def get_qmparams(self, method=None, basis=None, read_first='no', read_guess=None,
+                     pop=None, addparam=None):
         if self.software.lower() == 'qchem':
             if method is not None:
                 self.method = method
@@ -164,9 +165,10 @@ class QM(object):
                 self.basis = basis
             else:
                 raise ValueError("Please set 'basis' for Q-Chem.")
+            self.read_first = read_first
             if read_guess is not None:
                 if read_guess.lower() == 'yes':
-                    if self.stepNum == 0:
+                    if self.stepNum == 0 and self.read_first.lower() == 'no':
                         self.read_guess = ''
                     else:
                         self.read_guess = '\nscf_guess read'
@@ -279,6 +281,11 @@ class QM(object):
 
         if self.software.lower() == "qchem":
             cmdline += "qchem -nt %d qchem.inp qchem.out save > qchem_run.log" % nproc
+
+            if self.stepNum == 0 and self.read_first == 'no':
+                if 'QCSCRATCH' in os.environ:
+                    shutil.rmtree(os.environ['QCSCRATCH'] + "/save")
+
         elif self.software.lower() == 'dftb+':
             cmdline += "OMP_NUM_THREADS=%d dftb+ > dftb.out" % nproc
 

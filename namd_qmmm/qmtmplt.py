@@ -5,8 +5,8 @@ qc_tmplt="""\
 $$rem
 jobtype force
 method $method
-basis $basis
-scf_guess $scf_guess
+basis $basis\
+$read_guess
 maxscf 200
 qm_mm true
 qmmm_charges true
@@ -36,7 +36,7 @@ Hamiltonian = DFTB {
     Suffix = ".skf"
     LowerCaseTypeName = No
   }
-  ReadInitialCharges = $initial_scc
+  ReadInitialCharges = $read_guess
   ElectricField = {
     PointCharges = {
       CoordsAndCharges [Angstrom] = DirectRead {
@@ -102,7 +102,7 @@ if __name__ == "__main__":
     qchem = QMTmplt('qchem')
     print(qchem.gen_qmtmplt().substitute(
               method='hf', basis='6-31g',
-              scf_guess='sad', pop='pop_mulliken', addparam='esp_charges true\nchelpg true\n'))
+              read_guess='\nscf_guess read', pop='pop_mulliken', addparam='esp_charges true\nchelpg true\n'))
     dftb = QMTmplt('dftb+')
     print(dftb.gen_qmtmplt().safe_substitute(
-              charge=0, numPntChrgs=1000, initial_scc='No'))
+              charge=0, numPntChrgs=1000, read_guess='No'))

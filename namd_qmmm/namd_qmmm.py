@@ -149,13 +149,12 @@ if __name__ == "__main__":
     qchem = QMMM(sys.argv[1], qmSwitching='on', qmSoftware='qchem',
                  qmChargeMode='ff', qmCharge=0, qmMult=1, cutoff=12.,
                  PME='yes', numAtoms=2279)
-    qchem.run_qm(method='hf', basis='6-31g',
-                 scf_guess='sad', pop='pop_mulliken')
+    qchem.run_qm(method='hf', basis='6-31g', pop='pop_mulliken')
     qchem.parse_output()
 
     dftb = QMMM(sys.argv[1], qmSwitching='on', qmSoftware='dftb+',
                 qmChargeMode='ff', qmCharge=0, qmMult=1, cutoff=12.,
                 PME='yes', numAtoms=2279)
-    dftb.run_qm(initial_scc='No')
+    dftb.run_qm()
     dftb.parse_output()
 

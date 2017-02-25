@@ -36,6 +36,10 @@ class QM(object):
         self.numQMAtoms = numsList[0]
         # Number of external external point charges including virtual particles
         self.numPntChrgs = numsList[1]
+        # Number of current step
+        self.stepNum = numsList[2]
+        # Number of total steps to run
+        self.numSteps = numsList[3]
 
         # Positions of QM atoms
         self.qmPos = np.genfromtxt(fin, dtype=float, usecols=(0,1,2),
@@ -149,8 +153,8 @@ class QM(object):
     def zero_pntChrgs(self):
         self.outPntChrgs = np.zeros(self.numPntChrgs)
 
-    def get_qmparams(self, method=None, basis=None, scf_guess=None, pop=None,
-                     addparam=None, initial_scc='No'):
+    def get_qmparams(self, method=None, basis=None, read_guess=None, pop=None,
+                     addparam=None):
         if self.software.lower() == 'qchem':
             if method is not None:
                 self.method = method
@@ -160,10 +164,16 @@ class QM(object):
                 self.basis = basis
             else:
                 raise ValueError("Please set 'basis' for Q-Chem.")
-            if scf_guess is not None:
-                self.scf_guess = scf_guess
+            if read_guess is not None:
+                if read_guess.lower() == 'yes':
+                    if self.stepNum == 0:
+                        self.read_guess = ''
+                    else:
+                        self.read_guess = '\nscf_guess read'
+                else:
+                    self.read_guess = ''
             else:
-                self.scf_guess = 'sad'
+                self.read_guess = ''
             if pop is not None:
                 self.pop = pop
             else:
@@ -177,10 +187,13 @@ class QM(object):
                 self.addparam = ''
 
         elif self.software.lower() == 'dftb+':
-            if initial_scc is not None:
-                self.initial_scc = initial_scc
+            if read_guess is not None:
+                if self.stepNum == 0:
+                    self.read_guess = 'No'
+                else:
+                    self.read_guess = read_guess
             else:
-                self.initial_scc = 'No'
+                self.read_guess = 'No'
         else:
             raise ValueError("Only 'qchem' and 'dftb+' are supported at the moment.")
 
@@ -193,7 +206,7 @@ class QM(object):
         else:
             self.baseDir = os.path.dirname(self.fin) + "/"
 
-        if not hasattr(self, 'method'):
+        if not hasattr(self, 'read_guess'):
             self.get_qmparams(**kwargs)
 
         qmtmplt = QMTmplt(self.software)
@@ -205,7 +218,7 @@ class QM(object):
         if self.software.lower() == 'qchem':
             with open(self.baseDir+"qchem.inp", "w") as f:
                 f.write(qmtmplt.gen_qmtmplt().substitute(method=self.method, basis=self.basis,
-                        scf_guess=self.scf_guess, pop=self.pop, addparam=self.addparam))
+                        read_guess=self.read_guess, pop=self.pop, addparam=self.addparam))
                 f.write("$molecule\n")
                 f.write("%d %d\n" % (self.charge, self.mult))
 
@@ -230,7 +243,7 @@ class QM(object):
 
             with open(self.baseDir+"dftb_in.hsd", "w") as f:
                 f.write(qmtmplt.gen_qmtmplt().substitute(charge=self.charge,
-                        numPntChrgs=self.numPntChrgs, initial_scc=self.initial_scc,
+                        numPntChrgs=self.numPntChrgs, read_guess=self.read_guess,
                         MaxAngularMomentum=outMaxAngularMomentum,
                         HubbardDerivs=outHubbardDerivs))
             with open(self.baseDir+"input_geometry.gen", "w") as f:
@@ -429,8 +442,8 @@ class QM(object):
 if __name__ == "__main__":
     import sys
     qchem = QM(sys.argv[1], 'qchem', 0, 1)
-    qchem.get_qmparams(method='hf', basis='6-31g', scf_guess='sad', pop='pop_mulliken')
+    qchem.get_qmparams(method='hf', basis='6-31g', pop='pop_mulliken')
     qchem.gen_input()
     dftb = QM(sys.argv[1], 'dftb+', 0, 1)
-    dftb.get_qmparams(initial_scc='No')
+    dftb.get_qmparams(read_guess='No')
     dftb.gen_input()

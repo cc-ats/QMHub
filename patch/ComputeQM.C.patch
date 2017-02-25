@@ -1,6 +1,6 @@
 --- ComputeQM.C.ORIG	2017-02-23 14:14:49.058687030 -0600
-+++ ComputeQM.C	2017-02-24 09:30:42.056961871 -0600
-@@ -4111,14 +4111,9 @@
++++ ComputeQM.C	2017-02-24 18:17:35.716987139 -0600
+@@ -4111,14 +4111,12 @@
      outputFileName = inputFileName ;
      outputFileName.append(".result") ;
      
@@ -13,11 +13,14 @@
 -    
 -    iret = fprintf(inputFile,"%d %d\n",msg->numAllAtoms, numPntChrgs);
 +
-+    iret = fprintf(inputFile,"%d %d\n",msg->numAllAtoms,msg->numAllPntChrgs);
++    int stepNum = qmCoordMsgs[0]->timestep - simParams->firstTimestep;
++    int numSteps = simParams->N - simParams->firstTimestep;
++
++    iret = fprintf(inputFile,"%d %d %d %d\n",msg->numAllAtoms,msg->numAllPntChrgs,stepNum,numSteps);
      if ( iret < 0 ) { NAMD_die(strerror(errno)); }
      
      DebugM(4, "Writing " << msg->numAllAtoms << " QM atom coords in file " << 
-@@ -4129,12 +4124,15 @@
+@@ -4129,12 +4127,15 @@
      QMAtomData *atmP = msg->data ;
      for (size_t i=0; i<msg->numAllAtoms; ++i, ++atmP ) {
          
@@ -35,7 +38,7 @@
          if ( iret < 0 ) { NAMD_die(strerror(errno)); }
          
      }
-@@ -4143,17 +4141,19 @@
+@@ -4143,17 +4144,19 @@
      pcP = msg->data + msg->numAllAtoms ;
      for ( size_t j=0; j < msg->numAllPntChrgs; j++, ++pcP) {
          
@@ -60,7 +63,7 @@
          if ( iret < 0 ) { NAMD_die(strerror(errno)); }
      }
      
-@@ -4306,37 +4306,40 @@
+@@ -4306,37 +4309,40 @@
              Force mmForce(0), qmForce(0), 
                  linkForce(localForce[0], localForce[1], localForce[2]);
              
@@ -126,7 +129,7 @@
      fclose(outputFile);
      
      // In case charges are not to be read form the QM software output,
-@@ -4366,63 +4369,14 @@
+@@ -4366,63 +4372,14 @@
      }
      
      // remove force file

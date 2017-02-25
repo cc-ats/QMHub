@@ -286,7 +286,9 @@ class QM(object):
 
             if self.stepNum == 0 and self.read_first == 'no':
                 if 'QCSCRATCH' in os.environ:
-                    shutil.rmtree(os.environ['QCSCRATCH'] + "/save")
+                    qcsave = os.environ['QCSCRATCH'] + "/save"
+                    if os.path.isdir(qcsave):
+                        shutil.rmtree(qcsave)
 
         elif self.software.lower() == 'dftb+':
             cmdline += "OMP_NUM_THREADS=%d dftb+ > dftb.out" % nproc

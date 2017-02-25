@@ -154,7 +154,6 @@ class QMMM(object):
     def preserve_input(self):
         """Preserve the input file passed from NAMD."""
         import glob
-        import shutil
         listInputs = glob.glob(self.QM.fin + "_*")
         if listInputs:
             idx = max([int(i.split('_')[-1]) for i in listInputs]) + 1

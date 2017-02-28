@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import os
 import shutil
 import subprocess as sp
@@ -74,6 +73,10 @@ class QM(object):
         self.pntIdx = np.genfromtxt(fin, dtype=int, usecols=4,
                                     skip_header=1+self.numQMAtoms,
                                     max_rows=self.numPntChrgs)
+        # Number of virtual external point charges
+        self.numVPntChrgs = np.count_nonzero(self.pntIdx == -1)
+        # Number of real external point charges
+        self.numRPntChrgs = self.numPntChrgs - self.numVPntChrgs
 
         # Sort QM atoms
         self.map2sorted = np.concatenate((np.argsort(self.qmIdx[0:self.numRealQMAtoms]),
@@ -93,11 +96,7 @@ class QM(object):
         else:
             self.numVPntChrgsPerMM2 = -1
         # Number of MM2 atoms
-        self.numMM2 = np.count_nonzero(self.pntIdx == -1) / self.numVPntChrgsPerMM2
-        # Number of virtual external point charges
-        self.numVPntChrgs = self.numMM2 * self.numVPntChrgsPerMM2
-        # Number of real external point charges
-        self.numRPntChrgs = self.numPntChrgs - self.numVPntChrgs
+        self.numMM2 = self.numVPntChrgs // self.numVPntChrgsPerMM2
         # Pair-wise vectors between QM and MM atoms
         self.rij = (self.qmPos[np.newaxis, :, :]
                     - self.pntPos[0:self.numRPntChrgs, np.newaxis, :])

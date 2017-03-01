@@ -78,25 +78,22 @@ class QM(object):
         # Number of real external point charges
         self.numRPntChrgs = self.numPntChrgs - self.numVPntChrgs
 
+        # Numbers of MM2 atoms and virtual external point charges per MM2 atom
+        if self.numVPntChrgs > 0:
+            if self.pntChrgs[-1] + self.pntChrgs[-2] < 0.00001:
+                self.numVPntChrgsPerMM2 = 3
+            elif self.pntChrgs[-1] + self.pntChrgs[-2]*2 < 0.00001:
+                self.numVPntChrgsPerMM2 = 2
+            else:
+                raise ValueError('Something is wrong with point charge alterations.')
+
+            self.numMM2 = self.numVPntChrgs // self.numVPntChrgsPerMM2
+
         # Sort QM atoms
         self.map2sorted = np.concatenate((np.argsort(self.qmIdx[0:self.numRealQMAtoms]),
                                      np.arange(self.numRealQMAtoms, self.numQMAtoms)))
         self.map2unsorted = np.argsort(self.map2sorted)
 
-    def get_dij2(self, qmBondScheme='CS'):
-        """Get pair-wise distances between QM and MM atoms."""
-        # Number of virtual external point charges per MM2
-        if self.numMM1 > 0:
-            if qmBondScheme.lower() == 'cs':
-                self.numVPntChrgsPerMM2 = 3
-            elif qmBondScheme.lower() == 'rcd':
-                self.numVPntChrgsPerMM2 = 2
-            else:
-                raise ValueError('Only CS and RCD are supported currently.')
-        else:
-            self.numVPntChrgsPerMM2 = -1
-        # Number of MM2 atoms
-        self.numMM2 = self.numVPntChrgs // self.numVPntChrgsPerMM2
         # Pair-wise vectors between QM and MM atoms
         self.rij = (self.qmPos[np.newaxis, :, :]
                     - self.pntPos[0:self.numRPntChrgs, np.newaxis, :])
@@ -107,10 +104,6 @@ class QM(object):
     def scale_charges(self, qmSwitchingType='shift',
                       cutoff=None, swdist=None, **kwargs):
         """Scale external point charges."""
-
-        if not hasattr(self, 'dij2'):
-            self.get_dij2(**kwargs)
-
         dij_min2 = self.dij2[:, 0:self.numRealQMAtoms].min(axis=1)
         self.dij_min2 = dij_min2
         dij_min_j = self.dij2[:, 0:self.numRealQMAtoms].argmin(axis=1)
@@ -376,8 +369,6 @@ class QM(object):
         elif self.software.lower() == 'dftb+':
             if not hasattr(self, 'qmChrgs'):
                 self.get_qmchrgs()
-            if not hasattr(self, 'dij2'):
-                self.get_dij2()
             self.pntESP = (np.sum(self.qmChrgs[np.newaxis,:]
                                   / self.dij, axis=1)
                            * bohr2angstrom)
@@ -421,7 +412,7 @@ class QM(object):
 
     def corr_vpntchrgs(self):
         """Correct forces due to virtual external point charges."""
-        if self.numMM1 > 0:
+        if self.numVPntChrgs > 0:
             if self.numVPntChrgsPerMM2 == 3:
                 for i in range(self.numMM2):
                     mm1Pos = (self.pntPos[self.numRPntChrgs + i*3 + 1]

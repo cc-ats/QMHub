@@ -3,14 +3,13 @@ import numpy as np
 from .qmtool import QM
 
 class QMMM(object):
-    def __init__(self, fin=None, qmBondScheme='CS', qmElecEmbed='on',
-                 qmSwitching='off', qmSwitchingType='shift', qmSoftware=None,
+    def __init__(self, fin=None, qmElecEmbed='on', qmSwitching='off',
+                 qmSwitchingType='shift', qmSoftware=None,
                  qmChargeMode="qm", qmCharge=None, qmMult=None,
                  cutoff=None, swdist=None, PME='no', numAtoms=None):
         """
         Creat a QMMM object.
         """
-        self.qmBondScheme = qmBondScheme
         self.qmElecEmbed = qmElecEmbed
         self.qmSwitching = qmSwitching
         self.qmSwitchingType = qmSwitchingType
@@ -22,8 +21,6 @@ class QMMM(object):
         self.numAtoms = numAtoms
 
         self.QM = QM(fin, self.qmSoftware, self.qmCharge, self.qmMult)
-
-        self.QM.get_dij2(self.qmBondScheme)
 
         if self.qmElecEmbed.lower() == 'on':
             if self.qmSwitching.lower() == 'on':

@@ -1,4 +1,5 @@
 import os
+import sys
 import numpy as np
 from .qmtool import QM
 
@@ -49,7 +50,7 @@ class QMMM(object):
         self.QM.get_qmparams(**kwargs)
         self.QM.run()
         if self.QM.exitcode != 0:
-            exit(self.QM.exitcode)
+            sys.exit(self.QM.exitcode)
 
     def parse_output(self):
         """Parse the output of QM calculation."""

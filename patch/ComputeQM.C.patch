@@ -1,5 +1,5 @@
 --- ComputeQM.C.ORIG	2017-02-23 14:14:49.058687030 -0600
-+++ ComputeQM.C	2017-02-24 18:17:35.716987139 -0600
++++ ComputeQM.C	2017-03-02 18:04:29.720836096 -0600
 @@ -4111,14 +4111,12 @@
      outputFileName = inputFileName ;
      outputFileName.append(".result") ;
@@ -198,3 +198,70 @@
      // Adjusts forces from PME, canceling contributions from the QM and 
      // direct Coulomb forces calculated here.
      if (msg->PMEOn) {
+@@ -4438,6 +4395,8 @@
+             BigReal p_i_charge = atmP[i].charge ;
+             Position pos_i = atmP[i].position ;
+             
++            const BigReal kq_i = p_i_charge * constants;
++
+             for (size_t j=i+1; j < msg->numQMAtoms; j++) {
+                 
+                 BigReal p_j_charge = atmP[j].charge ;
+@@ -4454,9 +4413,7 @@
+ //                 BigReal recip_energy = (1-tmp_b)/r = erf(tmp_a)/r;
+                 BigReal recip_energy = (1-tmp_b)/r;
+                 
+-                BigReal recip_gradient = -(1-corr_gradient)/(r*2);
+-                
+-                const BigReal kq_i = p_i_charge * constants;
++                BigReal recip_gradient = -(1-corr_gradient)/(r*r);
+                 
+                 // Final force and energy correction for this pair of atoms.
+                 BigReal energy = kq_i * p_j_charge * recip_energy ;
+@@ -4489,8 +4446,6 @@
+             
+             const BigReal kq_i = p_i_charge * constants;
+             
+-            Force fixForce = 0;
+-            
+             for (size_t j=0; j<msg->numQMAtoms; ++j ) {
+                 
+                 // Not perfect
+@@ -4512,24 +4467,28 @@
+ //                 BigReal recip_energy = (1-tmp_b)/r = erf(tmp_a)/r;
+                 BigReal recip_energy = (1-tmp_b)/r;
+                 
+-                BigReal recip_gradient = -(1-corr_gradient)/(r*2);
++                BigReal recip_gradient = -(1-corr_gradient)/(r*r);
+                 
+                 // Final force and energy correction for this pair of atoms.
+                 BigReal energy = kq_i * p_j_charge * recip_energy ;
+                 
+-                fixForce += -1*p_j_charge*(recip_gradient/r)*(pos_i - pos_j) ;
++                Force fixForce = -1*kq_i*p_j_charge*(recip_gradient/r)*(pos_i - pos_j) ;
++                
++                // The force is *subtracted* from the total force acting on
++                // both atoms. The sign on fixForce corrects the orientation
++                // of the subtracted force.
++//                 DebugM(4,"Old forces for PC " << pcIndx << ": " << resForce[pcIndx].force
++//                     << std::endl);
++//                 DebugM(4,"Old forces for QM " << j << ": " << resForce[j].force
++//                     << std::endl);
++//                 DebugM(4,"Force correction: " << fixForce << std::endl);
++                resForce[pcIndx].force -= fixForce ;
++                resForce[j].force -= -1*fixForce;
+                 
+                 // The energy is *subtracted* from the total energy calculated here.
+                 resMsg->energyCorr -= energy;
+-                
+             }
+             
+-            // The force is *subtracted* from the total force acting on
+-                // the point charge.
+-//                 DebugM(4,"Old forces for PC " << pcIndx << ": " << resForce[pcIndx].force
+-//                     << std::endl);
+-//                 DebugM(4,"Force correction: " << fixForce << std::endl);
+-            resForce[pcIndx].force -= kq_i*fixForce ;
+         }
+         
+     }

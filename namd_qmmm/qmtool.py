@@ -133,7 +133,7 @@ class QM(object):
                                    * (cutoff2 - dij_min2)
                                    / (cutoff2 - swdist2)**3)
             self.pntScale_deriv = (self.pntScale_deriv[:,np.newaxis]
-                                   * (self.pntPos[0:numRPntChrgs]
+                                   * (self.pntPos[0:self.numRPntChrgs]
                                    - self.qmPos[dij_min_j]))
             self.pntScale_deriv *= (dij_min2 > swdist2)[:,np.newaxis]
         else:
@@ -266,10 +266,13 @@ class QM(object):
         if not hasattr(self, 'baseDir'):
             self.gen_input(**kwargs)
 
-        if 'SLURM_NTASKS' in os.environ:
-            nproc = int(os.environ['SLURM_NTASKS']) - 4
+        if 'OMP_NUM_THREADS' in os.environ:
+            nproc = int(os.environ['OMP_NUM_THREADS'])
         else:
-            nproc = 1
+            if 'SLURM_NTASKS' in os.environ:
+                nproc = int(os.environ['SLURM_NTASKS']) - 4
+            else:
+                nproc = 1
 
         cmdline = "cd " + self.baseDir + "; "
 
@@ -283,7 +286,7 @@ class QM(object):
                         shutil.rmtree(qcsave)
 
         elif self.software.lower() == 'dftb+':
-            cmdline += "OMP_NUM_THREADS=%d dftb+ > dftb.out" % nproc
+            cmdline += "export OMP_NUM_THREADS=%d; dftb+ > dftb.out" % nproc
 
         proc = sp.Popen(args=cmdline, shell=True)
         proc.wait()

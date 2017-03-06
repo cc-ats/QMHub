@@ -350,11 +350,14 @@ class QM(object):
         if self.software.lower() == 'qchem':
             self.qmChrgs = np.loadtxt(self.baseDir+"charges.dat")
         elif self.software.lower() == 'dftb+':
-            self.qmChrgs = np.genfromtxt(
-                self.baseDir+"results.tag", dtype=float,
-                skip_header=(self.numQMAtoms + self.numPntChrgs
-                             + int(np.ceil(self.numQMAtoms/3.)) + 14),
-                max_rows=int(np.ceil(self.numQMAtoms/3.)-1.))
+            if self.numQMAtoms > 3:
+                self.qmChrgs = np.genfromtxt(
+                    self.baseDir+"results.tag", dtype=float,
+                    skip_header=(self.numQMAtoms + self.numPntChrgs
+                                + int(np.ceil(self.numQMAtoms/3.)) + 14),
+                    max_rows=int(np.ceil(self.numQMAtoms/3.)-1.))
+            else:
+                self.qmChrgs = np.array([])
             self.qmChrgs = np.append(
                 self.qmChrgs.flatten(),
                 np.genfromtxt(self.baseDir+"results.tag", dtype=float,

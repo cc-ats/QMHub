@@ -1,5 +1,16 @@
 --- ComputeQM.C.ORIG	2017-02-23 14:14:49.058687030 -0600
-+++ ComputeQM.C	2017-03-02 18:04:29.720836096 -0600
++++ ComputeQM.C	2017-03-07 13:42:19.872725140 -0600
+@@ -1788,8 +1788,8 @@
+     const int *const *const chargeTarget = molPtr->get_qmMMChargeTarget() ;
+     const int *const numTargs = molPtr->get_qmMMNumTargs() ;
+     
+-    BigReal constants = COULOMB*simParams->nonbondedScaling/(simParams->dielectric*4.0*PI) ;
+-//     BigReal constants = COULOMB*simParams->nonbondedScaling/(simParams->dielectric) ;
++//    BigReal constants = COULOMB*simParams->nonbondedScaling/(simParams->dielectric*4.0*PI) ;
++     BigReal constants = COULOMB*simParams->nonbondedScaling/(simParams->dielectric) ;
+     
+     if ( qmPCFreq > 0 ) {
+         DebugM(4,"Using point charge stride of " << qmPCFreq << "\n")
 @@ -4111,14 +4111,12 @@
      outputFileName = inputFileName ;
      outputFileName.append(".result") ;

@@ -73,6 +73,14 @@ class QM(object):
         self.pntIdx = np.genfromtxt(fin, dtype=int, usecols=4,
                                     skip_header=1+self.numQMAtoms,
                                     max_rows=self.numPntChrgs)
+        # Indexes of QM atoms MM1 atoms bonded to
+        self.pntBondedToIdx = np.genfromtxt(fin, dtype=int, usecols=5,
+                                            skip_header=1+self.numQMAtoms,
+                                            max_rows=self.numPntChrgs)
+        # Local indexes of MM1 and QM host atoms
+        if self.numMM1 > 0:
+            self.mm1LocalIdx = np.where(self.pntBondedToIdx != -1)[0]
+            self.qmHostLocalIdx = self.pntBondedToIdx[self.mm1LocalIdx]
         # Number of virtual external point charges
         self.numVPntChrgs = np.count_nonzero(self.pntIdx == -1)
         # Number of real external point charges
@@ -418,6 +426,46 @@ class QM(object):
 
     def corr_vpntchrgs(self):
         """Correct forces due to virtual external point charges."""
+        if self.numVPntChrgs > 0:
+            if self.numVPntChrgsPerMM2 == 3:
+                mm1VPos = np.zeros((self.numMM2, 3), dtype=float)
+                mm2VPos = np.zeros((self.numMM2, 3), dtype=float)
+                for i in range(self.numMM2):
+                    mm1VPos[i] = (self.pntPos[self.numRPntChrgs + i*3 + 1]
+                                 - self.pntPos[self.numRPntChrgs + i*3]
+                                 * 0.94) / 0.06
+                    mm2VPos[i] = self.pntPos[self.numRPntChrgs + i*3]
+
+                mm1VIdx = np.zeros(self.numMM2, dtype=int)
+                mm2VIdx = np.zeros(self.numMM2, dtype=int)
+                for j in range(self.numMM2):
+                    for j in range(self.numMM1):
+                        if np.abs(mm1VPos[i] - self.pntPos[self.mm1LocalIdx[j]]).sum() < 0.001:
+                            mm1VIdx[i] = self.mm1LocalIdx[j]
+                for i in range(self.numMM2):
+                    for j in range(self.numRPntChrgs):
+                        if np.abs(mm2VPos[i] - self.pntPos[j]).sum() < 0.001:
+                            mm2VIdx[i] = j
+
+                for i in range(self.numMM2):
+                    self.pntChrgForces[mm2VIdx[i]] += self.pntChrgForces[self.numRPntChrgs + i*3]
+                    self.pntChrgForces[self.numRPntChrgs + i*3] = 0.
+
+                    self.pntChrgForces[mm2VIdx[i]] += self.pntChrgForces[self.numRPntChrgs + i*3 + 1] * 0.94
+                    self.pntChrgForces[mm1VIdx[i]] += self.pntChrgForces[self.numRPntChrgs + i*3 + 1] * 0.06
+                    self.pntChrgForces[self.numRPntChrgs + i*3 + 1] = 0.
+
+                    self.pntChrgForces[mm2VIdx[i]] += self.pntChrgForces[self.numRPntChrgs + i*3 + 2] * 1.06
+                    self.pntChrgForces[mm1VIdx[i]] += self.pntChrgForces[self.numRPntChrgs + i*3 + 2] * -0.06
+                    self.pntChrgForces[self.numRPntChrgs + i*3 + 2] = 0.
+
+            elif self.numVPntChrgsPerMM2 == 2:
+                raise ValueError("Not implemented yet.")
+        else:
+            pass
+
+    def corr_vpntchrgs_old(self):
+        """Correct forces due to virtual external point charges (previous version)."""
         if self.numVPntChrgs > 0:
             if self.numVPntChrgsPerMM2 == 3:
                 for i in range(self.numMM2):

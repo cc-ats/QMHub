@@ -445,9 +445,13 @@ class QM(object):
         self.qmForces -= fCorr.sum(axis=0)
 
         if hasattr(self, 'pntScale_deriv'):
-            pntESP2 = ke * np.sum(self.qmChrgs0[np.newaxis,:]/self.dij, axis=1)
-            fCorr = pntESP2[0:self.numRPntChrgs] * self.pntChrgs[0:self.numRPntChrgs]
+            fCorr = ke * self.pntChrgs[0:self.numRPntChrgs,np.newaxis] * self.qmChrgs0[np.newaxis,:] / self.dij
+            if self.numVPntChrgs > 0:
+                for i in range(self.numMM1):
+                    fCorr[self.mm2LocalIdx[i], self.qmHostLocalIdx[i]] = 0.0
+            fCorr = np.sum(fCorr, axis=1)
             fCorr = fCorr[:,np.newaxis] * self.pntScale_deriv
+
             self.pntChrgForces[0:self.numRPntChrgs] -= fCorr
 
             for i in range(self.numRealQMAtoms):

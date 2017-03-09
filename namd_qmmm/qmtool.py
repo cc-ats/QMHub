@@ -438,26 +438,27 @@ class QM(object):
 
                 mm1VIdx = np.zeros(self.numMM2, dtype=int)
                 mm2VIdx = np.zeros(self.numMM2, dtype=int)
-                for j in range(self.numMM2):
+                for i in range(self.numMM2):
                     for j in range(self.numMM1):
                         if np.abs(mm1VPos[i] - self.pntPos[self.mm1LocalIdx[j]]).sum() < 0.001:
                             mm1VIdx[i] = self.mm1LocalIdx[j]
+                            break
                 for i in range(self.numMM2):
                     for j in range(self.numRPntChrgs):
                         if np.abs(mm2VPos[i] - self.pntPos[j]).sum() < 0.001:
                             mm2VIdx[i] = j
+                            break
 
                 for i in range(self.numMM2):
                     self.pntChrgForces[mm2VIdx[i]] += self.pntChrgForces[self.numRPntChrgs + i*3]
-                    self.pntChrgForces[self.numRPntChrgs + i*3] = 0.
 
                     self.pntChrgForces[mm2VIdx[i]] += self.pntChrgForces[self.numRPntChrgs + i*3 + 1] * 0.94
                     self.pntChrgForces[mm1VIdx[i]] += self.pntChrgForces[self.numRPntChrgs + i*3 + 1] * 0.06
-                    self.pntChrgForces[self.numRPntChrgs + i*3 + 1] = 0.
 
                     self.pntChrgForces[mm2VIdx[i]] += self.pntChrgForces[self.numRPntChrgs + i*3 + 2] * 1.06
                     self.pntChrgForces[mm1VIdx[i]] += self.pntChrgForces[self.numRPntChrgs + i*3 + 2] * -0.06
-                    self.pntChrgForces[self.numRPntChrgs + i*3 + 2] = 0.
+
+                self.pntChrgForces[self.numRPntChrgs:] = 0.
 
             elif self.numVPntChrgsPerMM2 == 2:
                 raise ValueError("Not implemented yet.")

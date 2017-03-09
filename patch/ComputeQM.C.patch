@@ -1,5 +1,5 @@
 --- ComputeQM.C.ORIG	2017-02-23 14:14:49.058687030 -0600
-+++ ComputeQM.C	2017-03-07 13:42:19.872725140 -0600
++++ ComputeQM.C	2017-03-08 23:24:42.039911683 -0600
 @@ -1788,8 +1788,8 @@
      const int *const *const chargeTarget = molPtr->get_qmMMChargeTarget() ;
      const int *const numTargs = molPtr->get_qmMMNumTargs() ;
@@ -49,7 +49,7 @@
          if ( iret < 0 ) { NAMD_die(strerror(errno)); }
          
      }
-@@ -4143,17 +4144,19 @@
+@@ -4143,17 +4144,20 @@
      pcP = msg->data + msg->numAllAtoms ;
      for ( size_t j=0; j < msg->numAllPntChrgs; j++, ++pcP) {
          
@@ -62,6 +62,7 @@
 +        }
 +        
 +        int id = pcP->id;
++        int bountToIndx = pcP->bountToIndx;
          
          double x = pcP->position.x;
          double y = pcP->position.y;
@@ -69,12 +70,12 @@
          
 -        iret = fprintf(inputFile,"%f %f %f %f\n",
 -                       x,y,z,charge);
-+        iret = fprintf(inputFile,"%f %f %f %f %d\n",
-+                       x,y,z,charge,id);
++        iret = fprintf(inputFile,"%f %f %f %f %d %d\n",
++                       x,y,z,charge,id,bountToIndx);
          if ( iret < 0 ) { NAMD_die(strerror(errno)); }
      }
      
-@@ -4306,37 +4309,40 @@
+@@ -4306,37 +4310,40 @@
              Force mmForce(0), qmForce(0), 
                  linkForce(localForce[0], localForce[1], localForce[2]);
              
@@ -140,7 +141,7 @@
      fclose(outputFile);
      
      // In case charges are not to be read form the QM software output,
-@@ -4366,63 +4372,14 @@
+@@ -4366,63 +4373,14 @@
      }
      
      // remove force file
@@ -209,7 +210,7 @@
      // Adjusts forces from PME, canceling contributions from the QM and 
      // direct Coulomb forces calculated here.
      if (msg->PMEOn) {
-@@ -4438,6 +4395,8 @@
+@@ -4438,6 +4396,8 @@
              BigReal p_i_charge = atmP[i].charge ;
              Position pos_i = atmP[i].position ;
              
@@ -218,7 +219,7 @@
              for (size_t j=i+1; j < msg->numQMAtoms; j++) {
                  
                  BigReal p_j_charge = atmP[j].charge ;
-@@ -4454,9 +4413,7 @@
+@@ -4454,9 +4414,7 @@
  //                 BigReal recip_energy = (1-tmp_b)/r = erf(tmp_a)/r;
                  BigReal recip_energy = (1-tmp_b)/r;
                  
@@ -229,7 +230,7 @@
                  
                  // Final force and energy correction for this pair of atoms.
                  BigReal energy = kq_i * p_j_charge * recip_energy ;
-@@ -4489,8 +4446,6 @@
+@@ -4489,8 +4447,6 @@
              
              const BigReal kq_i = p_i_charge * constants;
              
@@ -238,7 +239,7 @@
              for (size_t j=0; j<msg->numQMAtoms; ++j ) {
                  
                  // Not perfect
-@@ -4512,24 +4467,28 @@
+@@ -4512,24 +4468,28 @@
  //                 BigReal recip_energy = (1-tmp_b)/r = erf(tmp_a)/r;
                  BigReal recip_energy = (1-tmp_b)/r;
                  

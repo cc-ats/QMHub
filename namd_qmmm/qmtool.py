@@ -30,53 +30,52 @@ class QM(object):
         else:
             self.mult = 1
 
-        numsList = np.genfromtxt(fin, dtype=int, max_rows=1, unpack=True)
-
+        # Load system information
+        sysList = np.genfromtxt(fin, dtype=int, max_rows=1, unpack=True)
         # Number of QM atoms including linking atoms
-        self.numQMAtoms = numsList[0]
+        self.numQMAtoms = sysList[0]
         # Number of external external point charges including virtual particles
-        self.numPntChrgs = numsList[1]
+        self.numPntChrgs = sysList[1]
         # Number of current step
-        self.stepNum = numsList[2]
+        self.stepNum = sysList[2]
         # Number of total steps to run
-        self.numSteps = numsList[3]
+        self.numSteps = sysList[3]
 
+        # Load QM information
+        qmList = np.genfromtxt(fin, dtype=None, skip_header=1,
+                               max_rows=self.numQMAtoms)
         # Positions of QM atoms
-        self.qmPos = np.genfromtxt(fin, dtype=float, usecols=(0,1,2),
-                                   skip_header=1, max_rows=self.numQMAtoms)
+        self.qmPos = np.column_stack((qmList['f0'],
+                                      qmList['f1'],
+                                      qmList['f2']))
         # Elements of QM atoms
-        self.qmElmnts = np.genfromtxt(fin, dtype=str, usecols=3,
-                                      skip_header=1, max_rows=self.numQMAtoms)
-        self.qmElmnts = np.char.capitalize(self.qmElmnts)
+        self.qmElmnts = np.char.capitalize(qmList['f3'])
         # Charges of QM atoms
-        self.qmChrgs0 = np.genfromtxt(fin, dtype=float, usecols=4,
-                                     skip_header=1, max_rows=self.numQMAtoms)
+        self.qmChrgs0 = qmList['f4']
         # Indexes of QM atoms
-        self.qmIdx = np.genfromtxt(fin, dtype=int, usecols=5,
-                                   skip_header=1, max_rows=self.numQMAtoms)
+        self.qmIdx = qmList['f5']
+
         # Number of MM1 atoms which equals to number of linking atoms
         self.numMM1 = np.count_nonzero(self.qmIdx == -1)
         # Number of Real QM atoms
         self.numRealQMAtoms = self.numQMAtoms - self.numMM1
 
+        # Load external point charge information
+        pntList = np.genfromtxt(fin, dtype=None, skip_header=1+self.numQMAtoms,
+                                max_rows=self.numPntChrgs)
         # Positions of external point charges
-        self.pntPos = np.genfromtxt(fin, dtype=float, usecols=(0,1,2),
-                                    skip_header=1+self.numQMAtoms,
-                                    max_rows=self.numPntChrgs)
+        self.pntPos = np.column_stack((pntList['f0'],
+                                       pntList['f1'],
+                                       pntList['f2']))
         # Charges of external point charges
-        self.pntChrgs = np.genfromtxt(fin, dtype=float, usecols=3,
-                                      skip_header=1+self.numQMAtoms,
-                                      max_rows=self.numPntChrgs)
+        self.pntChrgs = pntList['f3']
         # Output external point charges
         self.outPntChrgs = self.pntChrgs
         # Indexes of external point charges
-        self.pntIdx = np.genfromtxt(fin, dtype=int, usecols=4,
-                                    skip_header=1+self.numQMAtoms,
-                                    max_rows=self.numPntChrgs)
+        self.pntIdx = pntList['f4']
         # Indexes of QM atoms MM1 atoms bonded to
-        self.pntBondedToIdx = np.genfromtxt(fin, dtype=int, usecols=5,
-                                            skip_header=1+self.numQMAtoms,
-                                            max_rows=self.numPntChrgs)
+        self.pntBondedToIdx = pntList['f5']
+
         # Local indexes of MM1 and QM host atoms
         if self.numMM1 > 0:
             self.mm1LocalIdx = np.where(self.pntBondedToIdx != -1)[0]

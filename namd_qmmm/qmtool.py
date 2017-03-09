@@ -97,6 +97,35 @@ class QM(object):
 
             self.numMM2 = self.numVPntChrgs // self.numVPntChrgsPerMM2
 
+        # Local indexes of MM1 and MM2 atoms the virtual point charges belong to
+        if self.numVPntChrgs > 0:
+            if self.numVPntChrgsPerMM2 == 3:
+                mm1VPos = np.zeros((self.numMM2, 3), dtype=float)
+                mm2VPos = np.zeros((self.numMM2, 3), dtype=float)
+                for i in range(self.numMM2):
+                    mm1VPos[i] = (self.pntPos[self.numRPntChrgs + i*3 + 1]
+                                 - self.pntPos[self.numRPntChrgs + i*3]
+                                 * 0.94) / 0.06
+                    mm2VPos[i] = self.pntPos[self.numRPntChrgs + i*3]
+
+                self.mm1VIdx = np.zeros(self.numMM2, dtype=int)
+                self.mm2VIdx = np.zeros(self.numMM2, dtype=int)
+                for i in range(self.numMM2):
+                    for j in range(self.numMM1):
+                        if np.abs(mm1VPos[i] - self.pntPos[self.mm1LocalIdx[j]]).sum() < 0.001:
+                            self.mm1VIdx[i] = self.mm1LocalIdx[j]
+                            break
+                for i in range(self.numMM2):
+                    for j in range(self.numRPntChrgs):
+                        if np.abs(mm2VPos[i] - self.pntPos[j]).sum() < 0.001:
+                            self.mm2VIdx[i] = j
+                            break
+                self.mm2LocalIdx = []
+                for i in range(self.numMM1):
+                    self.mm2LocalIdx.append(self.mm2VIdx[self.mm1VIdx == self.mm1LocalIdx[i]])
+            elif self.numVPntChrgsPerMM2 == 2:
+                raise ValueError("Not implemented yet.")
+
         # Sort QM atoms
         self.map2sorted = np.concatenate((np.argsort(self.qmIdx[0:self.numRealQMAtoms]),
                                      np.arange(self.numRealQMAtoms, self.numQMAtoms)))
@@ -408,6 +437,10 @@ class QM(object):
         fCorr = -1 * ke * pntChrgsD[:,np.newaxis] * self.qmChrgs0[np.newaxis,:] / self.dij**3
         fCorr = fCorr[:,:,np.newaxis] * self.rij
 
+        if self.numVPntChrgs > 0:
+            for i in range(self.numMM1):
+                fCorr[self.mm2LocalIdx[i], self.qmHostLocalIdx[i]] = 0.0
+
         self.pntChrgForces[0:self.numRPntChrgs] += fCorr.sum(axis=1)
         self.qmForces -= fCorr.sum(axis=0)
 
@@ -422,41 +455,24 @@ class QM(object):
 
         eCorr = ke * pntChrgsD[:,np.newaxis] * self.qmChrgs0[np.newaxis,:] / self.dij
 
+        if self.numVPntChrgs > 0:
+            for i in range(self.numMM1):
+                eCorr[self.mm2LocalIdx[i], self.qmHostLocalIdx[i]] = 0.0
+
         self.qmEnergy += eCorr.sum()
 
     def corr_vpntchrgs(self):
         """Correct forces due to virtual external point charges."""
         if self.numVPntChrgs > 0:
             if self.numVPntChrgsPerMM2 == 3:
-                mm1VPos = np.zeros((self.numMM2, 3), dtype=float)
-                mm2VPos = np.zeros((self.numMM2, 3), dtype=float)
                 for i in range(self.numMM2):
-                    mm1VPos[i] = (self.pntPos[self.numRPntChrgs + i*3 + 1]
-                                 - self.pntPos[self.numRPntChrgs + i*3]
-                                 * 0.94) / 0.06
-                    mm2VPos[i] = self.pntPos[self.numRPntChrgs + i*3]
+                    self.pntChrgForces[self.mm2VIdx[i]] += self.pntChrgForces[self.numRPntChrgs + i*3]
 
-                mm1VIdx = np.zeros(self.numMM2, dtype=int)
-                mm2VIdx = np.zeros(self.numMM2, dtype=int)
-                for i in range(self.numMM2):
-                    for j in range(self.numMM1):
-                        if np.abs(mm1VPos[i] - self.pntPos[self.mm1LocalIdx[j]]).sum() < 0.001:
-                            mm1VIdx[i] = self.mm1LocalIdx[j]
-                            break
-                for i in range(self.numMM2):
-                    for j in range(self.numRPntChrgs):
-                        if np.abs(mm2VPos[i] - self.pntPos[j]).sum() < 0.001:
-                            mm2VIdx[i] = j
-                            break
+                    self.pntChrgForces[self.mm2VIdx[i]] += self.pntChrgForces[self.numRPntChrgs + i*3 + 1] * 0.94
+                    self.pntChrgForces[self.mm1VIdx[i]] += self.pntChrgForces[self.numRPntChrgs + i*3 + 1] * 0.06
 
-                for i in range(self.numMM2):
-                    self.pntChrgForces[mm2VIdx[i]] += self.pntChrgForces[self.numRPntChrgs + i*3]
-
-                    self.pntChrgForces[mm2VIdx[i]] += self.pntChrgForces[self.numRPntChrgs + i*3 + 1] * 0.94
-                    self.pntChrgForces[mm1VIdx[i]] += self.pntChrgForces[self.numRPntChrgs + i*3 + 1] * 0.06
-
-                    self.pntChrgForces[mm2VIdx[i]] += self.pntChrgForces[self.numRPntChrgs + i*3 + 2] * 1.06
-                    self.pntChrgForces[mm1VIdx[i]] += self.pntChrgForces[self.numRPntChrgs + i*3 + 2] * -0.06
+                    self.pntChrgForces[self.mm2VIdx[i]] += self.pntChrgForces[self.numRPntChrgs + i*3 + 2] * 1.06
+                    self.pntChrgForces[self.mm1VIdx[i]] += self.pntChrgForces[self.numRPntChrgs + i*3 + 2] * -0.06
 
                 self.pntChrgForces[self.numRPntChrgs:] = 0.
 

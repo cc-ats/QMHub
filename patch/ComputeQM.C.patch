@@ -1,5 +1,5 @@
 --- ComputeQM.C.ORIG	2017-02-23 14:14:49.058687030 -0600
-+++ ComputeQM.C	2017-03-08 23:24:42.039911683 -0600
++++ ComputeQM.C	2017-03-08 23:27:12.366088380 -0600
 @@ -1788,8 +1788,8 @@
      const int *const *const chargeTarget = molPtr->get_qmMMChargeTarget() ;
      const int *const numTargs = molPtr->get_qmMMNumTargs() ;
@@ -230,7 +230,7 @@
                  
                  // Final force and energy correction for this pair of atoms.
                  BigReal energy = kq_i * p_j_charge * recip_energy ;
-@@ -4489,8 +4447,6 @@
+@@ -4489,14 +4447,12 @@
              
              const BigReal kq_i = p_i_charge * constants;
              
@@ -239,6 +239,13 @@
              for (size_t j=0; j<msg->numQMAtoms; ++j ) {
                  
                  // Not perfect
+                 // This prevents the MM point charge of a MM-QM bond from feeling 
+                 // the influence from the QM atom it is bount to. 
+-                if ( pcP[i].bountToIndx == j ) continue ;
++                // if ( pcP[i].bountToIndx == j ) continue ;
+                 
+                 BigReal p_j_charge = atmP[j].charge ;
+                 
 @@ -4512,24 +4468,28 @@
  //                 BigReal recip_energy = (1-tmp_b)/r = erf(tmp_a)/r;
                  BigReal recip_energy = (1-tmp_b)/r;

@@ -1,6 +1,6 @@
 from string import Template
 
-qc_tmplt="""\
+qc_tmplt = """\
 $$rem
 jobtype force
 method $method
@@ -16,7 +16,7 @@ $$end
 
 """
 
-dftb_tmplt="""\
+dftb_tmplt = """\
 Geometry = GenFormat {
   <<< "input_geometry.gen"
 }
@@ -74,6 +74,7 @@ MaxAngularMomentum = dict([('Br', 'd'), ('C', 'p'), ('Ca', 'p'),
                            ('N', 'p'), ('Na', 'p'), ('O', 'p'),
                            ('P', 'd'), ('S', 'd'), ('Zn', 'd')])
 
+
 class QMTmplt(object):
     """Class for input templates for QM softwares."""
     def __init__(self, qmSoftware=None):
@@ -97,11 +98,13 @@ class QMTmplt(object):
         elif self.qmSoftware.lower() == 'dftb+':
             return Template(dftb_tmplt)
 
+
 if __name__ == "__main__":
     qchem = QMTmplt('qchem')
     print(qchem.gen_qmtmplt().substitute(
               method='hf', basis='6-31g',
-              read_guess='\nscf_guess read', pop='pop_mulliken', addparam='esp_charges true\nchelpg true\n'))
+              read_guess='\nscf_guess read', pop='pop_mulliken',
+              addparam='esp_charges true\nchelpg true\n'))
     dftb = QMTmplt('dftb+')
     print(dftb.gen_qmtmplt().safe_substitute(
               charge=0, numPntChrgs=1000, read_guess='No'))

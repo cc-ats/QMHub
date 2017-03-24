@@ -8,6 +8,7 @@ hartree2kcalmol = 6.275094737775374e+02
 bohr2angstrom = 5.2917721067e-01
 ke = hartree2kcalmol * bohr2angstrom
 
+
 class QM(object):
     def __init__(self, fin, software=None, charge=None, mult=None):
         """
@@ -103,8 +104,8 @@ class QM(object):
                 mm2VPos = np.zeros((self.numMM2, 3), dtype=float)
                 for i in range(self.numMM2):
                     mm1VPos[i] = (self.pntPos[self.numRPntChrgs + i*3 + 1]
-                                 - self.pntPos[self.numRPntChrgs + i*3]
-                                 * 0.94) / 0.06
+                                  - self.pntPos[self.numRPntChrgs + i*3]
+                                  * 0.94) / 0.06
                     mm2VPos[i] = self.pntPos[self.numRPntChrgs + i*3]
 
                 self.mm1VIdx = np.zeros(self.numMM2, dtype=int)
@@ -152,7 +153,7 @@ class QM(object):
             cutoff2 = cutoff**2
             self.pntScale = (1 - dij_min2/cutoff2)**2
             self.pntScale_deriv = 4 * (1 - dij_min2/cutoff2) / cutoff2
-            self.pntScale_deriv = (self.pntScale_deriv[:,np.newaxis]
+            self.pntScale_deriv = (self.pntScale_deriv[:, np.newaxis]
                                    * (self.pntPos[0:self.numRPntChrgs]
                                    - self.qmPos[dij_min_j]))
         elif qmSwitchingType.lower() == 'switch':
@@ -168,12 +169,21 @@ class QM(object):
             self.pntScale_deriv = (12 * (dij_min2 - swdist2)
                                    * (cutoff2 - dij_min2)
                                    / (cutoff2 - swdist2)**3)
-            self.pntScale_deriv = (self.pntScale_deriv[:,np.newaxis]
+            self.pntScale_deriv = (self.pntScale_deriv[:, np.newaxis]
                                    * (self.pntPos[0:self.numRPntChrgs]
                                    - self.qmPos[dij_min_j]))
-            self.pntScale_deriv *= (dij_min2 > swdist2)[:,np.newaxis]
+            self.pntScale_deriv *= (dij_min2 > swdist2)[:, np.newaxis]
+        if qmSwitchingType.lower() == 'lrec':
+            if cutoff is None:
+                raise ValueError("We need 'cutoff' here.")
+            scale = 1 - self.pntDist / cutoff
+            self.pntScale = 1 - (2*scale**3 - 3*scale**2 + 1)**2
+            self.pntScale_deriv = 12 * scale * (2*scale**3 - 3*scale**2 + 1) / cutoff**2
+            self.pntScale_deriv = (self.pntScale_deriv[:, np.newaxis]
+                                   * (self.pntPos[0:self.numRPntChrgs]
+                                   - self.qmPos[dij_min_j]))
         else:
-            raise ValueError("Only 'shift' and 'switch' are supported at the moment.")
+            raise ValueError("Only 'shift', 'switch', and 'lrec'  are supported at the moment.")
 
         self.pntScale = np.append(self.pntScale, np.ones(self.numVPntChrgs))
         self.pntChrgsScld = self.pntChrgs * self.pntScale
@@ -183,8 +193,8 @@ class QM(object):
         """Set all the external point charges to zero."""
         self.outPntChrgs = np.zeros(self.numPntChrgs)
 
-    def get_qmparams(self, method=None, basis=None, read_first='no', read_guess=None,
-                     pop=None, addparam=None):
+    def get_qmparams(self, method=None, basis=None, read_first='no',
+                     read_guess=None, pop=None, addparam=None):
         """Get the parameters for QM calculation."""
         if self.software.lower() == 'qchem':
             if method is not None:
@@ -229,7 +239,6 @@ class QM(object):
         else:
             raise ValueError("Only 'qchem' and 'dftb+' are supported at the moment.")
 
-
     def gen_input(self, baseDir=None, **kwargs):
         """Generate input file for QM software."""
 
@@ -256,16 +265,16 @@ class QM(object):
 
                 for i in range(self.numQMAtoms):
                     f.write("".join(["%3s" % qmElmntsSorted[i],
-                                     "%22.14e" % qmPosSorted[i,0],
-                                     "%22.14e" % qmPosSorted[i,1],
-                                     "%22.14e" % qmPosSorted[i,2], "\n"]))
+                                     "%22.14e" % qmPosSorted[i, 0],
+                                     "%22.14e" % qmPosSorted[i, 1],
+                                     "%22.14e" % qmPosSorted[i, 2], "\n"]))
                 f.write("$end" + "\n\n")
 
                 f.write("$external_charges\n")
                 for i in range(self.numPntChrgs):
-                    f.write("".join(["%22.14e" % self.pntPos[i,0],
-                                     "%22.14e" % self.pntPos[i,1],
-                                     "%22.14e" % self.pntPos[i,2],
+                    f.write("".join(["%22.14e" % self.pntPos[i, 0],
+                                     "%22.14e" % self.pntPos[i, 1],
+                                     "%22.14e" % self.pntPos[i, 2],
                                      " %22.14e" % self.outPntChrgs[i], "\n"]))
                 f.write("$end" + "\n")
         elif self.software.lower() == 'dftb+':
@@ -283,16 +292,16 @@ class QM(object):
                 f.write(" ".join(listElmnts) + "\n")
                 for i in range(self.numQMAtoms):
                     f.write("".join(["%6d" % (i+1),
-                                    "%4d" % (listElmnts.index(qmElmntsSorted[i])+1),
-                                    "%22.14e" % qmPosSorted[i,0],
-                                    "%22.14e" % qmPosSorted[i,1],
-                                    "%22.14e" % qmPosSorted[i,2], "\n"]))
+                                     "%4d" % (listElmnts.index(qmElmntsSorted[i])+1),
+                                     "%22.14e" % qmPosSorted[i, 0],
+                                     "%22.14e" % qmPosSorted[i, 1],
+                                     "%22.14e" % qmPosSorted[i, 2], "\n"]))
             with open(self.baseDir+"charges.dat", 'w') as f:
                 for i in range(self.numPntChrgs):
-                    f.write("".join(["%22.14e" % self.pntPos[i,0],
-                                        "%22.14e" % self.pntPos[i,1],
-                                        "%22.14e" % self.pntPos[i,2],
-                                        " %22.14e" % self.outPntChrgs[i], "\n"]))
+                    f.write("".join(["%22.14e" % self.pntPos[i, 0],
+                                     "%22.14e" % self.pntPos[i, 1],
+                                     "%22.14e" % self.pntPos[i, 2],
+                                     " %22.14e" % self.outPntChrgs[i], "\n"]))
         else:
             raise ValueError("Only 'qchem' and 'dftb+' are supported at the moment.")
 
@@ -359,8 +368,8 @@ class QM(object):
                                                skip_header=self.numPntChrgs)
         elif self.software.lower() == 'dftb+':
             self.qmForces = np.genfromtxt(self.baseDir+"results.tag",
-                                         dtype=float, skip_header=5,
-                                         max_rows=self.numQMAtoms)
+                                          dtype=float, skip_header=5,
+                                          max_rows=self.numQMAtoms)
         self.qmForces *= hartree2kcalmol / bohr2angstrom
         # Unsort QM atoms
         self.qmForces = self.qmForces[self.map2unsorted]
@@ -372,7 +381,7 @@ class QM(object):
             self.pntChrgForces = (np.genfromtxt(self.baseDir+"efield.dat",
                                                 dtype=float,
                                                 max_rows=self.numPntChrgs)
-                                  * self.outPntChrgs[:,np.newaxis])
+                                  * self.outPntChrgs[:, np.newaxis])
         elif self.software.lower() == 'dftb+':
             self.pntChrgForces = np.genfromtxt(self.baseDir+"results.tag",
                                                dtype=float,
@@ -390,7 +399,7 @@ class QM(object):
                 self.qmChrgs = np.genfromtxt(
                     self.baseDir+"results.tag", dtype=float,
                     skip_header=(self.numQMAtoms + self.numPntChrgs
-                                + int(np.ceil(self.numQMAtoms/3.)) + 14),
+                                 + int(np.ceil(self.numQMAtoms/3.)) + 14),
                     max_rows=int(np.ceil(self.numQMAtoms/3.)-1.))
             else:
                 self.qmChrgs = np.array([])
@@ -398,7 +407,7 @@ class QM(object):
                 self.qmChrgs.flatten(),
                 np.genfromtxt(self.baseDir+"results.tag", dtype=float,
                     skip_header=(self.numQMAtoms + self.numPntChrgs
-                                + int(np.ceil(self.numQMAtoms/3.))*2 + 13),
+                                 + int(np.ceil(self.numQMAtoms/3.))*2 + 13),
                     max_rows=1).flatten())
         # Unsort QM atoms
         self.qmChrgs = self.qmChrgs[self.map2unsorted]
@@ -411,7 +420,7 @@ class QM(object):
         elif self.software.lower() == 'dftb+':
             if not hasattr(self, 'qmChrgs'):
                 self.get_qmchrgs()
-            self.pntESP = (np.sum(self.qmChrgs[np.newaxis,:]
+            self.pntESP = (np.sum(self.qmChrgs[np.newaxis, :]
                                   / self.dij, axis=1)
                            * bohr2angstrom)
         self.pntESP *= hartree2kcalmol
@@ -423,7 +432,7 @@ class QM(object):
             self.get_pntesp()
 
         fCorr = self.pntESP[0:self.numRPntChrgs] * self.pntChrgs[0:self.numRPntChrgs]
-        fCorr = fCorr[:,np.newaxis] * self.pntScale_deriv
+        fCorr = fCorr[:, np.newaxis] * self.pntScale_deriv
         self.pntChrgForces[0:self.numRPntChrgs] += fCorr
 
         for i in range(self.numRealQMAtoms):
@@ -433,8 +442,8 @@ class QM(object):
         """Correct forces and energy due to periodic boundary conditions."""
         pntChrgsD = self.pntChrgs[0:self.numRPntChrgs] - self.outPntChrgs[0:self.numRPntChrgs]
 
-        fCorr = -1 * ke * pntChrgsD[:,np.newaxis] * self.qmChrgs0[np.newaxis,:] / self.dij**3
-        fCorr = fCorr[:,:,np.newaxis] * self.rij
+        fCorr = -1 * ke * pntChrgsD[:, np.newaxis] * self.qmChrgs0[np.newaxis, :] / self.dij**3
+        fCorr = fCorr[:, :, np.newaxis] * self.rij
 
         if self.numVPntChrgs > 0:
             for i in range(self.numMM1):
@@ -444,19 +453,19 @@ class QM(object):
         self.qmForces -= fCorr.sum(axis=0)
 
         if hasattr(self, 'pntScale_deriv'):
-            fCorr = ke * self.pntChrgs[0:self.numRPntChrgs,np.newaxis] * self.qmChrgs0[np.newaxis,:] / self.dij
+            fCorr = ke * self.pntChrgs[0:self.numRPntChrgs, np.newaxis] * self.qmChrgs0[np.newaxis, :] / self.dij
             if self.numVPntChrgs > 0:
                 for i in range(self.numMM1):
                     fCorr[self.mm2LocalIdx[i], self.qmHostLocalIdx[i]] = 0.0
             fCorr = np.sum(fCorr, axis=1)
-            fCorr = fCorr[:,np.newaxis] * self.pntScale_deriv
+            fCorr = fCorr[:, np.newaxis] * self.pntScale_deriv
 
             self.pntChrgForces[0:self.numRPntChrgs] -= fCorr
 
             for i in range(self.numRealQMAtoms):
                 self.qmForces[i] += fCorr[self.dij_min_j == i].sum(axis=0)
 
-        eCorr = ke * pntChrgsD[:,np.newaxis] * self.qmChrgs0[np.newaxis,:] / self.dij
+        eCorr = ke * pntChrgsD[:, np.newaxis] * self.qmChrgs0[np.newaxis, :] / self.dij
 
         if self.numVPntChrgs > 0:
             for i in range(self.numMM1):
@@ -513,6 +522,7 @@ class QM(object):
                 raise ValueError("Not implemented yet.")
         else:
             pass
+
 
 if __name__ == "__main__":
     import sys

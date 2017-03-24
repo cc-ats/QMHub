@@ -3,6 +3,7 @@ import sys
 import numpy as np
 from .qmtool import QM
 
+
 class QMMM(object):
     def __init__(self, fin=None, qmElecEmbed='on', qmSwitching='off',
                  qmSwitchingType='shift', qmSoftware=None,
@@ -32,8 +33,11 @@ class QMMM(object):
                     self.cutoff = cutoff
                     self.swdist = swdist
                     self.QM.scale_charges(self.qmSwitchingType, self.cutoff, self.swdist)
+                if self.qmSwitchingType.lower() == 'lrec':
+                    self.cutoff = cutoff
+                    self.QM.scale_charges(self.qmSwitchingType, self.cutoff)
                 else:
-                    raise ValueError("Only 'shift' and 'switch' are supported currently.")
+                    raise ValueError("Only 'shift', 'switch', and 'lrec' are supported currently.")
         elif self.qmElecEmbed.lower() == 'off':
             self.QM.zero_pntChrgs()
         else:
@@ -161,6 +165,7 @@ class QMMM(object):
         if os.path.isfile(self.QM.fin):
             shutil.copyfile(self.QM.fin, self.QM.fin+"_"+str(idx))
 
+
 if __name__ == "__main__":
     import sys
 
@@ -175,4 +180,3 @@ if __name__ == "__main__":
                 PME='yes', numAtoms=2279)
     dftb.run_qm()
     dftb.parse_output()
-

@@ -173,7 +173,7 @@ class QM(object):
                                    * (self.pntPos[0:self.numRPntChrgs]
                                    - self.qmPos[dij_min_j]))
             self.pntScale_deriv *= (dij_min2 > swdist2)[:, np.newaxis]
-        if qmSwitchingType.lower() == 'lrec':
+        elif qmSwitchingType.lower() == 'lrec':
             if cutoff is None:
                 raise ValueError("We need 'cutoff' here.")
             scale = 1 - self.pntDist / cutoff

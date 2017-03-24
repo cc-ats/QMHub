@@ -33,7 +33,7 @@ class QMMM(object):
                     self.cutoff = cutoff
                     self.swdist = swdist
                     self.QM.scale_charges(self.qmSwitchingType, self.cutoff, self.swdist)
-                if self.qmSwitchingType.lower() == 'lrec':
+                elif self.qmSwitchingType.lower() == 'lrec':
                     self.cutoff = cutoff
                     self.QM.scale_charges(self.qmSwitchingType, self.cutoff)
                 else:

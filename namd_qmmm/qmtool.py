@@ -50,7 +50,7 @@ class QM(object):
                                       qmList['f1'],
                                       qmList['f2']))
         # Elements of QM atoms
-        self.qmElmnts = np.char.capitalize(qmList['f3'])
+        self.qmElmnts = np.char.capitalize(np.core.defchararray.decode(qmList['f3']))
         # Charges of QM atoms
         self.qmChrgs0 = qmList['f4']
         # Indexes of QM atoms

@@ -183,7 +183,7 @@ class QM(object):
                                    * (self.pntPos[0:self.numRPntChrgs]
                                    - self.qmPos[dij_min_j]))
         else:
-            raise ValueError("Only 'shift', 'switch', and 'lrec'  are supported at the moment.")
+            raise ValueError("Only 'shift', 'switch', and 'lrec' are supported at the moment.")
 
         self.pntScale = np.append(self.pntScale, np.ones(self.numVPntChrgs))
         self.pntChrgsScld = self.pntChrgs * self.pntScale
@@ -194,18 +194,21 @@ class QM(object):
         self.outPntChrgs = np.zeros(self.numPntChrgs)
 
     def get_qmparams(self, method=None, basis=None, read_first='no',
-                     read_guess=None, pop=None, addparam=None):
+                     read_guess=None, calc_forces=None, pop=None, addparam=None):
         """Get the parameters for QM calculation."""
         if self.software.lower() == 'qchem':
             if method is not None:
                 self.method = method
             else:
                 raise ValueError("Please set 'method' for Q-Chem.")
+
             if basis is not None:
                 self.basis = basis
             else:
                 raise ValueError("Please set 'basis' for Q-Chem.")
+
             self.read_first = read_first
+
             if read_guess is not None:
                 if read_guess.lower() == 'yes':
                     if self.stepNum == 0 and self.read_first.lower() == 'no':
@@ -216,10 +219,12 @@ class QM(object):
                     self.read_guess = ''
             else:
                 self.read_guess = ''
+
             if pop is not None:
                 self.pop = pop
             else:
                 self.pop = 'pop_mulliken'
+
             if addparam is not None:
                 if isinstance(addparam, list):
                     self.addparam = "".join(["%s\n" % i for i in addparam])
@@ -239,6 +244,11 @@ class QM(object):
         else:
             raise ValueError("Only 'qchem' and 'dftb+' are supported at the moment.")
 
+        if calc_forces is not None:
+            self.calc_forces = calc_forces
+        elif not hasattr(self, 'calc_forces'):
+            self.calc_forces = 'yes'
+
     def gen_input(self, baseDir=None, **kwargs):
         """Generate input file for QM software."""
 
@@ -257,9 +267,17 @@ class QM(object):
         qmPosSorted = self.qmPos[self.map2sorted]
 
         if self.software.lower() == 'qchem':
+
+            if self.calc_forces.lower() == 'yes':
+                jobtype = 'force'
+            elif self.calc_forces.lower() == 'no':
+                jobtype = 'sp'
+
             with open(self.baseDir+"qchem.inp", "w") as f:
-                f.write(qmtmplt.gen_qmtmplt().substitute(method=self.method, basis=self.basis,
-                        read_guess=self.read_guess, pop=self.pop, addparam=self.addparam))
+                f.write(qmtmplt.gen_qmtmplt().substitute(jobtype=jobtype, 
+                        method=self.method, basis=self.basis,
+                        read_guess=self.read_guess, pop=self.pop,
+                        addparam=self.addparam))
                 f.write("$molecule\n")
                 f.write("%d %d\n" % (self.charge, self.mult))
 
@@ -277,14 +295,22 @@ class QM(object):
                                      "%22.14e" % self.pntPos[i, 2],
                                      " %22.14e" % self.outPntChrgs[i], "\n"]))
                 f.write("$end" + "\n")
+
         elif self.software.lower() == 'dftb+':
+
             listElmnts = np.unique(qmElmntsSorted).tolist()
             outMaxAngularMomentum = "\n    ".join([i+" = "+qmtmplt.MaxAngularMomentum[i] for i in listElmnts])
             outHubbardDerivs = "\n    ".join([i+" = "+qmtmplt.HubbardDerivs[i] for i in listElmnts])
 
+            if self.calc_forces.lower() == 'yes':
+                calcforces = 'Yes'
+            elif self.calc_forces.lower() == 'no':
+                calcforces = 'No'
+
             with open(self.baseDir+"dftb_in.hsd", "w") as f:
                 f.write(qmtmplt.gen_qmtmplt().substitute(charge=self.charge,
                         numPntChrgs=self.numPntChrgs, read_guess=self.read_guess,
+                        calcforces=calcforces,
                         MaxAngularMomentum=outMaxAngularMomentum,
                         HubbardDerivs=outHubbardDerivs))
             with open(self.baseDir+"input_geometry.gen", "w") as f:

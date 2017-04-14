@@ -7,8 +7,8 @@ from .qmtool import QM
 class QMMM(object):
     def __init__(self, fin=None, qmElecEmbed='on', qmSwitching='off',
                  qmSwitchingType='shift', qmSoftware=None,
-                 qmChargeMode="qm", qmCharge=None, qmMult=None,
-                 cutoff=None, swdist=None, PME='no', numAtoms=None):
+                 qmChargeMode="ff", qmCharge=None, qmMult=None,
+                 cutoff=None, swdist=None, PME='no', postproc='no', numAtoms=None):
         """
         Creat a QMMM object.
         """
@@ -20,9 +20,17 @@ class QMMM(object):
         self.qmCharge = qmCharge
         self.qmMult = qmMult
         self.PME = PME
+        self.postproc = postproc
         self.numAtoms = numAtoms
 
         self.QM = QM(fin, self.qmSoftware, self.qmCharge, self.qmMult)
+
+        if self.postproc.lower() == 'no':
+            self.QM.calc_forces = 'yes'
+        elif self.postproc.lower() == 'yes':
+            self.QM.calc_forces = 'no'
+        else:
+            raise ValueError("Choose 'yes' or 'no' for 'postproc'.")
 
         if self.qmElecEmbed.lower() == 'on':
             if self.qmSwitching.lower() == 'on':
@@ -60,18 +68,22 @@ class QMMM(object):
         """Parse the output of QM calculation."""
         if hasattr(self.QM, 'exitcode'):
             self.QM.get_qmenergy()
-            self.QM.get_qmforces()
-            self.QM.get_pntchrgforces()
-            self.QM.get_qmchrgs()
-            self.QM.get_pntesp()
+            if self.postproc.lower() == 'no':
+                self.QM.get_qmforces()
+                self.QM.get_pntchrgforces()
+                self.QM.get_qmchrgs()
+                self.QM.get_pntesp()
 
-            if self.qmSwitching.lower() == 'on':
-                self.QM.corr_pntchrgscale()
+                if self.qmSwitching.lower() == 'on':
+                    self.QM.corr_pntchrgscale()
 
-            if self.PME.lower() == 'yes':
-                self.QM.corr_pbc()
+                if self.PME.lower() == 'yes':
+                    self.QM.corr_pbc()
 
-            self.QM.corr_vpntchrgs()
+                self.QM.corr_vpntchrgs()
+            else:
+                self.QM.qmForces = np.zeros((self.QM.numQMAtoms, 3))
+                self.QM.pntChrgForces = np.zeros((self.QM.numRPntChrgs, 3))
         else:
             raise ValueError("Need to run_qm() first.")
 

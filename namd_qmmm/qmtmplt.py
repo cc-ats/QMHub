@@ -2,7 +2,8 @@ from string import Template
 
 qc_tmplt = """\
 $$rem
-jobtype force
+jobtype $jobtype
+scf_convergence 8
 method $method
 basis $basis\
 $read_guess
@@ -58,7 +59,7 @@ Options {
 
 Analysis {
   WriteBandOut = No
-  CalculateForces = Yes
+  CalculateForces = $calcforces
 }
 """
 
@@ -102,9 +103,10 @@ class QMTmplt(object):
 if __name__ == "__main__":
     qchem = QMTmplt('qchem')
     print(qchem.gen_qmtmplt().substitute(
-              method='hf', basis='6-31g',
+              jobtype='force', method='hf', basis='6-31g',
               read_guess='\nscf_guess read', pop='pop_mulliken',
               addparam='esp_charges true\nchelpg true\n'))
     dftb = QMTmplt('dftb+')
     print(dftb.gen_qmtmplt().safe_substitute(
-              charge=0, numPntChrgs=1000, read_guess='No'))
+              charge=0, numPntChrgs=1000, read_guess='No',
+              calcforces='Yes'))

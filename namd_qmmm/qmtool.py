@@ -207,19 +207,6 @@ class QM(object):
             else:
                 raise ValueError("Please set 'basis' for Q-Chem.")
 
-            self.read_first = read_first
-
-            if read_guess is not None:
-                if read_guess.lower() == 'yes':
-                    if self.stepNum == 0 and self.read_first.lower() == 'no':
-                        self.read_guess = ''
-                    else:
-                        self.read_guess = '\nscf_guess read'
-                else:
-                    self.read_guess = ''
-            else:
-                self.read_guess = ''
-
             if pop is not None:
                 self.pop = pop
             else:
@@ -234,13 +221,7 @@ class QM(object):
                 self.addparam = ''
 
         elif self.software.lower() == 'dftb+':
-            if read_guess is not None:
-                if self.stepNum == 0:
-                    self.read_guess = 'No'
-                else:
-                    self.read_guess = read_guess
-            else:
-                self.read_guess = 'No'
+            pass
         else:
             raise ValueError("Only 'qchem' and 'dftb+' are supported at the moment.")
 
@@ -248,6 +229,16 @@ class QM(object):
             self.calc_forces = calc_forces
         elif not hasattr(self, 'calc_forces'):
             self.calc_forces = 'yes'
+
+        self.read_first = read_first
+
+        if read_guess is not None:
+            if self.stepNum == 0 and self.read_first.lower() == 'no':
+                self.read_guess = 'no'
+            else:
+                self.read_guess = read_guess
+        else:
+            self.read_guess = 'no'
 
     def gen_input(self, baseDir=None, **kwargs):
         """Generate input file for QM software."""
@@ -265,6 +256,7 @@ class QM(object):
 
         qmElmntsSorted = self.qmElmnts[self.map2sorted]
         qmPosSorted = self.qmPos[self.map2sorted]
+        qmIdxSorted = self.qmIdx[self.map2sorted]
 
         if self.software.lower() == 'qchem':
 
@@ -273,10 +265,15 @@ class QM(object):
             elif self.calc_forces.lower() == 'no':
                 jobtype = 'sp'
 
+            if self.read_guess.lower() == 'yes':
+                read_guess = '\nscf_guess read'
+            elif self.read_guess.lower() == 'no':
+                read_guess = ''
+
             with open(self.baseDir+"qchem.inp", "w") as f:
                 f.write(qmtmplt.gen_qmtmplt().substitute(jobtype=jobtype, 
                         method=self.method, basis=self.basis,
-                        read_guess=self.read_guess, pop=self.pop,
+                        read_guess=read_guess, pop=self.pop,
                         addparam=self.addparam))
                 f.write("$molecule\n")
                 f.write("%d %d\n" % (self.charge, self.mult))
@@ -307,9 +304,14 @@ class QM(object):
             elif self.calc_forces.lower() == 'no':
                 calcforces = 'No'
 
+            if self.read_guess.lower() == 'yes':
+                read_guess = 'Yes'
+            elif self.read_guess.lower() == 'no':
+                read_guess = 'No'
+
             with open(self.baseDir+"dftb_in.hsd", "w") as f:
                 f.write(qmtmplt.gen_qmtmplt().substitute(charge=self.charge,
-                        numPntChrgs=self.numPntChrgs, read_guess=self.read_guess,
+                        numPntChrgs=self.numPntChrgs, read_guess=read_guess,
                         calcforces=calcforces,
                         MaxAngularMomentum=outMaxAngularMomentum,
                         HubbardDerivs=outHubbardDerivs))
@@ -350,7 +352,7 @@ class QM(object):
         if self.software.lower() == "qchem":
             cmdline += "qchem -nt %d qchem.inp qchem.out save > qchem_run.log" % nproc
 
-            if self.stepNum == 0 and self.read_first == 'no':
+            if self.stepNum == 0 and self.read_first.lower() == 'no':
                 if 'QCSCRATCH' in os.environ:
                     qcsave = os.environ['QCSCRATCH'] + "/save"
                     if os.path.isdir(qcsave):

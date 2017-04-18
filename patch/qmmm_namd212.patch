@@ -1,5 +1,6 @@
---- ComputeQM.C.ORIG	2017-02-23 14:14:49.058687030 -0600
-+++ ComputeQM.C	2017-03-08 23:27:12.366088380 -0600
+diff -Naur src/ComputeQM.C src-modified/ComputeQM.C
+--- src/ComputeQM.C	2017-02-23 14:14:49.058687030 -0600
++++ src-modified/ComputeQM.C	2017-04-18 15:19:36.057859269 -0500
 @@ -1788,8 +1788,8 @@
      const int *const *const chargeTarget = molPtr->get_qmMMChargeTarget() ;
      const int *const numTargs = molPtr->get_qmMMNumTargs() ;
@@ -284,3 +285,43 @@
          }
          
      }
+diff -Naur src/SimParameters.C src-modified/SimParameters.C
+--- src/SimParameters.C	2017-02-23 14:14:49.413687360 -0600
++++ src-modified/SimParameters.C	2017-04-18 15:27:41.435259433 -0500
+@@ -1593,6 +1593,8 @@
+       "mode of selection of point solvent molecules", qmLSSModeS);
+    opts.optional("QMForces", "QMLSSRef",
+       "for COM mode, defines reference for COM distance calculation", PARSE_MULTIPLES);
++   opts.optional("QMForces", "QMCutoff",
++      "cutoff for MM point charges included in QM calculations", &qmCutoff);
+    
+    //print which bad contacts are being moved downhill
+    opts.optionalB("main", "printBadContacts", "Print atoms with huge forces?",
+@@ -4214,6 +4216,15 @@
+         
+         if (qmCustomPCSel && qmPCSelFreq > 1)
+             NAMD_die("QM Custom PC Selection is incompatible with QMPCStride > 1!");
++
++        if (!opts.defined("QMCutoff"))
++            qmCutoff = cutoff;
++
++        if (qmCutoff <= 0)
++            NAMD_die("QMCutoff can only be a positive number!");
++
++        if (qmCutoff < cutoff)
++            NAMD_die("QMCutoff must be greater than cutoff!");
+     }
+ }
+ 
+diff -Naur src/SimParameters.h src-modified/SimParameters.h
+--- src/SimParameters.h	2017-02-23 14:14:49.571687506 -0600
++++ src-modified/SimParameters.h	2017-04-18 15:28:14.132285825 -0500
+@@ -477,6 +477,8 @@
+         
+         int qmOutFreq ;
+         int qmPosOutFreq ;
++
++        BigReal qmCutoff;
+         
+   Bool printBadContacts;        //print indices of bad contacts being moved downhill
+ 

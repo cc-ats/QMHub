@@ -8,7 +8,7 @@ class QMMM(object):
     def __init__(self, fin=None, qmElecEmbed='on', qmSwitching='off',
                  qmSwitchingType='shift', qmSoftware=None,
                  qmChargeMode="ff", qmCharge=None, qmMult=None,
-                 cutoff=None, swdist=None, PME='no', postproc='no', numAtoms=None):
+                 qmCutoff=None, qmSwdist=None, PME='no', postproc='no', numAtoms=None):
         """
         Creat a QMMM object.
         """
@@ -35,15 +35,15 @@ class QMMM(object):
         if self.qmElecEmbed.lower() == 'on':
             if self.qmSwitching.lower() == 'on':
                 if self.qmSwitchingType.lower() == 'shift':
-                    self.cutoff = cutoff
-                    self.QM.scale_charges(self.qmSwitchingType, self.cutoff)
+                    self.qmCutoff = qmCutoff
+                    self.QM.scale_charges(self.qmSwitchingType, self.qmCutoff)
                 elif self.qmSwitchingType.lower() == 'switch':
-                    self.cutoff = cutoff
-                    self.swdist = swdist
-                    self.QM.scale_charges(self.qmSwitchingType, self.cutoff, self.swdist)
+                    self.qmCutoff = qmCutoff
+                    self.qmSwdist = qmSwdist
+                    self.QM.scale_charges(self.qmSwitchingType, self.qmCutoff, self.qmSwdist)
                 elif self.qmSwitchingType.lower() == 'lrec':
-                    self.cutoff = cutoff
-                    self.QM.scale_charges(self.qmSwitchingType, self.cutoff)
+                    self.qmCutoff = qmCutoff
+                    self.QM.scale_charges(self.qmSwitchingType, self.qmCutoff)
                 else:
                     raise ValueError("Only 'shift', 'switch', and 'lrec' are supported currently.")
         elif self.qmElecEmbed.lower() == 'off':
@@ -182,13 +182,13 @@ if __name__ == "__main__":
     import sys
 
     qchem = QMMM(sys.argv[1], qmSwitching='on', qmSoftware='qchem',
-                 qmChargeMode='ff', qmCharge=0, qmMult=1, cutoff=12.,
+                 qmChargeMode='ff', qmCharge=0, qmMult=1, qmCutoff=12.,
                  PME='yes', numAtoms=2279)
     qchem.run_qm(method='hf', basis='6-31g', pop='pop_mulliken')
     qchem.parse_output()
 
     dftb = QMMM(sys.argv[1], qmSwitching='on', qmSoftware='dftb+',
-                qmChargeMode='ff', qmCharge=0, qmMult=1, cutoff=12.,
+                qmChargeMode='ff', qmCharge=0, qmMult=1, qmCutoff=12.,
                 PME='yes', numAtoms=2279)
     dftb.run_qm()
     dftb.parse_output()

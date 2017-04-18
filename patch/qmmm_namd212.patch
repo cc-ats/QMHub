@@ -1,6 +1,15 @@
 diff -Naur src/ComputeQM.C src-modified/ComputeQM.C
 --- src/ComputeQM.C	2017-02-23 14:14:49.058687030 -0600
-+++ src-modified/ComputeQM.C	2017-04-18 15:19:36.057859269 -0500
++++ src-modified/ComputeQM.C	2017-04-18 17:07:48.509212876 -0500
+@@ -594,7 +594,7 @@
+     numQMGrps = molPtr->get_qmNumGrps();
+     qmGrpIDArray = molPtr->get_qmGrpID() ;
+     
+-    cutoff = simParams->cutoff;
++    cutoff = simParams->qmCutoff;
+     
+     customPC = simParams->qmCustomPCSel;
+     if (customPC) {
 @@ -1788,8 +1788,8 @@
      const int *const *const chargeTarget = molPtr->get_qmMMChargeTarget() ;
      const int *const numTargs = molPtr->get_qmMMNumTargs() ;
@@ -12,6 +21,15 @@ diff -Naur src/ComputeQM.C src-modified/ComputeQM.C
      
      if ( qmPCFreq > 0 ) {
          DebugM(4,"Using point charge stride of " << qmPCFreq << "\n")
+@@ -2118,7 +2118,7 @@
+             msg->PMEEwaldCoefficient = simParams->PMEEwaldCoefficient ;
+         msg->switching = simParams->qmPCSwitchOn;
+         msg->switchType = simParams->qmPCSwitchType;
+-        msg->cutoff = simParams->cutoff;
++        msg->cutoff = simParams->qmCutoff;
+         msg->swdist = simParams->switchingDist;
+         msg->pcScheme = simParams->qmPCScheme;
+         msg->qmAtmChrgMode = simParams->qmChrgMode;
 @@ -4111,14 +4111,12 @@
      outputFileName = inputFileName ;
      outputFileName.append(".result") ;

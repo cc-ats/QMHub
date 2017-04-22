@@ -65,8 +65,6 @@ class QMMM(object):
                 self.QM.pntChrgs4QM = self.QM.pntChrgsScld
             elif self.qmSwitching.lower() == 'off':
                 self.QM.pntChrgs4QM = self.QM.pntChrgs
-                if self.elecMode.lower() != 'qmewald':
-                    warnings.warn("There might be discontinuity at the cutoff.")
             if self.elecMode.lower() == 'truncation':
                 self.QM.pntChrgs4MM = self.QM.pntChrgs4QM
             elif self.elecMode.lower() == 'mmewald':
@@ -77,7 +75,6 @@ class QMMM(object):
             self.QM.pntChrgs4QM = np.zeros(self.QM.numPntChrgs)
             if self.qmSwitching.lower() == 'on':
                 self.QM.pntChrgs4MM = self.QM.pntChrgsScld
-                warnings.warn("There might be discontinuity at the cutoff.")
             elif self.qmSwitching.lower() == 'off':
                 self.QM.pntChrgs4MM = self.QM.pntChrgs
         else:
@@ -95,6 +92,32 @@ class QMMM(object):
         self.pid = os.popen("ps -p %d -oppid=" % os.getpid()).read().strip()
         self.cmd = os.popen("ps -p %s -ocommand=" % self.pid).read().strip().split()
         self.cwd = os.popen("pwdx %s" % self.pid).read().strip().split()[1]
+
+    def check_params(self):
+        """Check the consistency of the parameters (Not Complete)."""
+        if (self.qmElecEmbed.lower() == 'on' and
+            self.qmSwitching.lower() == 'off' and
+            self.elecMode.lower() != 'qmewald'):
+
+            warnings.warn("There might be discontinuity at the cutoff.")
+
+        if (self.qmElecEmbed.lower() == 'off' and
+            self.qmSwitching.lower() == 'on'):
+
+            warnings.warn("There might be discontinuity at the cutoff.")
+
+        if (self.qmElecEmbed.lower() == 'on' and
+            self.qmSwitching.lower() == 'on' and
+            self.qmChargeMode.lower() == 'qm'):
+
+            warnings.warn("Forces might be not accurate.")
+
+        if (self.qmElecEmbed.lower() == 'on' and
+            self.qmSwitching.lower() == 'off' and
+            self.elecMode.lower() == 'mmewald' and
+            self.qmChargeMode.lower() == 'qm'):
+
+            warnings.warn("Forces might be not accurate.")
 
     def run_qm(self, **kwargs):
         """Run QM calculation."""

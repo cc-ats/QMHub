@@ -1,6 +1,6 @@
 diff -Naur src/ComputeQM.C src-modified/ComputeQM.C
 --- src/ComputeQM.C	2017-02-23 14:14:49.058687030 -0600
-+++ src-modified/ComputeQM.C	2017-04-18 17:07:48.509212876 -0500
++++ src-modified/ComputeQM.C	2017-04-21 21:51:06.572963301 -0500
 @@ -594,7 +594,7 @@
      numQMGrps = molPtr->get_qmNumGrps();
      qmGrpIDArray = molPtr->get_qmGrpID() ;
@@ -30,7 +30,7 @@ diff -Naur src/ComputeQM.C src-modified/ComputeQM.C
          msg->swdist = simParams->switchingDist;
          msg->pcScheme = simParams->qmPCScheme;
          msg->qmAtmChrgMode = simParams->qmChrgMode;
-@@ -4111,14 +4111,12 @@
+@@ -4111,14 +4111,14 @@
      outputFileName = inputFileName ;
      outputFileName.append(".result") ;
      
@@ -43,14 +43,16 @@ diff -Naur src/ComputeQM.C src-modified/ComputeQM.C
 -    
 -    iret = fprintf(inputFile,"%d %d\n",msg->numAllAtoms, numPntChrgs);
 +
++    int numAtoms = Node::Object()->molecule->numAtoms;
 +    int stepNum = qmCoordMsgs[0]->timestep - simParams->firstTimestep;
 +    int numSteps = simParams->N - simParams->firstTimestep;
 +
-+    iret = fprintf(inputFile,"%d %d %d %d\n",msg->numAllAtoms,msg->numAllPntChrgs,stepNum,numSteps);
++    iret = fprintf(inputFile,"%d %d %d %d %d\n",
++                   msg->numAllAtoms,msg->numAllPntChrgs,numAtoms,stepNum,numSteps);
      if ( iret < 0 ) { NAMD_die(strerror(errno)); }
      
      DebugM(4, "Writing " << msg->numAllAtoms << " QM atom coords in file " << 
-@@ -4129,12 +4127,15 @@
+@@ -4129,12 +4129,15 @@
      QMAtomData *atmP = msg->data ;
      for (size_t i=0; i<msg->numAllAtoms; ++i, ++atmP ) {
          
@@ -68,7 +70,7 @@ diff -Naur src/ComputeQM.C src-modified/ComputeQM.C
          if ( iret < 0 ) { NAMD_die(strerror(errno)); }
          
      }
-@@ -4143,17 +4144,20 @@
+@@ -4143,17 +4146,20 @@
      pcP = msg->data + msg->numAllAtoms ;
      for ( size_t j=0; j < msg->numAllPntChrgs; j++, ++pcP) {
          
@@ -94,7 +96,7 @@ diff -Naur src/ComputeQM.C src-modified/ComputeQM.C
          if ( iret < 0 ) { NAMD_die(strerror(errno)); }
      }
      
-@@ -4306,37 +4310,40 @@
+@@ -4306,37 +4312,40 @@
              Force mmForce(0), qmForce(0), 
                  linkForce(localForce[0], localForce[1], localForce[2]);
              
@@ -160,7 +162,7 @@ diff -Naur src/ComputeQM.C src-modified/ComputeQM.C
      fclose(outputFile);
      
      // In case charges are not to be read form the QM software output,
-@@ -4366,63 +4373,14 @@
+@@ -4366,63 +4375,14 @@
      }
      
      // remove force file
@@ -229,7 +231,7 @@ diff -Naur src/ComputeQM.C src-modified/ComputeQM.C
      // Adjusts forces from PME, canceling contributions from the QM and 
      // direct Coulomb forces calculated here.
      if (msg->PMEOn) {
-@@ -4438,6 +4396,8 @@
+@@ -4438,6 +4398,8 @@
              BigReal p_i_charge = atmP[i].charge ;
              Position pos_i = atmP[i].position ;
              
@@ -238,7 +240,7 @@ diff -Naur src/ComputeQM.C src-modified/ComputeQM.C
              for (size_t j=i+1; j < msg->numQMAtoms; j++) {
                  
                  BigReal p_j_charge = atmP[j].charge ;
-@@ -4454,9 +4414,7 @@
+@@ -4454,9 +4416,7 @@
  //                 BigReal recip_energy = (1-tmp_b)/r = erf(tmp_a)/r;
                  BigReal recip_energy = (1-tmp_b)/r;
                  
@@ -249,7 +251,7 @@ diff -Naur src/ComputeQM.C src-modified/ComputeQM.C
                  
                  // Final force and energy correction for this pair of atoms.
                  BigReal energy = kq_i * p_j_charge * recip_energy ;
-@@ -4489,14 +4447,12 @@
+@@ -4489,14 +4449,12 @@
              
              const BigReal kq_i = p_i_charge * constants;
              
@@ -265,7 +267,7 @@ diff -Naur src/ComputeQM.C src-modified/ComputeQM.C
                  
                  BigReal p_j_charge = atmP[j].charge ;
                  
-@@ -4512,24 +4468,28 @@
+@@ -4512,24 +4470,28 @@
  //                 BigReal recip_energy = (1-tmp_b)/r = erf(tmp_a)/r;
                  BigReal recip_energy = (1-tmp_b)/r;
                  

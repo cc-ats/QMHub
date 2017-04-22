@@ -33,9 +33,18 @@ class QMMM(object):
             self.qmChargeMode = qmChargeMode
         else:
             if self.elecMode.lower() in {'truncation', 'mmewald'}:
-                self.qmChargeMode = 'ff'
+                self.qmChargeMode = 'none'
             elif self.elecMode.lower() == 'qmewald':
                 self.qmChargeMode = 'zero'
+
+        if self.qmChargeMode == 'esp':
+            self.QM.pop = 'esp'
+        elif self.qmChargeMode == 'chelpg':
+            self.QM.pop = 'chelpg'
+        elif self.qmChargeMode in {'mulliken', 'none', 'zero'}:
+            self.QM.pop = 'mulliken'
+        else:
+            raise ValueError("Please choose 'mulliken','esp','chelpg', 'none', and 'zero' for qmChargeMode.")
 
         if qmSwitching is not None:
             self.qmSwitching = qmSwitching
@@ -108,14 +117,14 @@ class QMMM(object):
 
         if (self.qmElecEmbed.lower() == 'on' and
             self.qmSwitching.lower() == 'on' and
-            self.qmChargeMode.lower() == 'qm'):
+            self.qmChargeMode in {'mulliken', 'esp', 'chelpg'}):
 
             warnings.warn("Forces might be not accurate.")
 
         if (self.qmElecEmbed.lower() == 'on' and
             self.qmSwitching.lower() == 'off' and
             self.elecMode.lower() == 'mmewald' and
-            self.qmChargeMode.lower() == 'qm'):
+            self.qmChargeMode in {'mulliken', 'esp', 'chelpg'}):
 
             warnings.warn("Forces might be not accurate.")
 
@@ -140,14 +149,12 @@ class QMMM(object):
                     if self.qmSwitching.lower() == 'on':
                         self.QM.corr_pntchrgscale()
 
-                if self.qmChargeMode == "qm":
+                if self.qmChargeMode in {'mulliken', 'esp', 'chelpg'}:
                     self.QM.qmChrgs4MM = self.QM.qmChrgs
-                elif self.qmChargeMode == "ff":
+                elif self.qmChargeMode == 'none':
                     self.QM.qmChrgs4MM = self.QM.qmChrgs0
-                elif self.qmChargeMode == "zero":
+                elif self.qmChargeMode == 'zero':
                     self.QM.qmChrgs4MM = np.zeros(self.QM.numQMAtoms)
-                else:
-                    raise ValueError("Please choose 'qm', 'ff', and 'zero' for qmChargeMode.")
 
                 if self.elecMode.lower() in {'truncation', 'mmewald'}:
                     self.QM.corr_qmpntchrgs()
@@ -211,15 +218,8 @@ class QMMM(object):
             mmScale[self.QM.pntIdx[0:self.QM.numRPntChrgs]] += 1
         mmChrgs[self.QM.pntIdx[0:self.QM.numRPntChrgs]] = self.QM.pntChrgs4QM[0:self.QM.numRPntChrgs]
 
-        if self.qmChargeMode == "qm":
-            outQMChrgs = self.QM.qmChrgs
-        elif self.qmChargeMode == "ff":
-            outQMChrgs = self.QM.qmChrgs0
-        elif self.qmChargeMode == "zero":
-            outQMChrgs = np.zeros(self.QM.numQMAtoms)
-
         mmScale[self.QM.qmIdx[0:self.QM.numRealQMAtoms]] = np.ones(self.QM.numRealQMAtoms)
-        mmChrgs[self.QM.qmIdx[0:self.QM.numRealQMAtoms]] = outQMChrgs[0:self.QM.numRealQMAtoms]
+        mmChrgs[self.QM.qmIdx[0:self.QM.numRealQMAtoms]] = self.QM.qmChrgs4MM[0:self.QM.numRealQMAtoms]
 
         np.save(self.QM.baseDir + "mmScale", mmScale)
         np.save(self.QM.baseDir + "mmDist", mmDist)
@@ -244,7 +244,7 @@ if __name__ == "__main__":
 
     qchem = QMMM(sys.argv[1], qmSoftware='qchem', qmCharge=0, qmMult=1,
                  elecMode='mmewald', qmSwitchingType='shift', qmCutoff=12.)
-    qchem.run_qm(method='hf', basis='6-31g', pop='pop_mulliken')
+    qchem.run_qm(method='hf', basis='6-31g')
     qchem.parse_output()
 
     dftb = QMMM(sys.argv[1], qmSoftware='dftb+', qmCharge=0, qmMult=1, 

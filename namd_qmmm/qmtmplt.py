@@ -9,8 +9,8 @@ basis $basis\
 $read_guess
 maxscf 200
 qm_mm true
-qmmm_charges true
-$pop true
+qmmm_charges true\
+$pop
 igdefield 1
 $addparam\
 $$end
@@ -125,8 +125,8 @@ if __name__ == "__main__":
     qchem = QMTmplt('qchem', 'no')
     print(qchem.gen_qmtmplt().safe_substitute(
               jobtype='force', method='hf', basis='6-31g',
-              read_guess='\nscf_guess read', pop='pop_mulliken',
-              addparam='esp_charges true\nchelpg true\n'))
+              read_guess='\nscf_guess read', pop='\nchelpg true',
+              addparam='esp_charges true\n'))
     dftb = QMTmplt('dftb+', 'no')
     print(dftb.gen_qmtmplt().safe_substitute(
               charge=0, numPntChrgs=1000, read_guess='No',

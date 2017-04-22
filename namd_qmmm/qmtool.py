@@ -226,8 +226,8 @@ class QM(object):
 
             if pop is not None:
                 self.pop = pop
-            else:
-                self.pop = 'pop_mulliken'
+            elif not hasattr(self, 'pop'):
+                self.pop = 'mulliken'
 
             if addparam is not None:
                 if isinstance(addparam, list):
@@ -286,10 +286,17 @@ class QM(object):
             elif self.read_guess.lower() == 'no':
                 read_guess = ''
 
+            if self.pop == 'mulliken':
+                pop = ''
+            elif self.pop == 'esp':
+                pop = '\nesp_charges true'
+            elif self.pop == 'chelpg':
+                pop = '\nchelpg true'
+
             with open(self.baseDir+"qchem.inp", "w") as f:
                 f.write(qmtmplt.gen_qmtmplt().substitute(jobtype=jobtype,
                         method=self.method, basis=self.basis,
-                        read_guess=read_guess, pop=self.pop,
+                        read_guess=read_guess, pop=pop,
                         addparam=self.addparam))
                 f.write("$molecule\n")
                 f.write("%d %d\n" % (self.charge, self.mult))
@@ -325,13 +332,13 @@ class QM(object):
             elif self.read_guess.lower() == 'no':
                 read_guess = 'No'
 
-            with open(self.baseDir+"dftb_in.hsd", "w") as f:
+            with open(self.baseDir+"dftb_in.hsd", 'w') as f:
                 f.write(qmtmplt.gen_qmtmplt().substitute(charge=self.charge,
                         numPntChrgs=self.numPntChrgs, read_guess=read_guess,
                         calcforces=calcforces,
                         MaxAngularMomentum=outMaxAngularMomentum,
                         HubbardDerivs=outHubbardDerivs))
-            with open(self.baseDir+"input_geometry.gen", "w") as f:
+            with open(self.baseDir+"input_geometry.gen", 'w') as f:
                 if self.pbc.lower() == 'no':
                     f.write(str(self.numQMAtoms) + " C" + "\n")
                 elif self.pbc.lower() == 'yes':
@@ -377,7 +384,7 @@ class QM(object):
 
         cmdline = "cd " + self.baseDir + "; "
 
-        if self.software.lower() == "qchem":
+        if self.software.lower() == 'qchem':
             cmdline += "qchem -nt %d qchem.inp qchem.out save > qchem_run.log" % nproc
 
             if self.stepNum == 0 and self.read_first.lower() == 'no':
@@ -585,7 +592,7 @@ class QM(object):
 if __name__ == "__main__":
     import sys
     qchem = QM(sys.argv[1], 'qchem', 0, 1)
-    qchem.get_qmparams(method='hf', basis='6-31g', pop='pop_mulliken')
+    qchem.get_qmparams(method='hf', basis='6-31g', pop='mulliken')
     qchem.gen_input()
     dftb = QM(sys.argv[1], 'dftb+', 0, 1)
     dftb.get_qmparams(read_guess='No')

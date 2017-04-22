@@ -140,6 +140,18 @@ class QM(object):
         self.dij2 = np.sum(self.rij**2, axis=2)
         self.dij = np.sqrt(self.dij2)
 
+        # Load unit cell information
+        if self.pbc.lower() == 'yes':
+            if self.numAtoms != self.numRealQMAtoms+self.numRPntChrgs:
+                raise ValueError("Unit cell is not complete.")
+
+            cellList = np.genfromtxt(fin, dtype=None, skip_header=1+self.numQMAtoms+self.numPntChrgs,
+                                     max_rows=4)
+            self.cellOrigin = cellList[0]
+            self.cellBasisVector1 = cellList[1]
+            self.cellBasisVector2 = cellList[2]
+            self.cellBasisVector3 = cellList[3]
+
     def scale_charges(self, qmSwitchingType='shift',
                       qmCutoff=None, qmSwdist=None, **kwargs):
         """Scale external point charges."""

@@ -5,10 +5,10 @@ from .qmtool import QM
 
 
 class QMMM(object):
-    def __init__(self, fin=None, qmElecEmbed='on', qmSwitching='off',
-                 qmSwitchingType='shift', qmSoftware=None,
-                 qmChargeMode="ff", qmCharge=None, qmMult=None,
-                 qmCutoff=None, qmSwdist=None, PME='no', postproc='no'):
+    def __init__(self, fin, qmSoftware, qmCharge, qmMult,
+                 elecMode, qmChargeMode=None, qmElecEmbed='on',
+                 qmSwitching=None, qmSwitchingType=None,
+                 qmCutoff=None, qmSwdist=None, postProc='no'):
         """
         Creat a QMMM object.
         """
@@ -19,17 +19,25 @@ class QMMM(object):
         self.qmChargeMode = qmChargeMode
         self.qmCharge = qmCharge
         self.qmMult = qmMult
-        self.PME = PME
-        self.postproc = postproc
+        self.elecMode = elecMode
+        self.qmElecEmbed = qmElecEmbed
+        self.postProc = postProc
 
-        self.QM = QM(fin, self.qmSoftware, self.qmCharge, self.qmMult)
+        if self.elecMode.lower() in {'truncation', 'mmewald'}:
+            self.qmPBC = 'no'
+        elif self.elecMode.lower() == 'qmewald':
+            self.qmPBC = 'yes'
+        else:
+            raise ValueError("Only 'truncation', 'mmewald', and 'qmewald' are supported at the moment.")
 
-        if self.postproc.lower() == 'no':
+        self.QM = QM(fin, self.qmSoftware, self.qmCharge, self.qmMult, self.qmPBC)
+
+        if self.postProc.lower() == 'no':
             self.QM.calc_forces = 'yes'
-        elif self.postproc.lower() == 'yes':
+        elif self.postProc.lower() == 'yes':
             self.QM.calc_forces = 'no'
         else:
-            raise ValueError("Choose 'yes' or 'no' for 'postproc'.")
+            raise ValueError("Choose 'yes' or 'no' for 'postProc'.")
 
         if self.qmElecEmbed.lower() == 'on':
             if self.qmSwitching.lower() == 'on':
@@ -67,7 +75,7 @@ class QMMM(object):
         """Parse the output of QM calculation."""
         if hasattr(self.QM, 'exitcode'):
             self.QM.get_qmenergy()
-            if self.postproc.lower() == 'no':
+            if self.postProc.lower() == 'no':
                 self.QM.get_qmforces()
                 self.QM.get_pntchrgforces()
                 self.QM.get_qmchrgs()
@@ -76,7 +84,7 @@ class QMMM(object):
                 if self.qmSwitching.lower() == 'on':
                     self.QM.corr_pntchrgscale()
 
-                if self.PME.lower() == 'yes':
+                if self.elecMode.lower() in {'truncation', 'mmewald'}:
                     self.QM.corr_pbc()
 
                 self.QM.corr_vpntchrgs()
@@ -110,7 +118,7 @@ class QMMM(object):
             raise ValueError("Need to parse_output() first.")
 
     def save_results_old(self):
-        """Save the results of QM calculation to file (previous version)."""
+        """Save the results of QM calculation to file (deprecated)."""
         if os.path.isfile(self.QM.fin+".result"):
             os.remove(self.QM.fin+".result")
 
@@ -128,7 +136,7 @@ class QMMM(object):
                         + "  " + format(outQMChrgs[i], "22.14e") + "\n")
 
     def save_extforces(self):
-        """Save the MM forces to extforce.dat (previous version)."""
+        """Save the MM forces to extforce.dat (deprecated)."""
         if os.path.isfile(self.QM.baseDir + "extforce.dat"):
             os.remove(self.QM.baseDir + "extforce.dat")
         self.mmForces = np.zeros((self.QM.numAtoms, 3))
@@ -183,14 +191,12 @@ class QMMM(object):
 if __name__ == "__main__":
     import sys
 
-    qchem = QMMM(sys.argv[1], qmSwitching='on', qmSoftware='qchem',
-                 qmChargeMode='ff', qmCharge=0, qmMult=1, qmCutoff=12.,
-                 PME='yes')
+    qchem = QMMM(sys.argv[1], qmSoftware='qchem', qmCharge=0, qmMult=1,
+                 elecMode='mmewald', qmSwitchingType='shift', qmCutoff=12.)
     qchem.run_qm(method='hf', basis='6-31g', pop='pop_mulliken')
     qchem.parse_output()
 
-    dftb = QMMM(sys.argv[1], qmSwitching='on', qmSoftware='dftb+',
-                qmChargeMode='ff', qmCharge=0, qmMult=1, qmCutoff=12.,
-                PME='yes')
+    dftb = QMMM(sys.argv[1], qmSoftware='dftb+', qmCharge=0, qmMult=1, 
+                elecMode='mmewald', qmSwitchingType='shift', qmCutoff=12.)
     dftb.run_qm()
     dftb.parse_output()

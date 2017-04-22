@@ -508,7 +508,7 @@ class QM(object):
         self.pntChrgForces[0:self.numRPntChrgs] += fCorr.sum(axis=1)
         self.qmForces -= fCorr.sum(axis=0)
 
-        if self.pntChrgs4QM is not self.pntChrgs4MM:
+        if hasattr(self, 'pntChrgsScld') and self.pntChrgs4QM is not self.pntChrgs4MM:
             fCorr = ke * self.pntChrgs[0:self.numRPntChrgs, np.newaxis] * self.qmChrgs4MM[np.newaxis, :] / self.dij
             if self.numVPntChrgs > 0:
                 for i in range(self.numMM1):
@@ -516,14 +516,12 @@ class QM(object):
             fCorr = np.sum(fCorr, axis=1)
             fCorr = fCorr[:, np.newaxis] * self.pntScale_deriv
 
-            if self.pntChrgs4QM is self.pntChrgsScld:
-                self.pntChrgForces[0:self.numRPntChrgs] -= fCorr
-                for i in range(self.numRealQMAtoms):
-                    self.qmForces[i] += fCorr[self.dij_min_j == i].sum(axis=0)
-            elif self.pntChrgs4MM is self.pntChrgsScld:
-                self.pntChrgForces[0:self.numRPntChrgs] += fCorr
-                for i in range(self.numRealQMAtoms):
-                    self.qmForces[i] -= fCorr[self.dij_min_j == i].sum(axis=0)
+            if self.pntChrgs4MM is self.pntChrgsScld:
+                fCorr *= -1
+
+            self.pntChrgForces[0:self.numRPntChrgs] -= fCorr
+            for i in range(self.numRealQMAtoms):
+                self.qmForces[i] += fCorr[self.dij_min_j == i].sum(axis=0)
 
         eCorr = ke * pntChrgsD[:, np.newaxis] * self.qmChrgs4MM[np.newaxis, :] / self.dij
 

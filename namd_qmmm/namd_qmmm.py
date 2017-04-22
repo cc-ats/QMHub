@@ -8,7 +8,7 @@ class QMMM(object):
     def __init__(self, fin=None, qmElecEmbed='on', qmSwitching='off',
                  qmSwitchingType='shift', qmSoftware=None,
                  qmChargeMode="ff", qmCharge=None, qmMult=None,
-                 qmCutoff=None, qmSwdist=None, PME='no', postproc='no', numAtoms=None):
+                 qmCutoff=None, qmSwdist=None, PME='no', postproc='no'):
         """
         Creat a QMMM object.
         """
@@ -21,7 +21,6 @@ class QMMM(object):
         self.qmMult = qmMult
         self.PME = PME
         self.postproc = postproc
-        self.numAtoms = numAtoms
 
         self.QM = QM(fin, self.qmSoftware, self.qmCharge, self.qmMult)
 
@@ -132,22 +131,25 @@ class QMMM(object):
         """Save the MM forces to extforce.dat (previous version)."""
         if os.path.isfile(self.QM.baseDir + "extforce.dat"):
             os.remove(self.QM.baseDir + "extforce.dat")
-        self.mmForces = np.zeros((self.numAtoms, 3))
+        self.mmForces = np.zeros((self.QM.numAtoms, 3))
         self.mmForces[self.QM.pntIdx] = self.QM.pntChrgForces
         with open(self.QM.baseDir + "extforce.dat", 'w') as f:
-            for i in range(self.numAtoms):
+            for i in range(self.QM.numAtoms):
                 f.write("%4d    0  " % (i + 1)
                         + "  ".join(format(j, "22.14e") for j in self.mmForces[i]) +"\n")
             f.write("0.0")
 
     def save_pntchrgs(self):
         """Save the QM and MM charges to file (for debugging only)."""
-        mmScale = np.zeros(self.numAtoms)
-        mmDist = np.zeros(self.numAtoms)
-        mmChrgs = np.zeros(self.numAtoms)
+        mmScale = np.zeros(self.QM.numAtoms)
+        mmDist = np.zeros(self.QM.numAtoms)
+        mmChrgs = np.zeros(self.QM.numAtoms)
 
-        mmScale[self.QM.pntIdx[0:self.QM.numRPntChrgs]] = self.QM.pntScale[0:self.QM.numRPntChrgs]
-        mmDist[self.QM.pntIdx[0:self.QM.numRPntChrgs]] = self.QM.pntDist
+        if hasattr(self.QM, 'pntScale'):
+            mmScale[self.QM.pntIdx[0:self.QM.numRPntChrgs]] = self.QM.pntScale[0:self.QM.numRPntChrgs]
+            mmDist[self.QM.pntIdx[0:self.QM.numRPntChrgs]] = self.QM.pntDist
+        else:
+            mmScale[self.QM.pntIdx[0:self.QM.numRPntChrgs]] += 1
         mmChrgs[self.QM.pntIdx[0:self.QM.numRPntChrgs]] = self.QM.outPntChrgs[0:self.QM.numRPntChrgs]
 
         if self.qmChargeMode == "qm":
@@ -183,12 +185,12 @@ if __name__ == "__main__":
 
     qchem = QMMM(sys.argv[1], qmSwitching='on', qmSoftware='qchem',
                  qmChargeMode='ff', qmCharge=0, qmMult=1, qmCutoff=12.,
-                 PME='yes', numAtoms=2279)
+                 PME='yes')
     qchem.run_qm(method='hf', basis='6-31g', pop='pop_mulliken')
     qchem.parse_output()
 
     dftb = QMMM(sys.argv[1], qmSwitching='on', qmSoftware='dftb+',
                 qmChargeMode='ff', qmCharge=0, qmMult=1, qmCutoff=12.,
-                PME='yes', numAtoms=2279)
+                PME='yes')
     dftb.run_qm()
     dftb.parse_output()

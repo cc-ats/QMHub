@@ -37,10 +37,12 @@ class QM(object):
         self.numQMAtoms = sysList[0]
         # Number of external external point charges including virtual particles
         self.numPntChrgs = sysList[1]
+        # Number of total atoms in the whole system
+        self.numAtoms = sysList[2]
         # Number of current step
-        self.stepNum = sysList[2]
+        self.stepNum = sysList[3]
         # Number of total steps to run
-        self.numSteps = sysList[3]
+        self.numSteps = sysList[4]
 
         # Load QM information
         qmList = np.genfromtxt(fin, dtype=None, skip_header=1,
@@ -184,6 +186,10 @@ class QM(object):
                                    - self.qmPos[dij_min_j]))
         else:
             raise ValueError("Only 'shift', 'switch', and 'lrec' are supported at the moment.")
+
+        # Just to be safe
+        self.pntScale *= (self.pntDist < qmCutoff)
+        self.pntScale_deriv *= (self.pntDist < qmCutoff)[:, np.newaxis]
 
         self.pntScale = np.append(self.pntScale, np.ones(self.numVPntChrgs))
         self.pntChrgsScld = self.pntChrgs * self.pntScale

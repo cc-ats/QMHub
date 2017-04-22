@@ -10,7 +10,7 @@ ke = hartree2kcalmol * bohr2angstrom
 
 
 class QM(object):
-    def __init__(self, fin, software=None, charge=None, mult=None):
+    def __init__(self, fin, software=None, charge=None, mult=None, pbc=None):
         """
         Creat a QM object.
         """
@@ -21,15 +21,19 @@ class QM(object):
         if software is not None:
             self.software = software
         else:
-            raise ValueError("Please choose 'qmSoftware' from 'qchem' and 'dftb+'.")
+            raise ValueError("Please choose 'qchem' or 'dftb+' for qmSoftware.")
         if charge is not None:
             self.charge = charge
         else:
-            raise ValueError("Please set 'charge' for Q-Chem.")
+            raise ValueError("Please set 'charge' for QM calculation.")
         if mult is not None:
             self.mult = mult
         else:
             self.mult = 1
+        if pbc is not None:
+            self.pbc = pbc
+        else:
+            raise ValueError("Please set 'pbc' for QM calculation.")
 
         # Load system information
         sysList = np.genfromtxt(fin, dtype=int, max_rows=1, unpack=True)
@@ -72,8 +76,6 @@ class QM(object):
                                        pntList['f2']))
         # Charges of external point charges
         self.pntChrgs = pntList['f3']
-        # Output external point charges
-        self.outPntChrgs = self.pntChrgs
         # Indexes of external point charges
         self.pntIdx = pntList['f4']
         # Indexes of QM atoms MM1 atoms bonded to
@@ -152,7 +154,7 @@ class QM(object):
             self.cellBasisVector2 = cellList[2]
             self.cellBasisVector3 = cellList[3]
 
-    def scale_charges(self, qmSwitchingType='shift',
+    def scale_charges(self, qmSwitchingType=None,
                       qmCutoff=None, qmSwdist=None, **kwargs):
         """Scale external point charges."""
         dij_min2 = self.dij2[:, 0:self.numRealQMAtoms].min(axis=1)
@@ -163,7 +165,7 @@ class QM(object):
 
         if qmSwitchingType.lower() == 'shift':
             if qmCutoff is None:
-                raise ValueError("We need 'qmCutoff' here.")
+                raise ValueError("We need qmCutoff here.")
             qmCutoff2 = qmCutoff**2
             self.pntScale = (1 - dij_min2/qmCutoff2)**2
             self.pntScale_deriv = 4 * (1 - dij_min2/qmCutoff2) / qmCutoff2
@@ -172,7 +174,9 @@ class QM(object):
                                    - self.qmPos[dij_min_j]))
         elif qmSwitchingType.lower() == 'switch':
             if qmCutoff is None or qmSwdist is None:
-                raise ValueError("We need 'qmCutoff' and 'qmSwdist' here.")
+                raise ValueError("We need qmCutoff and qmSwdist here.")
+            if qmCutoff <= qmSwdist:
+                raise ValueError("qmCutoff should be greater than qmSwdist.")
             qmCutoff2 = qmCutoff**2
             qmSwdist2 = qmSwdist**2
             self.pntScale = ((dij_min2 - qmCutoff2)**2
@@ -189,7 +193,7 @@ class QM(object):
             self.pntScale_deriv *= (dij_min2 > qmSwdist2)[:, np.newaxis]
         elif qmSwitchingType.lower() == 'lrec':
             if qmCutoff is None:
-                raise ValueError("We need 'qmCutoff' here.")
+                raise ValueError("We need qmCutoff here.")
             scale = 1 - self.pntDist / qmCutoff
             self.pntScale = 1 - (2*scale**3 - 3*scale**2 + 1)**2
             self.pntScale_deriv = 12 * scale * (2*scale**3 - 3*scale**2 + 1) / qmCutoff**2
@@ -205,11 +209,6 @@ class QM(object):
 
         self.pntScale = np.append(self.pntScale, np.ones(self.numVPntChrgs))
         self.pntChrgsScld = self.pntChrgs * self.pntScale
-        self.outPntChrgs = self.pntChrgsScld
-
-    def zero_pntChrgs(self):
-        """Set all the external point charges to zero."""
-        self.outPntChrgs = np.zeros(self.numPntChrgs)
 
     def get_qmparams(self, method=None, basis=None, read_first='no',
                      read_guess=None, calc_forces=None, pop=None, addparam=None):
@@ -218,12 +217,12 @@ class QM(object):
             if method is not None:
                 self.method = method
             else:
-                raise ValueError("Please set 'method' for Q-Chem.")
+                raise ValueError("Please set method for Q-Chem.")
 
             if basis is not None:
                 self.basis = basis
             else:
-                raise ValueError("Please set 'basis' for Q-Chem.")
+                raise ValueError("Please set basis for Q-Chem.")
 
             if pop is not None:
                 self.pop = pop
@@ -269,14 +268,13 @@ class QM(object):
         if not hasattr(self, 'read_guess'):
             self.get_qmparams(**kwargs)
 
-        qmtmplt = QMTmplt(self.software)
-        qmtmplt.gen_qmtmplt()
+        qmtmplt = QMTmplt(self.software, self.pbc)
 
         qmElmntsSorted = self.qmElmnts[self.map2sorted]
         qmPosSorted = self.qmPos[self.map2sorted]
         qmIdxSorted = self.qmIdx[self.map2sorted]
 
-        if self.software.lower() == 'qchem':
+        if self.software.lower() == 'qchem' and self.pbc.lower() == 'no':
 
             if self.calc_forces.lower() == 'yes':
                 jobtype = 'force'
@@ -289,7 +287,7 @@ class QM(object):
                 read_guess = ''
 
             with open(self.baseDir+"qchem.inp", "w") as f:
-                f.write(qmtmplt.gen_qmtmplt().substitute(jobtype=jobtype, 
+                f.write(qmtmplt.gen_qmtmplt().substitute(jobtype=jobtype,
                         method=self.method, basis=self.basis,
                         read_guess=read_guess, pop=self.pop,
                         addparam=self.addparam))
@@ -308,7 +306,7 @@ class QM(object):
                     f.write("".join(["%22.14e" % self.pntPos[i, 0],
                                      "%22.14e" % self.pntPos[i, 1],
                                      "%22.14e" % self.pntPos[i, 2],
-                                     " %22.14e" % self.outPntChrgs[i], "\n"]))
+                                     " %22.14e" % self.pntChrgs4QM[i], "\n"]))
                 f.write("$end" + "\n")
 
         elif self.software.lower() == 'dftb+':
@@ -334,7 +332,10 @@ class QM(object):
                         MaxAngularMomentum=outMaxAngularMomentum,
                         HubbardDerivs=outHubbardDerivs))
             with open(self.baseDir+"input_geometry.gen", "w") as f:
-                f.write(str(self.numQMAtoms) + " C" + "\n")
+                if self.pbc.lower() == 'no':
+                    f.write(str(self.numQMAtoms) + " C" + "\n")
+                elif self.pbc.lower() == 'yes':
+                    f.write(str(self.numQMAtoms) + " S" + "\n")
                 f.write(" ".join(listElmnts) + "\n")
                 for i in range(self.numQMAtoms):
                     f.write("".join(["%6d" % (i+1),
@@ -342,12 +343,21 @@ class QM(object):
                                      "%22.14e" % qmPosSorted[i, 0],
                                      "%22.14e" % qmPosSorted[i, 1],
                                      "%22.14e" % qmPosSorted[i, 2], "\n"]))
+                if self.pbc.lower() == 'yes':
+                    f.write("".join(["%22.14e" % i for i in self.cellOrigin]) + "\n")
+                    f.write("".join(["%22.14e" % i for i in self.cellBasisVector1]) + "\n")
+                    f.write("".join(["%22.14e" % i for i in self.cellBasisVector2]) + "\n")
+                    f.write("".join(["%22.14e" % i for i in self.cellBasisVector3]) + "\n")
+
             with open(self.baseDir+"charges.dat", 'w') as f:
                 for i in range(self.numPntChrgs):
                     f.write("".join(["%22.14e" % self.pntPos[i, 0],
                                      "%22.14e" % self.pntPos[i, 1],
                                      "%22.14e" % self.pntPos[i, 2],
-                                     " %22.14e" % self.outPntChrgs[i], "\n"]))
+                                     " %22.14e" % self.pntChrgs4QM[i], "\n"]))
+
+        elif self.software.lower() == 'qchem' and self.pbc.lower() == 'yes':
+            raise ValueError("Not implemented yet.")
         else:
             raise ValueError("Only 'qchem' and 'dftb+' are supported at the moment.")
 
@@ -427,7 +437,7 @@ class QM(object):
             self.pntChrgForces = (np.genfromtxt(self.baseDir+"efield.dat",
                                                 dtype=float,
                                                 max_rows=self.numPntChrgs)
-                                  * self.outPntChrgs[:, np.newaxis])
+                                  * self.pntChrgs4QM[:, np.newaxis])
         elif self.software.lower() == 'dftb+':
             self.pntChrgForces = np.genfromtxt(self.baseDir+"results.tag",
                                                dtype=float,
@@ -484,11 +494,11 @@ class QM(object):
         for i in range(self.numRealQMAtoms):
             self.qmForces[i] -= fCorr[self.dij_min_j == i].sum(axis=0)
 
-    def corr_pbc(self):
-        """Correct forces and energy due to periodic boundary conditions."""
-        pntChrgsD = self.pntChrgs[0:self.numRPntChrgs] - self.outPntChrgs[0:self.numRPntChrgs]
+    def corr_qmpntchrgs(self):
+        """Correct forces and energy due to using partial charges for QM atoms."""
+        pntChrgsD = self.pntChrgs4MM[0:self.numRPntChrgs] - self.pntChrgs4QM[0:self.numRPntChrgs]
 
-        fCorr = -1 * ke * pntChrgsD[:, np.newaxis] * self.qmChrgs0[np.newaxis, :] / self.dij**3
+        fCorr = -1 * ke * pntChrgsD[:, np.newaxis] * self.qmChrgs4MM[np.newaxis, :] / self.dij**3
         fCorr = fCorr[:, :, np.newaxis] * self.rij
 
         if self.numVPntChrgs > 0:
@@ -498,20 +508,24 @@ class QM(object):
         self.pntChrgForces[0:self.numRPntChrgs] += fCorr.sum(axis=1)
         self.qmForces -= fCorr.sum(axis=0)
 
-        if hasattr(self, 'pntScale_deriv'):
-            fCorr = ke * self.pntChrgs[0:self.numRPntChrgs, np.newaxis] * self.qmChrgs0[np.newaxis, :] / self.dij
+        if self.pntChrgs4QM is not self.pntChrgs4MM:
+            fCorr = ke * self.pntChrgs[0:self.numRPntChrgs, np.newaxis] * self.qmChrgs4MM[np.newaxis, :] / self.dij
             if self.numVPntChrgs > 0:
                 for i in range(self.numMM1):
                     fCorr[self.mm2LocalIdx[i], self.qmHostLocalIdx[i]] = 0.0
             fCorr = np.sum(fCorr, axis=1)
             fCorr = fCorr[:, np.newaxis] * self.pntScale_deriv
 
-            self.pntChrgForces[0:self.numRPntChrgs] -= fCorr
+            if self.pntChrgs4QM is self.pntChrgsScld:
+                self.pntChrgForces[0:self.numRPntChrgs] -= fCorr
+                for i in range(self.numRealQMAtoms):
+                    self.qmForces[i] += fCorr[self.dij_min_j == i].sum(axis=0)
+            elif self.pntChrgs4MM is self.pntChrgsScld:
+                self.pntChrgForces[0:self.numRPntChrgs] += fCorr
+                for i in range(self.numRealQMAtoms):
+                    self.qmForces[i] -= fCorr[self.dij_min_j == i].sum(axis=0)
 
-            for i in range(self.numRealQMAtoms):
-                self.qmForces[i] += fCorr[self.dij_min_j == i].sum(axis=0)
-
-        eCorr = ke * pntChrgsD[:, np.newaxis] * self.qmChrgs0[np.newaxis, :] / self.dij
+        eCorr = ke * pntChrgsD[:, np.newaxis] * self.qmChrgs4MM[np.newaxis, :] / self.dij
 
         if self.numVPntChrgs > 0:
             for i in range(self.numMM1):
@@ -540,7 +554,7 @@ class QM(object):
             pass
 
     def corr_vpntchrgs_old(self):
-        """Correct forces due to virtual external point charges (previous version)."""
+        """Correct forces due to virtual external point charges (deprecated)."""
         if self.numVPntChrgs > 0:
             if self.numVPntChrgsPerMM2 == 3:
                 for i in range(self.numMM2):

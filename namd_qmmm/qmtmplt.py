@@ -51,6 +51,7 @@ Hamiltonian = DFTB {
   HubbardDerivs = {
     $HubbardDerivs
   }
+$KPointsAndWeights\
 }
 
 Options {
@@ -61,6 +62,15 @@ Analysis {
   WriteBandOut = No
   CalculateForces = $calcforces
 }
+"""
+
+dftbewald_tmplt = """\
+  KPointsAndWeights = SupercellFolding {
+    1   0   0
+    0   1   0
+    0   0   1
+    0.0 0.0 0.0
+  }
 """
 
 HubbardDerivs = dict([('Br', '-0.0573'), ('C', '-0.1492'), ('Ca', '-0.0340'),
@@ -78,11 +88,11 @@ MaxAngularMomentum = dict([('Br', 'd'), ('C', 'p'), ('Ca', 'p'),
 
 class QMTmplt(object):
     """Class for input templates for QM softwares."""
-    def __init__(self, qmSoftware=None):
-        if qmSoftware is None:
-            raise ValueError("Please choose 'qmSoftware' from 'qchem' and 'dftb+'.")
-        else:
+    def __init__(self, qmSoftware=None, qmPBC=None):
+        if qmSoftware is not None:
             self.qmSoftware = qmSoftware
+        else:
+            raise ValueError("Please choose 'qmSoftware' from 'qchem' and 'dftb+'.")
 
         if self.qmSoftware.lower() == 'qchem':
             pass
@@ -92,21 +102,36 @@ class QMTmplt(object):
         else:
             raise ValueError("Only 'qchem' and 'dftb+' are supported at the moment.")
 
+        if qmPBC is not None:
+            self.qmPBC = qmPBC
+        else:
+            raise ValueError("Please choose 'yes' or 'no' for 'qmPBC'.")
+
     def gen_qmtmplt(self):
         """Generare input templates for QM softwares."""
         if self.qmSoftware.lower() == 'qchem':
-            return Template(qc_tmplt)
+            if self.qmPBC.lower() == 'no':
+                return Template(qc_tmplt)
+            if self.qmPBC.lower() == 'yes':
+                raise ValueError("Not implemented yet.")
         elif self.qmSoftware.lower() == 'dftb+':
-            return Template(dftb_tmplt)
+            if self.qmPBC.lower() == 'no':
+                return Template(Template(dftb_tmplt).safe_substitute(KPointsAndWeights=''))
+            if self.qmPBC.lower() == 'yes':
+                return Template(Template(dftb_tmplt).safe_substitute(KPointsAndWeights=dftbewald_tmplt))
 
 
 if __name__ == "__main__":
-    qchem = QMTmplt('qchem')
-    print(qchem.gen_qmtmplt().substitute(
+    qchem = QMTmplt('qchem', 'no')
+    print(qchem.gen_qmtmplt().safe_substitute(
               jobtype='force', method='hf', basis='6-31g',
               read_guess='\nscf_guess read', pop='pop_mulliken',
               addparam='esp_charges true\nchelpg true\n'))
-    dftb = QMTmplt('dftb+')
+    dftb = QMTmplt('dftb+', 'no')
+    print(dftb.gen_qmtmplt().safe_substitute(
+              charge=0, numPntChrgs=1000, read_guess='No',
+              calcforces='Yes'))
+    dftb = QMTmplt('dftb+', 'yes')
     print(dftb.gen_qmtmplt().safe_substitute(
               charge=0, numPntChrgs=1000, read_guess='No',
               calcforces='Yes'))

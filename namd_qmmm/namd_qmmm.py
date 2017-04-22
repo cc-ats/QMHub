@@ -1,5 +1,6 @@
 import os
 import sys
+import warnings
 import numpy as np
 from .qmtool import QM
 
@@ -12,11 +13,7 @@ class QMMM(object):
         """
         Creat a QMMM object.
         """
-        self.qmElecEmbed = qmElecEmbed
-        self.qmSwitching = qmSwitching
-        self.qmSwitchingType = qmSwitchingType
         self.qmSoftware = qmSoftware
-        self.qmChargeMode = qmChargeMode
         self.qmCharge = qmCharge
         self.qmMult = qmMult
         self.elecMode = elecMode
@@ -32,31 +29,66 @@ class QMMM(object):
 
         self.QM = QM(fin, self.qmSoftware, self.qmCharge, self.qmMult, self.qmPBC)
 
+        if qmChargeMode is not None:
+            self.qmChargeMode = qmChargeMode
+        else:
+            if self.elecMode.lower() in {'truncation', 'mmewald'}:
+                self.qmChargeMode = 'ff'
+            elif self.elecMode.lower() == 'qmewald':
+                self.qmChargeMode = 'zero'
+
+        if qmSwitching is not None:
+            self.qmSwitching = qmSwitching
+        else:
+            if self.elecMode.lower() in {'truncation', 'mmewald'}:
+                self.qmSwitching = 'on'
+            elif self.elecMode.lower() == 'qmewald':
+                self.qmSwitching = 'off'
+
+        if self.qmSwitching.lower() == 'on':
+            if self.elecMode.lower() == 'qmewald':
+                raise ValueError("Can not use elecMode='qmewald' with qmSwitching='on'.")
+            if qmSwitchingType is not None:
+                self.qmSwitchingType = qmSwitchingType
+            else:
+                self.qmSwitchingType = 'shift'
+            self.qmCutoff = qmCutoff
+            self.qmSwdist = qmSwdist
+            self.QM.scale_charges(self.qmSwitchingType, self.qmCutoff, self.qmSwdist)
+        elif self.qmSwitching.lower() == 'off':
+            pass
+        else:
+            raise ValueError("Choose 'on' or 'off' for qmSwitching.")
+
+        if self.qmElecEmbed.lower() == 'on':
+            if self.qmSwitching.lower() == 'on':
+                self.QM.pntChrgs4QM = self.QM.pntChrgsScld
+            elif self.qmSwitching.lower() == 'off':
+                self.QM.pntChrgs4QM = self.QM.pntChrgs
+                if self.elecMode.lower() != 'qmewald':
+                    warnings.warn("There might be discontinuity at the cutoff.")
+            if self.elecMode.lower() == 'truncation':
+                self.QM.pntChrgs4MM = self.QM.pntChrgs4QM
+            elif self.elecMode.lower() == 'mmewald':
+                self.QM.pntChrgs4MM = self.QM.pntChrgs
+        elif self.qmElecEmbed.lower() == 'off':
+            if self.elecMode.lower() == 'qmewald':
+                raise ValueError("Can not use elecMode='qmewald' with qmElecEmbed='off'.")
+            self.QM.pntChrgs4QM = np.zeros(self.QM.numPntChrgs)
+            if self.qmSwitching.lower() == 'on':
+                self.QM.pntChrgs4MM = self.QM.pntChrgsScld
+                warnings.warn("There might be discontinuity at the cutoff.")
+            elif self.qmSwitching.lower() == 'off':
+                self.QM.pntChrgs4MM = self.QM.pntChrgs
+        else:
+            raise ValueError("Choose 'on' or 'off' for qmElecEmbed.")
+
         if self.postProc.lower() == 'no':
             self.QM.calc_forces = 'yes'
         elif self.postProc.lower() == 'yes':
             self.QM.calc_forces = 'no'
         else:
-            raise ValueError("Choose 'yes' or 'no' for 'postProc'.")
-
-        if self.qmElecEmbed.lower() == 'on':
-            if self.qmSwitching.lower() == 'on':
-                if self.qmSwitchingType.lower() == 'shift':
-                    self.qmCutoff = qmCutoff
-                    self.QM.scale_charges(self.qmSwitchingType, self.qmCutoff)
-                elif self.qmSwitchingType.lower() == 'switch':
-                    self.qmCutoff = qmCutoff
-                    self.qmSwdist = qmSwdist
-                    self.QM.scale_charges(self.qmSwitchingType, self.qmCutoff, self.qmSwdist)
-                elif self.qmSwitchingType.lower() == 'lrec':
-                    self.qmCutoff = qmCutoff
-                    self.QM.scale_charges(self.qmSwitchingType, self.qmCutoff)
-                else:
-                    raise ValueError("Only 'shift', 'switch', and 'lrec' are supported currently.")
-        elif self.qmElecEmbed.lower() == 'off':
-            self.QM.zero_pntChrgs()
-        else:
-            raise ValueError("Need a valid value for 'qmElecEmbed'.")
+            raise ValueError("Choose 'yes' or 'no' for postProc.")
 
     def get_namdinput(self):
         """Get the path of NAMD input file (Unfinished)."""
@@ -81,11 +113,21 @@ class QMMM(object):
                 self.QM.get_qmchrgs()
                 self.QM.get_pntesp()
 
-                if self.qmSwitching.lower() == 'on':
-                    self.QM.corr_pntchrgscale()
+                if self.qmElecEmbed.lower() == 'on':
+                    if self.qmSwitching.lower() == 'on':
+                        self.QM.corr_pntchrgscale()
+
+                if self.qmChargeMode == "qm":
+                    self.QM.qmChrgs4MM = self.QM.qmChrgs
+                elif self.qmChargeMode == "ff":
+                    self.QM.qmChrgs4MM = self.QM.qmChrgs0
+                elif self.qmChargeMode == "zero":
+                    self.QM.qmChrgs4MM = np.zeros(self.QM.numQMAtoms)
+                else:
+                    raise ValueError("Please choose 'qm', 'ff', and 'zero' for qmChargeMode.")
 
                 if self.elecMode.lower() in {'truncation', 'mmewald'}:
-                    self.QM.corr_pbc()
+                    self.QM.corr_qmpntchrgs()
 
                 self.QM.corr_vpntchrgs()
             else:
@@ -100,18 +142,11 @@ class QMMM(object):
             if os.path.isfile(self.QM.fin+".result"):
                 os.remove(self.QM.fin+".result")
 
-            if self.qmChargeMode == "qm":
-                outQMChrgs = self.QM.qmChrgs
-            elif self.qmChargeMode == "ff":
-                outQMChrgs = self.QM.qmChrgs0
-            elif self.qmChargeMode == "zero":
-                outQMChrgs = np.zeros(self.QM.numQMAtoms)
-
             with open(self.QM.fin + ".result", 'w') as f:
                 f.write("%22.14e\n" % self.QM.qmEnergy)
                 for i in range(self.QM.numQMAtoms):
                     f.write(" ".join(format(j, "22.14e") for j in self.QM.qmForces[i])
-                            + "  " + format(outQMChrgs[i], "22.14e") + "\n")
+                            + "  " + format(self.QM.qmChrgs4MM[i], "22.14e") + "\n")
                 for i in range(self.QM.numRPntChrgs):
                     f.write(" ".join(format(j, "22.14e") for j in self.QM.pntChrgForces[i]) + "\n")
         else:
@@ -122,18 +157,11 @@ class QMMM(object):
         if os.path.isfile(self.QM.fin+".result"):
             os.remove(self.QM.fin+".result")
 
-        if self.qmChargeMode == "qm":
-            outQMChrgs = self.QM.qmChrgs
-        elif self.qmChargeMode == "ff":
-            outQMChrgs = self.QM.qmChrgs0
-        elif self.qmChargeMode == "zero":
-            outQMChrgs = np.zeros(self.QM.numQMAtoms)
-
         with open(self.QM.fin + ".result", 'w') as f:
             f.write("%22.14e\n" % self.QM.qmEnergy)
             for i in range(self.QM.numQMAtoms):
                 f.write(" ".join(format(j, "22.14e") for j in self.QM.qmForces[i])
-                        + "  " + format(outQMChrgs[i], "22.14e") + "\n")
+                        + "  " + format(self.QM.qmChrgs4MM[i], "22.14e") + "\n")
 
     def save_extforces(self):
         """Save the MM forces to extforce.dat (deprecated)."""
@@ -158,7 +186,7 @@ class QMMM(object):
             mmDist[self.QM.pntIdx[0:self.QM.numRPntChrgs]] = self.QM.pntDist
         else:
             mmScale[self.QM.pntIdx[0:self.QM.numRPntChrgs]] += 1
-        mmChrgs[self.QM.pntIdx[0:self.QM.numRPntChrgs]] = self.QM.outPntChrgs[0:self.QM.numRPntChrgs]
+        mmChrgs[self.QM.pntIdx[0:self.QM.numRPntChrgs]] = self.QM.pntChrgs4QM[0:self.QM.numRPntChrgs]
 
         if self.qmChargeMode == "qm":
             outQMChrgs = self.QM.qmChrgs

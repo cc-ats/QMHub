@@ -282,6 +282,16 @@ class QM(object):
         else:
             self.read_guess = 'no'
 
+    def get_nproc(self):
+        """Get the number of processes for QM calculation."""
+        if 'OMP_NUM_THREADS' in os.environ:
+            nproc = int(os.environ['OMP_NUM_THREADS'])
+        elif 'SLURM_NTASKS' in os.environ:
+            nproc = int(os.environ['SLURM_NTASKS']) - 4
+        else:
+            nproc = 1
+        return nproc
+
     def gen_input(self, baseDir=None, **kwargs):
         """Generate input file for QM software."""
 
@@ -405,12 +415,7 @@ class QM(object):
             elif self.pop == 'chelpg':
                 pop = 'CHELPG '
 
-            if 'OMP_NUM_THREADS' in os.environ:
-                nproc = int(os.environ['OMP_NUM_THREADS'])
-            elif 'SLURM_NTASKS' in os.environ:
-                nproc = int(os.environ['SLURM_NTASKS']) - 4
-            else:
-                nproc = 1
+            nproc = get_nproc()
 
             with open(self.baseDir+"orca.inp", "w") as f:
                 f.write(qmtmplt.gen_qmtmplt().substitute(
@@ -459,12 +464,7 @@ class QM(object):
         if not hasattr(self, 'baseDir'):
             self.gen_input(**kwargs)
 
-        if 'OMP_NUM_THREADS' in os.environ:
-            nproc = int(os.environ['OMP_NUM_THREADS'])
-        elif 'SLURM_NTASKS' in os.environ:
-            nproc = int(os.environ['SLURM_NTASKS']) - 4
-        else:
-            nproc = 1
+        nproc = get_nproc()
 
         cmdline = "cd " + self.baseDir + "; "
 

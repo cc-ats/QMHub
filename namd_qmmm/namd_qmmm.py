@@ -169,8 +169,8 @@ class QMMM(object):
     def save_results(self):
         """Save the results of QM calculation to file."""
         if hasattr(self.QM, 'qmEnergy'):
-            if os.path.isfile(self.QM.fin + ".result"):
-                os.remove(self.QM.fin + ".result")
+            if os.path.isfile(self.QM.fin+".result"):
+                os.remove(self.QM.fin+".result")
 
             with open(self.QM.fin + ".result", 'w') as f:
                 f.write("%22.14e\n" % self.QM.qmEnergy)
@@ -184,8 +184,8 @@ class QMMM(object):
 
     def save_results_old(self):
         """Save the results of QM calculation to file (deprecated)."""
-        if os.path.isfile(self.QM.fin + ".result"):
-            os.remove(self.QM.fin + ".result")
+        if os.path.isfile(self.QM.fin+".result"):
+            os.remove(self.QM.fin+".result")
 
         with open(self.QM.fin + ".result", 'w') as f:
             f.write("%22.14e\n" % self.QM.qmEnergy)

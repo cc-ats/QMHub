@@ -4,9 +4,9 @@ import subprocess as sp
 import numpy as np
 from .qmtmplt import QMTmplt
 
-HARTREE2KCALMOL = 6.275094737775374e+02
-BOHR2ANGSTROM = 5.2917721067e-01
-KE = HARTREE2KCALMOL * BOHR2ANGSTROM
+hartree2kcalmol = 6.275094737775374e+02
+bohr2angstrom = 5.2917721067e-01
+ke = hartree2kcalmol * bohr2angstrom
 
 
 class QM(object):
@@ -94,7 +94,7 @@ class QM(object):
         if self.numVPntChrgs > 0:
             if self.pntChrgs[-1] + self.pntChrgs[-2] < 0.00001:
                 self.numVPntChrgsPerMM2 = 3
-            elif self.pntChrgs[-1] + self.pntChrgs[-2] * 2 < 0.00001:
+            elif self.pntChrgs[-1] + self.pntChrgs[-2]*2 < 0.00001:
                 self.numVPntChrgsPerMM2 = 2
             else:
                 raise ValueError('Something is wrong with point charge alterations.')
@@ -417,7 +417,7 @@ class QM(object):
 
             nproc = get_nproc()
 
-            with open(self.baseDir + "orca.inp", 'w') as f:
+            with open(self.baseDir+"orca.inp", "w") as f:
                 f.write(qmtmplt.gen_qmtmplt().substitute(
                         method=self.method, basis=self.basis,
                         calcforces=calcforces, read_guess=read_guess,
@@ -438,7 +438,7 @@ class QM(object):
                 f.write("  end\n")
                 f.write("end\n")
 
-            with open(self.baseDir + "orca.pntchrg", 'w') as f:
+            with open(self.baseDir+"orca.pntchrg", 'w') as f:
                 f.write("%d\n" % self.numPntChrgs)
                 for i in range(self.numPntChrgs):
                     f.write("".join(["%22.14e " % self.pntChrgs4QM[i],
@@ -446,12 +446,12 @@ class QM(object):
                                      "%22.14e" % self.pntPos[i, 1],
                                      "%22.14e" % self.pntPos[i, 2], "\n"]))
 
-            with open(self.baseDir + "orca.pntvpot.xyz", 'w') as f:
+            with open(self.baseDir+"orca.pntvpot.xyz", 'w') as f:
                 f.write("%d\n" % self.numPntChrgs)
                 for i in range(self.numPntChrgs):
-                    f.write("".join(["%22.14e" % (self.pntPos[i, 0] / BOHR2ANGSTROM),
-                                     "%22.14e" % (self.pntPos[i, 1] / BOHR2ANGSTROM),
-                                     "%22.14e" % (self.pntPos[i, 2] / BOHR2ANGSTROM), "\n"]))
+                    f.write("".join(["%22.14e" % (self.pntPos[i, 0]/bohr2angstrom),
+                                     "%22.14e" % (self.pntPos[i, 1]/bohr2angstrom),
+                                     "%22.14e" % (self.pntPos[i, 2]/bohr2angstrom), "\n"]))
 
         elif self.software.lower() == 'qchem' and self.pbc.lower() == 'yes':
             raise ValueError("Not implemented yet.")
@@ -492,7 +492,7 @@ class QM(object):
     def get_qmenergy(self):
         """Get QM energy from output of QM calculation."""
         if self.software.lower() == 'qchem':
-            with open(self.baseDir + "qchem.out", 'r') as f:
+            with open(self.baseDir+"qchem.out", 'r') as f:
                 for line in f:
                     line = line.strip().expandtabs()
 
@@ -506,12 +506,12 @@ class QM(object):
             self.qmEnergy = float(scf_energy) - float(cc_energy)
 
         elif self.software.lower() == 'dftb+':
-            self.qmEnergy = np.genfromtxt(self.baseDir + "results.tag",
+            self.qmEnergy = np.genfromtxt(self.baseDir+"results.tag",
                                           dtype=float, skip_header=1,
                                           max_rows=1)
 
         elif self.software.lower() == 'orca':
-            with open(self.baseDir + "orca.out", 'r') as f:
+            with open(self.baseDir+"orca.out", 'r') as f:
                 for line in f:
                     line = line.strip().expandtabs()
 
@@ -519,24 +519,24 @@ class QM(object):
                         self.qmEnergy = float(line.split()[-1])
                         break
 
-        self.qmEnergy *= HARTREE2KCALMOL
+        self.qmEnergy *= hartree2kcalmol
         return self.qmEnergy
 
     def get_qmforces(self):
         """Get QM forces from output of QM calculation."""
         if self.software.lower() == 'qchem':
-            self.qmForces = -1 * np.genfromtxt(self.baseDir + "efield.dat",
+            self.qmForces = -1 * np.genfromtxt(self.baseDir+"efield.dat",
                                                dtype=float,
                                                skip_header=self.numPntChrgs)
         elif self.software.lower() == 'dftb+':
-            self.qmForces = np.genfromtxt(self.baseDir + "results.tag",
+            self.qmForces = np.genfromtxt(self.baseDir+"results.tag",
                                           dtype=float, skip_header=5,
                                           max_rows=self.numQMAtoms)
         elif self.software.lower() == 'orca':
-            self.qmForces = -1 * np.genfromtxt(self.baseDi r +"orca.engrad",
+            self.qmForces = -1 * np.genfromtxt(self.baseDir+"orca.engrad",
                                                dtype=float, skip_header=11,
                                                max_rows=self.numQMAtoms*3).reshape((self.numQMAtoms, 3))
-        self.qmForces *= HARTREE2KCALMOL / BOHR2ANGSTROM
+        self.qmForces *= hartree2kcalmol / bohr2angstrom
         # Unsort QM atoms
         self.qmForces = self.qmForces[self.map2unsorted]
         return self.qmForces
@@ -544,31 +544,31 @@ class QM(object):
     def get_pntchrgforces(self):
         """Get external point charge forces from output of QM calculation."""
         if self.software.lower() == 'qchem':
-            self.pntChrgForces = (np.genfromtxt(self.baseDir + "efield.dat",
+            self.pntChrgForces = (np.genfromtxt(self.baseDir+"efield.dat",
                                                 dtype=float,
                                                 max_rows=self.numPntChrgs)
                                   * self.pntChrgs4QM[:, np.newaxis])
         elif self.software.lower() == 'dftb+':
-            self.pntChrgForces = np.genfromtxt(self.baseDir + "results.tag",
+            self.pntChrgForces = np.genfromtxt(self.baseDir+"results.tag",
                                                dtype=float,
                                                skip_header=self.numQMAtoms+6,
                                                max_rows=self.numPntChrgs)
         elif self.software.lower() == 'orca':
-            self.pntChrgForces = -1 * np.genfromtxt(self.baseDir + "orca.pcgrad",
+            self.pntChrgForces = -1 * np.genfromtxt(self.baseDir+"orca.pcgrad",
                                                     dtype=float,
                                                     skip_header=1,
                                                     max_rows=self.numPntChrgs)
-        self.pntChrgForces *= HARTREE2KCALMOL / BOHR2ANGSTROM
+        self.pntChrgForces *= hartree2kcalmol / bohr2angstrom
         return self.pntChrgForces
 
     def get_qmchrgs(self):
         """Get QM atomic charges from output of QM calculation."""
         if self.software.lower() == 'qchem':
-            self.qmChrgs = np.loadtxt(self.baseDir + "charges.dat")
+            self.qmChrgs = np.loadtxt(self.baseDir+"charges.dat")
         elif self.software.lower() == 'dftb+':
             if self.numQMAtoms > 3:
                 self.qmChrgs = np.genfromtxt(
-                    self.baseDir + "results.tag", dtype=float,
+                    self.baseDir+"results.tag", dtype=float,
                     skip_header=(self.numQMAtoms + self.numPntChrgs
                                  + int(np.ceil(self.numQMAtoms/3.)) + 14),
                     max_rows=int(np.ceil(self.numQMAtoms/3.)-1.))
@@ -576,7 +576,7 @@ class QM(object):
                 self.qmChrgs = np.array([])
             self.qmChrgs = np.append(
                 self.qmChrgs.flatten(),
-                np.genfromtxt(self.baseDir + "results.tag", dtype=float,
+                np.genfromtxt(self.baseDir+"results.tag", dtype=float,
                     skip_header=(self.numQMAtoms + self.numPntChrgs
                                  + int(np.ceil(self.numQMAtoms/3.))*2 + 13),
                     max_rows=1).flatten())
@@ -585,7 +585,7 @@ class QM(object):
                 beg = "MULLIKEN ATOMIC CHARGES"
             elif self.pop == 'chelpg':
                 beg = "CHELPG Charges"
-            with open(self.baseDir + "orca.out", 'r') as f:
+            with open(self.baseDir+"orca.out", 'r') as f:
                 for line in f:
                     if beg in line:
                         charges = []
@@ -603,20 +603,20 @@ class QM(object):
     def get_pntesp(self):
         """Get ESP at external point charges from output of QM calculation."""
         if self.software.lower() == 'qchem':
-            self.pntESP = np.loadtxt(self.baseDir + "esp.dat")
+            self.pntESP = np.loadtxt(self.baseDir+"esp.dat")
         elif self.software.lower() == 'dftb+':
             if not hasattr(self, 'qmChrgs'):
                 self.get_qmchrgs()
             self.pntESP = (np.sum(self.qmChrgs[np.newaxis, :]
                                   / self.dij, axis=1)
-                           * BOHR2ANGSTROM)
+                           * bohr2angstrom)
         if self.software.lower() == 'orca':
-            self.pntESP = np.genfromtxt(self.baseDir + "orca.pntvpot.out",
+            self.pntESP = np.genfromtxt(self.baseDir+"orca.pntvpot.out",
                                         dtype=float,
                                         skip_header=1,
                                         usecols=3,
                                         max_rows=self.numPntChrgs)
-        self.pntESP *= HARTREE2KCALMOL
+        self.pntESP *= hartree2kcalmol
         return self.pntESP
 
     def corr_pntchrgscale(self):
@@ -635,7 +635,7 @@ class QM(object):
         """Correct forces and energy due to using partial charges for QM atoms."""
         pntChrgsD = self.pntChrgs4MM[0:self.numRPntChrgs] - self.pntChrgs4QM[0:self.numRPntChrgs]
 
-        fCorr = -1 * KE * pntChrgsD[:, np.newaxis] * self.qmChrgs4MM[np.newaxis, :] / self.dij**3
+        fCorr = -1 * ke * pntChrgsD[:, np.newaxis] * self.qmChrgs4MM[np.newaxis, :] / self.dij**3
         fCorr = fCorr[:, :, np.newaxis] * self.rij
 
         if self.numVPntChrgs > 0:
@@ -646,7 +646,7 @@ class QM(object):
         self.qmForces -= fCorr.sum(axis=0)
 
         if hasattr(self, 'pntChrgsScld') and self.pntChrgs4QM is not self.pntChrgs4MM:
-            fCorr = KE * self.pntChrgs[0:self.numRPntChrgs, np.newaxis] * self.qmChrgs4MM[np.newaxis, :] / self.dij
+            fCorr = ke * self.pntChrgs[0:self.numRPntChrgs, np.newaxis] * self.qmChrgs4MM[np.newaxis, :] / self.dij
             if self.numVPntChrgs > 0:
                 for i in range(self.numMM1):
                     fCorr[self.mm2LocalIdx[i], self.qmHostLocalIdx[i]] = 0.0
@@ -660,7 +660,7 @@ class QM(object):
             for i in range(self.numRealQMAtoms):
                 self.qmForces[i] += fCorr[self.dij_min_j == i].sum(axis=0)
 
-        eCorr = KE * pntChrgsD[:, np.newaxis] * self.qmChrgs4MM[np.newaxis, :] / self.dij
+        eCorr = ke * pntChrgsD[:, np.newaxis] * self.qmChrgs4MM[np.newaxis, :] / self.dij
 
         if self.numVPntChrgs > 0:
             for i in range(self.numMM1):
@@ -693,26 +693,26 @@ class QM(object):
         if self.numVPntChrgs > 0:
             if self.numVPntChrgsPerMM2 == 3:
                 for i in range(self.numMM2):
-                    mm1Pos = (self.pntPos[self.numRPntChrgs + i * 3 + 1]
-                              - self.pntPos[self.numRPntChrgs + i * 3]
+                    mm1Pos = (self.pntPos[self.numRPntChrgs + i*3 + 1]
+                              - self.pntPos[self.numRPntChrgs + i*3]
                               * 0.94) / 0.06
-                    mm2Pos = self.pntPos[self.numRPntChrgs + i * 3]
+                    mm2Pos = self.pntPos[self.numRPntChrgs + i*3]
                     for j in range(self.numRPntChrgs):
                         if np.abs(mm1Pos - self.pntPos[j]).sum() < 0.001:
                             mm1Idx = j
                         if np.abs(mm2Pos - self.pntPos[j]).sum() < 0.001:
                             mm2Idx = j
 
-                    self.pntChrgForces[mm2Idx] += self.pntChrgForces[self.numRPntChrgs + i * 3]
-                    self.pntChrgForces[self.numRPntChrgs + i * 3] = 0.
+                    self.pntChrgForces[mm2Idx] += self.pntChrgForces[self.numRPntChrgs + i*3]
+                    self.pntChrgForces[self.numRPntChrgs + i*3] = 0.
 
-                    self.pntChrgForces[mm2Idx] += self.pntChrgForces[self.numRPntChrgs + i * 3 + 1] * 0.94
-                    self.pntChrgForces[mm1Idx] += self.pntChrgForces[self.numRPntChrgs + i * 3 + 1] * 0.06
-                    self.pntChrgForces[self.numRPntChrgs + i * 3 + 1] = 0.
+                    self.pntChrgForces[mm2Idx] += self.pntChrgForces[self.numRPntChrgs + i*3 + 1] * 0.94
+                    self.pntChrgForces[mm1Idx] += self.pntChrgForces[self.numRPntChrgs + i*3 + 1] * 0.06
+                    self.pntChrgForces[self.numRPntChrgs + i*3 + 1] = 0.
 
-                    self.pntChrgForces[mm2Idx] += self.pntChrgForces[self.numRPntChrgs + i * 3 + 2] * 1.06
-                    self.pntChrgForces[mm1Idx] += self.pntChrgForces[self.numRPntChrgs + i * 3 + 2] * -0.06
-                    self.pntChrgForces[self.numRPntChrgs + i * 3 + 2] = 0.
+                    self.pntChrgForces[mm2Idx] += self.pntChrgForces[self.numRPntChrgs + i*3 + 2] * 1.06
+                    self.pntChrgForces[mm1Idx] += self.pntChrgForces[self.numRPntChrgs + i*3 + 2] * -0.06
+                    self.pntChrgForces[self.numRPntChrgs + i*3 + 2] = 0.
             elif self.numVPntChrgsPerMM2 == 2:
                 raise ValueError("Not implemented yet.")
         else:

@@ -93,7 +93,6 @@ orca_tmplt = """\
 
 """
 
-
 class QMTmplt(object):
     """Class for input templates for QM softwares."""
     def __init__(self, qmSoftware=None, qmPBC=None):

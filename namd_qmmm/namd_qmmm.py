@@ -251,3 +251,8 @@ if __name__ == "__main__":
                 elecMode='mmewald', qmSwitchingType='shift', qmCutoff=12.)
     dftb.run_qm()
     dftb.parse_output()
+
+    orca = QMMM(sys.argv[1], qmSoftware='orca', qmCharge=0, qmMult=1,
+                elecMode='mmewald', qmSwitchingType='shift', qmCutoff=12.)
+    orca.run_qm(method='HF', basis='6-31G')
+    orca.parse_output()

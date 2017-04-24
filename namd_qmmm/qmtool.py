@@ -21,7 +21,7 @@ class QM(object):
         if software is not None:
             self.software = software
         else:
-            raise ValueError("Please choose 'qchem' or 'dftb+' for qmSoftware.")
+            raise ValueError("Please choose 'qchem', 'dftb+', or 'orca' for qmSoftware.")
         if charge is not None:
             self.charge = charge
         else:
@@ -239,8 +239,33 @@ class QM(object):
 
         elif self.software.lower() == 'dftb+':
             pass
+
+        elif self.software.lower() == 'orca':
+            if method is not None:
+                self.method = method
+            else:
+                raise ValueError("Please set method for ORCA.")
+
+            if basis is not None:
+                self.basis = basis
+            else:
+                raise ValueError("Please set basis for ORCA.")
+
+            if pop is not None:
+                self.pop = pop
+            elif not hasattr(self, 'pop'):
+                self.pop = 'mulliken'
+
+            if addparam is not None:
+                if isinstance(addparam, list):
+                    self.addparam = "".join(["%s " % i for i in addparam])
+                else:
+                    self.addparam = addparam + " "
+            else:
+                self.addparam = ''
+
         else:
-            raise ValueError("Only 'qchem' and 'dftb+' are supported at the moment.")
+            raise ValueError("Only 'qchem', 'dftb+', and 'orca' are supported at the moment.")
 
         if calc_forces is not None:
             self.calc_forces = calc_forces
@@ -363,6 +388,66 @@ class QM(object):
                                      "%22.14e" % self.pntPos[i, 2],
                                      " %22.14e" % self.pntChrgs4QM[i], "\n"]))
 
+        elif self.software.lower() == 'orca':
+
+            if self.calc_forces.lower() == 'yes':
+                calcforces = 'EnGrad '
+            elif self.calc_forces.lower() == 'no':
+                calcforces = ''
+
+            if self.read_guess.lower() == 'yes':
+                read_guess = ''
+            elif self.read_guess.lower() == 'no':
+                read_guess = 'NoAutoStart '
+
+            if self.pop == 'mulliken':
+                pop = ''
+            elif self.pop == 'chelpg':
+                pop = 'CHELPG '
+
+            if 'OMP_NUM_THREADS' in os.environ:
+                nproc = int(os.environ['OMP_NUM_THREADS'])
+            elif 'SLURM_NTASKS' in os.environ:
+                nproc = int(os.environ['SLURM_NTASKS']) - 4
+            else:
+                nproc = 1
+
+            with open(self.baseDir+"orca.inp", "w") as f:
+                f.write(qmtmplt.gen_qmtmplt().substitute(
+                        method=self.method, basis=self.basis,
+                        calcforces=calcforces, read_guess=read_guess,
+                        pop=pop, addparam=self.addparam, nproc=nproc,
+                        pntchrgspath="\"orca.pntchrg\""))
+                f.write("%coords\n")
+                f.write("  CTyp xyz\n")
+                f.write("  Charge %d\n" % self.charge)
+                f.write("  Mult %d\n" % self.mult)
+                f.write("  Units Angs\n")
+                f.write("  coords\n")
+
+                for i in range(self.numQMAtoms):
+                    f.write(" ".join(["%6s" % qmElmntsSorted[i],
+                                     "%22.14e" % qmPosSorted[i, 0],
+                                     "%22.14e" % qmPosSorted[i, 1],
+                                     "%22.14e" % qmPosSorted[i, 2], "\n"]))
+                f.write("  end\n")
+                f.write("end\n")
+
+            with open(self.baseDir+"orca.pntchrg", 'w') as f:
+                f.write("%d\n" % self.numPntChrgs)
+                for i in range(self.numPntChrgs):
+                    f.write("".join(["%22.14e " % self.pntChrgs4QM[i],
+                                     "%22.14e" % self.pntPos[i, 0],
+                                     "%22.14e" % self.pntPos[i, 1],
+                                     "%22.14e" % self.pntPos[i, 2], "\n"]))
+
+            with open(self.baseDir+"orca.pntvpot.xyz", 'w') as f:
+                f.write("%d\n" % self.numPntChrgs)
+                for i in range(self.numPntChrgs):
+                    f.write("".join(["%22.14e" % (self.pntPos[i, 0]/bohr2angstrom),
+                                     "%22.14e" % (self.pntPos[i, 1]/bohr2angstrom),
+                                     "%22.14e" % (self.pntPos[i, 2]/bohr2angstrom), "\n"]))
+
         elif self.software.lower() == 'qchem' and self.pbc.lower() == 'yes':
             raise ValueError("Not implemented yet.")
         else:
@@ -376,11 +461,10 @@ class QM(object):
 
         if 'OMP_NUM_THREADS' in os.environ:
             nproc = int(os.environ['OMP_NUM_THREADS'])
+        elif 'SLURM_NTASKS' in os.environ:
+            nproc = int(os.environ['SLURM_NTASKS']) - 4
         else:
-            if 'SLURM_NTASKS' in os.environ:
-                nproc = int(os.environ['SLURM_NTASKS']) - 4
-            else:
-                nproc = 1
+            nproc = 1
 
         cmdline = "cd " + self.baseDir + "; "
 
@@ -395,6 +479,10 @@ class QM(object):
 
         elif self.software.lower() == 'dftb+':
             cmdline += "export OMP_NUM_THREADS=%d; dftb+ > dftb.out" % nproc
+
+        if self.software.lower() == 'orca':
+            cmdline += "orca orca.inp > orca.out; "
+            cmdline += "orca_vpot orca.gbw orca.scfp orca.pntvpot.xyz orca.pntvpot.out >> orca.out"
 
         proc = sp.Popen(args=cmdline, shell=True)
         proc.wait()
@@ -413,6 +501,7 @@ class QM(object):
 
                     if "Total energy" in line:
                         scf_energy = line.split()[-1]
+                        break
 
             self.qmEnergy = float(scf_energy) - float(cc_energy)
 
@@ -420,6 +509,16 @@ class QM(object):
             self.qmEnergy = np.genfromtxt(self.baseDir+"results.tag",
                                           dtype=float, skip_header=1,
                                           max_rows=1)
+
+        elif self.software.lower() == 'orca':
+            with open(self.baseDir+"orca.out", 'r') as f:
+                for line in f:
+                    line = line.strip().expandtabs()
+
+                    if "FINAL SINGLE POINT ENERGY" in line:
+                        self.qmEnergy = float(line.split()[-1])
+                        break
+
         self.qmEnergy *= hartree2kcalmol
         return self.qmEnergy
 
@@ -433,6 +532,10 @@ class QM(object):
             self.qmForces = np.genfromtxt(self.baseDir+"results.tag",
                                           dtype=float, skip_header=5,
                                           max_rows=self.numQMAtoms)
+        elif self.software.lower() == 'orca':
+            self.qmForces = -1 * np.genfromtxt(self.baseDir+"orca.engrad",
+                                               dtype=float, skip_header=11,
+                                               max_rows=self.numQMAtoms*3).reshape((self.numQMAtoms, 3))
         self.qmForces *= hartree2kcalmol / bohr2angstrom
         # Unsort QM atoms
         self.qmForces = self.qmForces[self.map2unsorted]
@@ -450,6 +553,11 @@ class QM(object):
                                                dtype=float,
                                                skip_header=self.numQMAtoms+6,
                                                max_rows=self.numPntChrgs)
+        elif self.software.lower() == 'orca':
+            self.pntChrgForces = -1 * np.genfromtxt(self.baseDir+"orca.pcgrad",
+                                                    dtype=float,
+                                                    skip_header=1,
+                                                    max_rows=self.numPntChrgs)
         self.pntChrgForces *= hartree2kcalmol / bohr2angstrom
         return self.pntChrgForces
 
@@ -472,6 +580,22 @@ class QM(object):
                     skip_header=(self.numQMAtoms + self.numPntChrgs
                                  + int(np.ceil(self.numQMAtoms/3.))*2 + 13),
                     max_rows=1).flatten())
+        elif self.software.lower() == 'orca':
+            if self.pop == 'mulliken':
+                beg = "MULLIKEN ATOMIC CHARGES"
+            elif self.pop == 'chelpg':
+                beg = "CHELPG Charges"
+            with open(self.baseDir+"orca.out", 'r') as f:
+                for line in f:
+                    if beg in line:
+                        charges = []
+                        line = next(f)
+                        for i in range(self.numQMAtoms):
+                            line = next(f)
+                            charges.append(float(line.split()[3]))
+                        break
+            self.qmChrgs = np.array(charges)
+
         # Unsort QM atoms
         self.qmChrgs = self.qmChrgs[self.map2unsorted]
         return self.qmChrgs
@@ -486,6 +610,12 @@ class QM(object):
             self.pntESP = (np.sum(self.qmChrgs[np.newaxis, :]
                                   / self.dij, axis=1)
                            * bohr2angstrom)
+        if self.software.lower() == 'orca':
+            self.pntESP = np.genfromtxt(self.baseDir+"orca.pntvpot.out",
+                                        dtype=float,
+                                        skip_header=1,
+                                        usecols=3,
+                                        max_rows=self.numPntChrgs)
         self.pntESP *= hartree2kcalmol
         return self.pntESP
 

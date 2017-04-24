@@ -21,7 +21,8 @@ class QM(object):
         if software is not None:
             self.software = software
         else:
-            raise ValueError("Please choose 'qchem', 'dftb+', or 'orca' for qmSoftware.")
+            raise ValueError(
+                "Please choose 'qchem', 'dftb+', or 'orca' for qmSoftware.")
         if charge is not None:
             self.charge = charge
         else:
@@ -49,14 +50,14 @@ class QM(object):
         self.numSteps = sysList[4]
 
         # Load QM information
-        qmList = np.genfromtxt(fin, dtype=None, skip_header=1,
-                               max_rows=self.numQMAtoms)
+        qmList = np.genfromtxt(
+            fin, dtype=None, skip_header=1, max_rows=self.numQMAtoms)
         # Positions of QM atoms
-        self.qmPos = np.column_stack((qmList['f0'],
-                                      qmList['f1'],
+        self.qmPos = np.column_stack((qmList['f0'], qmList['f1'],
                                       qmList['f2']))
         # Elements of QM atoms
-        self.qmElmnts = np.char.capitalize(np.core.defchararray.decode(qmList['f3']))
+        self.qmElmnts = np.char.capitalize(
+            np.core.defchararray.decode(qmList['f3']))
         # Charges of QM atoms
         self.qmChrgs0 = qmList['f4']
         # Indexes of QM atoms
@@ -68,11 +69,13 @@ class QM(object):
         self.numRealQMAtoms = self.numQMAtoms - self.numMM1
 
         # Load external point charge information
-        pntList = np.genfromtxt(fin, dtype=None, skip_header=1+self.numQMAtoms,
-                                max_rows=self.numPntChrgs)
+        pntList = np.genfromtxt(
+            fin,
+            dtype=None,
+            skip_header=1 + self.numQMAtoms,
+            max_rows=self.numPntChrgs)
         # Positions of external point charges
-        self.pntPos = np.column_stack((pntList['f0'],
-                                       pntList['f1'],
+        self.pntPos = np.column_stack((pntList['f0'], pntList['f1'],
                                        pntList['f2']))
         # Charges of external point charges
         self.pntChrgs = pntList['f3']
@@ -97,7 +100,8 @@ class QM(object):
             elif self.pntChrgs[-1] + self.pntChrgs[-2] * 2 < 0.00001:
                 self.numVPntChrgsPerMM2 = 2
             else:
-                raise ValueError('Something is wrong with point charge alterations.')
+                raise ValueError(
+                    'Something is wrong with point charge alterations.')
 
             self.numMM2 = self.numVPntChrgs // self.numVPntChrgsPerMM2
 
@@ -107,16 +111,17 @@ class QM(object):
                 mm1VPos = np.zeros((self.numMM2, 3), dtype=float)
                 mm2VPos = np.zeros((self.numMM2, 3), dtype=float)
                 for i in range(self.numMM2):
-                    mm1VPos[i] = (self.pntPos[self.numRPntChrgs + i*3 + 1]
-                                  - self.pntPos[self.numRPntChrgs + i*3]
-                                  * 0.94) / 0.06
-                    mm2VPos[i] = self.pntPos[self.numRPntChrgs + i*3]
+                    mm1VPos[i] = (self.pntPos[self.numRPntChrgs + i * 3 + 1] -
+                                  self.pntPos[self.numRPntChrgs +
+                                              i * 3] * 0.94) / 0.06
+                    mm2VPos[i] = self.pntPos[self.numRPntChrgs + i * 3]
 
                 self.mm1VIdx = np.zeros(self.numMM2, dtype=int)
                 self.mm2VIdx = np.zeros(self.numMM2, dtype=int)
                 for i in range(self.numMM2):
                     for j in range(self.numMM1):
-                        if np.abs(mm1VPos[i] - self.pntPos[self.mm1LocalIdx[j]]).sum() < 0.001:
+                        if np.abs(mm1VPos[i] - self.pntPos[self.mm1LocalIdx[j]]
+                                  ).sum() < 0.001:
                             self.mm1VIdx[i] = self.mm1LocalIdx[j]
                             break
                 for i in range(self.numMM2):
@@ -126,36 +131,44 @@ class QM(object):
                             break
                 self.mm2LocalIdx = []
                 for i in range(self.numMM1):
-                    self.mm2LocalIdx.append(self.mm2VIdx[self.mm1VIdx == self.mm1LocalIdx[i]])
+                    self.mm2LocalIdx.append(
+                        self.mm2VIdx[self.mm1VIdx == self.mm1LocalIdx[i]])
             elif self.numVPntChrgsPerMM2 == 2:
                 raise ValueError("Not implemented yet.")
 
         # Sort QM atoms
-        self.map2sorted = np.concatenate((np.argsort(self.qmIdx[0:self.numRealQMAtoms]),
-                                     np.arange(self.numRealQMAtoms, self.numQMAtoms)))
+        self.map2sorted = np.concatenate(
+            (np.argsort(self.qmIdx[0:self.numRealQMAtoms]), np.arange(
+                self.numRealQMAtoms, self.numQMAtoms)))
         self.map2unsorted = np.argsort(self.map2sorted)
 
         # Pair-wise vectors between QM and MM atoms
-        self.rij = (self.qmPos[np.newaxis, :, :]
-                    - self.pntPos[0:self.numRPntChrgs, np.newaxis, :])
+        self.rij = (self.qmPos[np.newaxis, :, :] -
+                    self.pntPos[0:self.numRPntChrgs, np.newaxis, :])
         # Pair-wise distances between QM and MM atoms
         self.dij2 = np.sum(self.rij**2, axis=2)
         self.dij = np.sqrt(self.dij2)
 
         # Load unit cell information
         if self.pbc.lower() == 'yes':
-            if self.numAtoms != self.numRealQMAtoms+self.numRPntChrgs:
+            if self.numAtoms != self.numRealQMAtoms + self.numRPntChrgs:
                 raise ValueError("Unit cell is not complete.")
 
-            cellList = np.genfromtxt(fin, dtype=None, skip_header=1+self.numQMAtoms+self.numPntChrgs,
-                                     max_rows=4)
+            cellList = np.genfromtxt(
+                fin,
+                dtype=None,
+                skip_header=1 + self.numQMAtoms + self.numPntChrgs,
+                max_rows=4)
             self.cellOrigin = cellList[0]
             self.cellBasisVector1 = cellList[1]
             self.cellBasisVector2 = cellList[2]
             self.cellBasisVector3 = cellList[3]
 
-    def scale_charges(self, qmSwitchingType=None,
-                      qmCutoff=None, qmSwdist=None, **kwargs):
+    def scale_charges(self,
+                      qmSwitchingType=None,
+                      qmCutoff=None,
+                      qmSwdist=None,
+                      **kwargs):
         """Scale external point charges."""
         dij_min2 = self.dij2[:, 0:self.numRealQMAtoms].min(axis=1)
         self.dij_min2 = dij_min2
@@ -167,11 +180,11 @@ class QM(object):
             if qmCutoff is None:
                 raise ValueError("We need qmCutoff here.")
             qmCutoff2 = qmCutoff**2
-            self.pntScale = (1 - dij_min2/qmCutoff2)**2
-            self.pntScale_deriv = 4 * (1 - dij_min2/qmCutoff2) / qmCutoff2
-            self.pntScale_deriv = (self.pntScale_deriv[:, np.newaxis]
-                                   * (self.pntPos[0:self.numRPntChrgs]
-                                   - self.qmPos[dij_min_j]))
+            self.pntScale = (1 - dij_min2 / qmCutoff2)**2
+            self.pntScale_deriv = 4 * (1 - dij_min2 / qmCutoff2) / qmCutoff2
+            self.pntScale_deriv = (
+                self.pntScale_deriv[:, np.newaxis] *
+                (self.pntPos[0:self.numRPntChrgs] - self.qmPos[dij_min_j]))
         elif qmSwitchingType.lower() == 'switch':
             if qmCutoff is None or qmSwdist is None:
                 raise ValueError("We need qmCutoff and qmSwdist here.")
@@ -179,29 +192,31 @@ class QM(object):
                 raise ValueError("qmCutoff should be greater than qmSwdist.")
             qmCutoff2 = qmCutoff**2
             qmSwdist2 = qmSwdist**2
-            self.pntScale = ((dij_min2 - qmCutoff2)**2
-                             * (qmCutoff2 + 2*dij_min2 - 3*qmSwdist2)
-                             / (qmCutoff2 - qmSwdist2)**3
-                             * (dij_min2 >= qmSwdist2)
-                             + (dij_min2 < qmSwdist2))
-            self.pntScale_deriv = (12 * (dij_min2 - qmSwdist2)
-                                   * (qmCutoff2 - dij_min2)
-                                   / (qmCutoff2 - qmSwdist2)**3)
-            self.pntScale_deriv = (self.pntScale_deriv[:, np.newaxis]
-                                   * (self.pntPos[0:self.numRPntChrgs]
-                                   - self.qmPos[dij_min_j]))
+            self.pntScale = ((dij_min2 - qmCutoff2)**2 *
+                             (qmCutoff2 + 2 * dij_min2 - 3 * qmSwdist2) /
+                             (qmCutoff2 - qmSwdist2)**3 *
+                             (dij_min2 >= qmSwdist2) + (dij_min2 < qmSwdist2))
+            self.pntScale_deriv = (12 * (dij_min2 - qmSwdist2) *
+                                   (qmCutoff2 - dij_min2) /
+                                   (qmCutoff2 - qmSwdist2)**3)
+            self.pntScale_deriv = (
+                self.pntScale_deriv[:, np.newaxis] *
+                (self.pntPos[0:self.numRPntChrgs] - self.qmPos[dij_min_j]))
             self.pntScale_deriv *= (dij_min2 > qmSwdist2)[:, np.newaxis]
         elif qmSwitchingType.lower() == 'lrec':
             if qmCutoff is None:
                 raise ValueError("We need qmCutoff here.")
             scale = 1 - self.pntDist / qmCutoff
-            self.pntScale = 1 - (2*scale**3 - 3*scale**2 + 1)**2
-            self.pntScale_deriv = 12 * scale * (2*scale**3 - 3*scale**2 + 1) / qmCutoff**2
-            self.pntScale_deriv = (self.pntScale_deriv[:, np.newaxis]
-                                   * (self.pntPos[0:self.numRPntChrgs]
-                                   - self.qmPos[dij_min_j]))
+            self.pntScale = 1 - (2 * scale**3 - 3 * scale**2 + 1)**2
+            self.pntScale_deriv = 12 * scale * (
+                2 * scale**3 - 3 * scale**2 + 1) / qmCutoff**2
+            self.pntScale_deriv = (
+                self.pntScale_deriv[:, np.newaxis] *
+                (self.pntPos[0:self.numRPntChrgs] - self.qmPos[dij_min_j]))
         else:
-            raise ValueError("Only 'shift', 'switch', and 'lrec' are supported at the moment.")
+            raise ValueError(
+                "Only 'shift', 'switch', and 'lrec' are supported at the moment."
+            )
 
         # Just to be safe
         self.pntScale *= (self.pntDist < qmCutoff)
@@ -210,8 +225,14 @@ class QM(object):
         self.pntScale = np.append(self.pntScale, np.ones(self.numVPntChrgs))
         self.pntChrgsScld = self.pntChrgs * self.pntScale
 
-    def get_qmparams(self, method=None, basis=None, read_first='no',
-                     read_guess=None, calc_forces=None, pop=None, addparam=None):
+    def get_qmparams(self,
+                     method=None,
+                     basis=None,
+                     read_first='no',
+                     read_guess=None,
+                     calc_forces=None,
+                     pop=None,
+                     addparam=None):
         """Get the parameters for QM calculation."""
         if self.software.lower() == 'qchem':
             if method is not None:
@@ -265,7 +286,9 @@ class QM(object):
                 self.addparam = ''
 
         else:
-            raise ValueError("Only 'qchem', 'dftb+', and 'orca' are supported at the moment.")
+            raise ValueError(
+                "Only 'qchem', 'dftb+', and 'orca' are supported at the moment."
+            )
 
         if calc_forces is not None:
             self.calc_forces = calc_forces
@@ -328,34 +351,42 @@ class QM(object):
             elif self.pop == 'chelpg':
                 pop = '\nchelpg true'
 
-            with open(self.baseDir+"qchem.inp", "w") as f:
-                f.write(qmtmplt.gen_qmtmplt().substitute(jobtype=jobtype,
-                        method=self.method, basis=self.basis,
-                        read_guess=read_guess, pop=pop,
-                        addparam=self.addparam))
+            with open(self.baseDir + "qchem.inp", "w") as f:
+                f.write(qmtmplt.gen_qmtmplt().substitute(
+                    jobtype=jobtype,
+                    method=self.method,
+                    basis=self.basis,
+                    read_guess=read_guess,
+                    pop=pop,
+                    addparam=self.addparam))
                 f.write("$molecule\n")
                 f.write("%d %d\n" % (self.charge, self.mult))
 
                 for i in range(self.numQMAtoms):
-                    f.write("".join(["%3s" % qmElmntsSorted[i],
-                                     "%22.14e" % qmPosSorted[i, 0],
-                                     "%22.14e" % qmPosSorted[i, 1],
-                                     "%22.14e" % qmPosSorted[i, 2], "\n"]))
+                    f.write("".join([
+                        "%3s" % qmElmntsSorted[i], "%22.14e" % qmPosSorted[
+                            i, 0], "%22.14e" % qmPosSorted[i, 1], "%22.14e" %
+                        qmPosSorted[i, 2], "\n"
+                    ]))
                 f.write("$end" + "\n\n")
 
                 f.write("$external_charges\n")
                 for i in range(self.numPntChrgs):
-                    f.write("".join(["%22.14e" % self.pntPos[i, 0],
-                                     "%22.14e" % self.pntPos[i, 1],
-                                     "%22.14e" % self.pntPos[i, 2],
-                                     " %22.14e" % self.pntChrgs4QM[i], "\n"]))
+                    f.write("".join([
+                        "%22.14e" % self.pntPos[i, 0], "%22.14e" % self.pntPos[
+                            i, 1], "%22.14e" % self.pntPos[i, 2], " %22.14e" %
+                        self.pntChrgs4QM[i], "\n"
+                    ]))
                 f.write("$end" + "\n")
 
         elif self.software.lower() == 'dftb+':
 
             listElmnts = np.unique(qmElmntsSorted).tolist()
-            outMaxAngularMomentum = "\n    ".join([i+" = "+qmtmplt.MaxAngularMomentum[i] for i in listElmnts])
-            outHubbardDerivs = "\n    ".join([i+" = "+qmtmplt.HubbardDerivs[i] for i in listElmnts])
+            outMaxAngularMomentum = "\n    ".join([
+                i + " = " + qmtmplt.MaxAngularMomentum[i] for i in listElmnts
+            ])
+            outHubbardDerivs = "\n    ".join(
+                [i + " = " + qmtmplt.HubbardDerivs[i] for i in listElmnts])
 
             if self.calc_forces.lower() == 'yes':
                 calcforces = 'Yes'
@@ -367,36 +398,44 @@ class QM(object):
             elif self.read_guess.lower() == 'no':
                 read_guess = 'No'
 
-            with open(self.baseDir+"dftb_in.hsd", 'w') as f:
-                f.write(qmtmplt.gen_qmtmplt().substitute(charge=self.charge,
-                        numPntChrgs=self.numPntChrgs, read_guess=read_guess,
-                        calcforces=calcforces,
-                        MaxAngularMomentum=outMaxAngularMomentum,
-                        HubbardDerivs=outHubbardDerivs))
-            with open(self.baseDir+"input_geometry.gen", 'w') as f:
+            with open(self.baseDir + "dftb_in.hsd", 'w') as f:
+                f.write(qmtmplt.gen_qmtmplt().substitute(
+                    charge=self.charge,
+                    numPntChrgs=self.numPntChrgs,
+                    read_guess=read_guess,
+                    calcforces=calcforces,
+                    MaxAngularMomentum=outMaxAngularMomentum,
+                    HubbardDerivs=outHubbardDerivs))
+            with open(self.baseDir + "input_geometry.gen", 'w') as f:
                 if self.pbc.lower() == 'no':
                     f.write(str(self.numQMAtoms) + " C" + "\n")
                 elif self.pbc.lower() == 'yes':
                     f.write(str(self.numQMAtoms) + " S" + "\n")
                 f.write(" ".join(listElmnts) + "\n")
                 for i in range(self.numQMAtoms):
-                    f.write("".join(["%6d" % (i+1),
-                                     "%4d" % (listElmnts.index(qmElmntsSorted[i])+1),
-                                     "%22.14e" % qmPosSorted[i, 0],
-                                     "%22.14e" % qmPosSorted[i, 1],
-                                     "%22.14e" % qmPosSorted[i, 2], "\n"]))
+                    f.write("".join([
+                        "%6d" % (i + 1), "%4d" % (
+                            listElmnts.index(qmElmntsSorted[i]) + 1), "%22.14e"
+                        % qmPosSorted[i, 0], "%22.14e" % qmPosSorted[
+                            i, 1], "%22.14e" % qmPosSorted[i, 2], "\n"
+                    ]))
                 if self.pbc.lower() == 'yes':
-                    f.write("".join(["%22.14e" % i for i in self.cellOrigin]) + "\n")
-                    f.write("".join(["%22.14e" % i for i in self.cellBasisVector1]) + "\n")
-                    f.write("".join(["%22.14e" % i for i in self.cellBasisVector2]) + "\n")
-                    f.write("".join(["%22.14e" % i for i in self.cellBasisVector3]) + "\n")
+                    f.write("".join(["%22.14e" % i
+                                     for i in self.cellOrigin]) + "\n")
+                    f.write("".join(
+                        ["%22.14e" % i for i in self.cellBasisVector1]) + "\n")
+                    f.write("".join(
+                        ["%22.14e" % i for i in self.cellBasisVector2]) + "\n")
+                    f.write("".join(
+                        ["%22.14e" % i for i in self.cellBasisVector3]) + "\n")
 
-            with open(self.baseDir+"charges.dat", 'w') as f:
+            with open(self.baseDir + "charges.dat", 'w') as f:
                 for i in range(self.numPntChrgs):
-                    f.write("".join(["%22.14e" % self.pntPos[i, 0],
-                                     "%22.14e" % self.pntPos[i, 1],
-                                     "%22.14e" % self.pntPos[i, 2],
-                                     " %22.14e" % self.pntChrgs4QM[i], "\n"]))
+                    f.write("".join([
+                        "%22.14e" % self.pntPos[i, 0], "%22.14e" % self.pntPos[
+                            i, 1], "%22.14e" % self.pntPos[i, 2], " %22.14e" %
+                        self.pntChrgs4QM[i], "\n"
+                    ]))
 
         elif self.software.lower() == 'orca':
 
@@ -417,12 +456,16 @@ class QM(object):
 
             nproc = get_nproc()
 
-            with open(self.baseDir + "orca.inp", 'w') as f:
+            with open(self.baseDir + "orca.inp", "w") as f:
                 f.write(qmtmplt.gen_qmtmplt().substitute(
-                        method=self.method, basis=self.basis,
-                        calcforces=calcforces, read_guess=read_guess,
-                        pop=pop, addparam=self.addparam, nproc=nproc,
-                        pntchrgspath="\"orca.pntchrg\""))
+                    method=self.method,
+                    basis=self.basis,
+                    calcforces=calcforces,
+                    read_guess=read_guess,
+                    pop=pop,
+                    addparam=self.addparam,
+                    nproc=nproc,
+                    pntchrgspath="\"orca.pntchrg\""))
                 f.write("%coords\n")
                 f.write("  CTyp xyz\n")
                 f.write("  Charge %d\n" % self.charge)
@@ -431,32 +474,37 @@ class QM(object):
                 f.write("  coords\n")
 
                 for i in range(self.numQMAtoms):
-                    f.write(" ".join(["%6s" % qmElmntsSorted[i],
-                                     "%22.14e" % qmPosSorted[i, 0],
-                                     "%22.14e" % qmPosSorted[i, 1],
-                                     "%22.14e" % qmPosSorted[i, 2], "\n"]))
+                    f.write(" ".join([
+                        "%6s" % qmElmntsSorted[i], "%22.14e" % qmPosSorted[
+                            i, 0], "%22.14e" % qmPosSorted[i, 1], "%22.14e" %
+                        qmPosSorted[i, 2], "\n"
+                    ]))
                 f.write("  end\n")
                 f.write("end\n")
 
             with open(self.baseDir + "orca.pntchrg", 'w') as f:
                 f.write("%d\n" % self.numPntChrgs)
                 for i in range(self.numPntChrgs):
-                    f.write("".join(["%22.14e " % self.pntChrgs4QM[i],
-                                     "%22.14e" % self.pntPos[i, 0],
-                                     "%22.14e" % self.pntPos[i, 1],
-                                     "%22.14e" % self.pntPos[i, 2], "\n"]))
+                    f.write("".join([
+                        "%22.14e " % self.pntChrgs4QM[i], "%22.14e" %
+                        self.pntPos[i, 0], "%22.14e" % self.pntPos[
+                            i, 1], "%22.14e" % self.pntPos[i, 2], "\n"
+                    ]))
 
             with open(self.baseDir + "orca.pntvpot.xyz", 'w') as f:
                 f.write("%d\n" % self.numPntChrgs)
                 for i in range(self.numPntChrgs):
-                    f.write("".join(["%22.14e" % (self.pntPos[i, 0] / BOHR2ANGSTROM),
-                                     "%22.14e" % (self.pntPos[i, 1] / BOHR2ANGSTROM),
-                                     "%22.14e" % (self.pntPos[i, 2] / BOHR2ANGSTROM), "\n"]))
+                    f.write("".join([
+                        "%22.14e" % (self.pntPos[i, 0] / BOHR2ANGSTROM),
+                        "%22.14e" % (self.pntPos[i, 1] / BOHR2ANGSTROM),
+                        "%22.14e" % (self.pntPos[i, 2] / BOHR2ANGSTROM), "\n"
+                    ]))
 
         elif self.software.lower() == 'qchem' and self.pbc.lower() == 'yes':
             raise ValueError("Not implemented yet.")
         else:
-            raise ValueError("Only 'qchem' and 'dftb+' are supported at the moment.")
+            raise ValueError(
+                "Only 'qchem' and 'dftb+' are supported at the moment.")
 
     def run(self, **kwargs):
         """Run QM calculation."""
@@ -506,9 +554,11 @@ class QM(object):
             self.qmEnergy = float(scf_energy) - float(cc_energy)
 
         elif self.software.lower() == 'dftb+':
-            self.qmEnergy = np.genfromtxt(self.baseDir + "results.tag",
-                                          dtype=float, skip_header=1,
-                                          max_rows=1)
+            self.qmEnergy = np.genfromtxt(
+                self.baseDir + "results.tag",
+                dtype=float,
+                skip_header=1,
+                max_rows=1)
 
         elif self.software.lower() == 'orca':
             with open(self.baseDir + "orca.out", 'r') as f:
@@ -525,17 +575,22 @@ class QM(object):
     def get_qmforces(self):
         """Get QM forces from output of QM calculation."""
         if self.software.lower() == 'qchem':
-            self.qmForces = -1 * np.genfromtxt(self.baseDir + "efield.dat",
-                                               dtype=float,
-                                               skip_header=self.numPntChrgs)
+            self.qmForces = -1 * np.genfromtxt(
+                self.baseDir + "efield.dat",
+                dtype=float,
+                skip_header=self.numPntChrgs)
         elif self.software.lower() == 'dftb+':
-            self.qmForces = np.genfromtxt(self.baseDir + "results.tag",
-                                          dtype=float, skip_header=5,
-                                          max_rows=self.numQMAtoms)
+            self.qmForces = np.genfromtxt(
+                self.baseDir + "results.tag",
+                dtype=float,
+                skip_header=5,
+                max_rows=self.numQMAtoms)
         elif self.software.lower() == 'orca':
-            self.qmForces = -1 * np.genfromtxt(self.baseDi r +"orca.engrad",
-                                               dtype=float, skip_header=11,
-                                               max_rows=self.numQMAtoms*3).reshape((self.numQMAtoms, 3))
+            self.qmForces = -1 * np.genfromtxt(
+                self.baseDir + "orca.engrad",
+                dtype=float,
+                skip_header=11,
+                max_rows=self.numQMAtoms * 3).reshape((self.numQMAtoms, 3))
         self.qmForces *= HARTREE2KCALMOL / BOHR2ANGSTROM
         # Unsort QM atoms
         self.qmForces = self.qmForces[self.map2unsorted]
@@ -544,20 +599,22 @@ class QM(object):
     def get_pntchrgforces(self):
         """Get external point charge forces from output of QM calculation."""
         if self.software.lower() == 'qchem':
-            self.pntChrgForces = (np.genfromtxt(self.baseDir + "efield.dat",
-                                                dtype=float,
-                                                max_rows=self.numPntChrgs)
-                                  * self.pntChrgs4QM[:, np.newaxis])
+            self.pntChrgForces = (np.genfromtxt(
+                self.baseDir + "efield.dat",
+                dtype=float,
+                max_rows=self.numPntChrgs) * self.pntChrgs4QM[:, np.newaxis])
         elif self.software.lower() == 'dftb+':
-            self.pntChrgForces = np.genfromtxt(self.baseDir + "results.tag",
-                                               dtype=float,
-                                               skip_header=self.numQMAtoms+6,
-                                               max_rows=self.numPntChrgs)
+            self.pntChrgForces = np.genfromtxt(
+                self.baseDir + "results.tag",
+                dtype=float,
+                skip_header=self.numQMAtoms + 6,
+                max_rows=self.numPntChrgs)
         elif self.software.lower() == 'orca':
-            self.pntChrgForces = -1 * np.genfromtxt(self.baseDir + "orca.pcgrad",
-                                                    dtype=float,
-                                                    skip_header=1,
-                                                    max_rows=self.numPntChrgs)
+            self.pntChrgForces = -1 * np.genfromtxt(
+                self.baseDir + "orca.pcgrad",
+                dtype=float,
+                skip_header=1,
+                max_rows=self.numPntChrgs)
         self.pntChrgForces *= HARTREE2KCALMOL / BOHR2ANGSTROM
         return self.pntChrgForces
 
@@ -568,17 +625,20 @@ class QM(object):
         elif self.software.lower() == 'dftb+':
             if self.numQMAtoms > 3:
                 self.qmChrgs = np.genfromtxt(
-                    self.baseDir + "results.tag", dtype=float,
-                    skip_header=(self.numQMAtoms + self.numPntChrgs
-                                 + int(np.ceil(self.numQMAtoms/3.)) + 14),
-                    max_rows=int(np.ceil(self.numQMAtoms/3.)-1.))
+                    self.baseDir + "results.tag",
+                    dtype=float,
+                    skip_header=(self.numQMAtoms + self.numPntChrgs +
+                                 int(np.ceil(self.numQMAtoms / 3.)) + 14),
+                    max_rows=int(np.ceil(self.numQMAtoms / 3.) - 1.))
             else:
                 self.qmChrgs = np.array([])
             self.qmChrgs = np.append(
                 self.qmChrgs.flatten(),
-                np.genfromtxt(self.baseDir + "results.tag", dtype=float,
-                    skip_header=(self.numQMAtoms + self.numPntChrgs
-                                 + int(np.ceil(self.numQMAtoms/3.))*2 + 13),
+                np.genfromtxt(
+                    self.baseDir + "results.tag",
+                    dtype=float,
+                    skip_header=(self.numQMAtoms + self.numPntChrgs +
+                                 int(np.ceil(self.numQMAtoms / 3.)) * 2 + 13),
                     max_rows=1).flatten())
         elif self.software.lower() == 'orca':
             if self.pop == 'mulliken':
@@ -607,15 +667,16 @@ class QM(object):
         elif self.software.lower() == 'dftb+':
             if not hasattr(self, 'qmChrgs'):
                 self.get_qmchrgs()
-            self.pntESP = (np.sum(self.qmChrgs[np.newaxis, :]
-                                  / self.dij, axis=1)
-                           * BOHR2ANGSTROM)
+            self.pntESP = (
+                np.sum(self.qmChrgs[np.newaxis, :] / self.dij,
+                       axis=1) * BOHR2ANGSTROM)
         if self.software.lower() == 'orca':
-            self.pntESP = np.genfromtxt(self.baseDir + "orca.pntvpot.out",
-                                        dtype=float,
-                                        skip_header=1,
-                                        usecols=3,
-                                        max_rows=self.numPntChrgs)
+            self.pntESP = np.genfromtxt(
+                self.baseDir + "orca.pntvpot.out",
+                dtype=float,
+                skip_header=1,
+                usecols=3,
+                max_rows=self.numPntChrgs)
         self.pntESP *= HARTREE2KCALMOL
         return self.pntESP
 
@@ -624,7 +685,8 @@ class QM(object):
         if not hasattr(self, 'pntESP'):
             self.get_pntesp()
 
-        fCorr = self.pntESP[0:self.numRPntChrgs] * self.pntChrgs[0:self.numRPntChrgs]
+        fCorr = self.pntESP[0:self.numRPntChrgs] * self.pntChrgs[
+            0:self.numRPntChrgs]
         fCorr = fCorr[:, np.newaxis] * self.pntScale_deriv
         self.pntChrgForces[0:self.numRPntChrgs] += fCorr
 
@@ -633,9 +695,12 @@ class QM(object):
 
     def corr_qmpntchrgs(self):
         """Correct forces and energy due to using partial charges for QM atoms."""
-        pntChrgsD = self.pntChrgs4MM[0:self.numRPntChrgs] - self.pntChrgs4QM[0:self.numRPntChrgs]
+        pntChrgsD = self.pntChrgs4MM[0:self.
+                                     numRPntChrgs] - self.pntChrgs4QM[0:self.
+                                                                      numRPntChrgs]
 
-        fCorr = -1 * KE * pntChrgsD[:, np.newaxis] * self.qmChrgs4MM[np.newaxis, :] / self.dij**3
+        fCorr = -1 * KE * pntChrgsD[:, np.newaxis] * self.qmChrgs4MM[
+            np.newaxis, :] / self.dij**3
         fCorr = fCorr[:, :, np.newaxis] * self.rij
 
         if self.numVPntChrgs > 0:
@@ -645,8 +710,12 @@ class QM(object):
         self.pntChrgForces[0:self.numRPntChrgs] += fCorr.sum(axis=1)
         self.qmForces -= fCorr.sum(axis=0)
 
-        if hasattr(self, 'pntChrgsScld') and self.pntChrgs4QM is not self.pntChrgs4MM:
-            fCorr = KE * self.pntChrgs[0:self.numRPntChrgs, np.newaxis] * self.qmChrgs4MM[np.newaxis, :] / self.dij
+        if hasattr(
+                self,
+                'pntChrgsScld') and self.pntChrgs4QM is not self.pntChrgs4MM:
+            fCorr = KE * self.pntChrgs[0:self.numRPntChrgs,
+                                       np.newaxis] * self.qmChrgs4MM[
+                                           np.newaxis, :] / self.dij
             if self.numVPntChrgs > 0:
                 for i in range(self.numMM1):
                     fCorr[self.mm2LocalIdx[i], self.qmHostLocalIdx[i]] = 0.0
@@ -660,7 +729,8 @@ class QM(object):
             for i in range(self.numRealQMAtoms):
                 self.qmForces[i] += fCorr[self.dij_min_j == i].sum(axis=0)
 
-        eCorr = KE * pntChrgsD[:, np.newaxis] * self.qmChrgs4MM[np.newaxis, :] / self.dij
+        eCorr = KE * pntChrgsD[:, np.newaxis] * self.qmChrgs4MM[
+            np.newaxis, :] / self.dij
 
         if self.numVPntChrgs > 0:
             for i in range(self.numMM1):
@@ -673,13 +743,18 @@ class QM(object):
         if self.numVPntChrgs > 0:
             if self.numVPntChrgsPerMM2 == 3:
                 for i in range(self.numMM2):
-                    self.pntChrgForces[self.mm2VIdx[i]] += self.pntChrgForces[self.numRPntChrgs + i*3]
+                    self.pntChrgForces[self.mm2VIdx[i]] += self.pntChrgForces[
+                        self.numRPntChrgs + i * 3]
 
-                    self.pntChrgForces[self.mm2VIdx[i]] += self.pntChrgForces[self.numRPntChrgs + i*3 + 1] * 0.94
-                    self.pntChrgForces[self.mm1VIdx[i]] += self.pntChrgForces[self.numRPntChrgs + i*3 + 1] * 0.06
+                    self.pntChrgForces[self.mm2VIdx[i]] += self.pntChrgForces[
+                        self.numRPntChrgs + i * 3 + 1] * 0.94
+                    self.pntChrgForces[self.mm1VIdx[i]] += self.pntChrgForces[
+                        self.numRPntChrgs + i * 3 + 1] * 0.06
 
-                    self.pntChrgForces[self.mm2VIdx[i]] += self.pntChrgForces[self.numRPntChrgs + i*3 + 2] * 1.06
-                    self.pntChrgForces[self.mm1VIdx[i]] += self.pntChrgForces[self.numRPntChrgs + i*3 + 2] * -0.06
+                    self.pntChrgForces[self.mm2VIdx[i]] += self.pntChrgForces[
+                        self.numRPntChrgs + i * 3 + 2] * 1.06
+                    self.pntChrgForces[self.mm1VIdx[i]] += self.pntChrgForces[
+                        self.numRPntChrgs + i * 3 + 2] * -0.06
 
                 self.pntChrgForces[self.numRPntChrgs:] = 0.
 
@@ -693,9 +768,9 @@ class QM(object):
         if self.numVPntChrgs > 0:
             if self.numVPntChrgsPerMM2 == 3:
                 for i in range(self.numMM2):
-                    mm1Pos = (self.pntPos[self.numRPntChrgs + i * 3 + 1]
-                              - self.pntPos[self.numRPntChrgs + i * 3]
-                              * 0.94) / 0.06
+                    mm1Pos = (self.pntPos[self.numRPntChrgs + i * 3 + 1] -
+                              self.pntPos[self.numRPntChrgs +
+                                          i * 3] * 0.94) / 0.06
                     mm2Pos = self.pntPos[self.numRPntChrgs + i * 3]
                     for j in range(self.numRPntChrgs):
                         if np.abs(mm1Pos - self.pntPos[j]).sum() < 0.001:
@@ -703,15 +778,20 @@ class QM(object):
                         if np.abs(mm2Pos - self.pntPos[j]).sum() < 0.001:
                             mm2Idx = j
 
-                    self.pntChrgForces[mm2Idx] += self.pntChrgForces[self.numRPntChrgs + i * 3]
+                    self.pntChrgForces[mm2Idx] += self.pntChrgForces[
+                        self.numRPntChrgs + i * 3]
                     self.pntChrgForces[self.numRPntChrgs + i * 3] = 0.
 
-                    self.pntChrgForces[mm2Idx] += self.pntChrgForces[self.numRPntChrgs + i * 3 + 1] * 0.94
-                    self.pntChrgForces[mm1Idx] += self.pntChrgForces[self.numRPntChrgs + i * 3 + 1] * 0.06
+                    self.pntChrgForces[mm2Idx] += self.pntChrgForces[
+                        self.numRPntChrgs + i * 3 + 1] * 0.94
+                    self.pntChrgForces[mm1Idx] += self.pntChrgForces[
+                        self.numRPntChrgs + i * 3 + 1] * 0.06
                     self.pntChrgForces[self.numRPntChrgs + i * 3 + 1] = 0.
 
-                    self.pntChrgForces[mm2Idx] += self.pntChrgForces[self.numRPntChrgs + i * 3 + 2] * 1.06
-                    self.pntChrgForces[mm1Idx] += self.pntChrgForces[self.numRPntChrgs + i * 3 + 2] * -0.06
+                    self.pntChrgForces[mm2Idx] += self.pntChrgForces[
+                        self.numRPntChrgs + i * 3 + 2] * 1.06
+                    self.pntChrgForces[mm1Idx] += self.pntChrgForces[
+                        self.numRPntChrgs + i * 3 + 2] * -0.06
                     self.pntChrgForces[self.numRPntChrgs + i * 3 + 2] = 0.
             elif self.numVPntChrgsPerMM2 == 2:
                 raise ValueError("Not implemented yet.")

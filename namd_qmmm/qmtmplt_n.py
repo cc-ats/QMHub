@@ -73,17 +73,15 @@ dftbewald_tmplt = """\
   }
 """
 
-HubbardDerivs = dict([('Br', '-0.0573'), ('C', '-0.1492'), ('Ca', '-0.0340'),
-                      ('Cl', '-0.0697'), ('F', '-0.1623'), ('H', '-0.1857'),
-                      ('I', '-0.0433'), ('K', '-0.0339'), ('Mg', '-0.02'),
-                      ('N', '-0.1535'), ('Na', '-0.0454'), ('O', '-0.1575'),
-                      ('P', '-0.14'), ('S', '-0.11'), ('Zn', '-0.03')])
+HubbardDerivs = dict([('Br', '-0.0573'), ('C', '-0.1492'), ('Ca', '-0.0340'), (
+    'Cl', '-0.0697'), ('F', '-0.1623'), ('H', '-0.1857'), ('I', '-0.0433'), (
+        'K', '-0.0339'), ('Mg', '-0.02'), ('N', '-0.1535'), ('Na', '-0.0454'),
+                      ('O', '-0.1575'), ('P', '-0.14'), ('S', '-0.11'), (
+                          'Zn', '-0.03')])
 
-MaxAngularMomentum = dict([('Br', 'd'), ('C', 'p'), ('Ca', 'p'),
-                           ('Cl', 'd'), ('F', 'p'), ('H', 's'),
-                           ('I', 'd'), ('K', 'p'), ('Mg', 'p'),
-                           ('N', 'p'), ('Na', 'p'), ('O', 'p'),
-                           ('P', 'd'), ('S', 'd'), ('Zn', 'd')])
+MaxAngularMomentum = dict([('Br', 'd'), ('C', 'p'), ('Ca', 'p'), ('Cl', 'd'), (
+    'F', 'p'), ('H', 's'), ('I', 'd'), ('K', 'p'), ('Mg', 'p'), ('N', 'p'), (
+        'Na', 'p'), ('O', 'p'), ('P', 'd'), ('S', 'd'), ('Zn', 'd')])
 
 orca_tmplt = """\
 ! $method $basis Grid4 TightSCF NOFINALGRID ${calcforces}${read_guess}${pop}${addparam}KeepDens
@@ -96,11 +94,13 @@ orca_tmplt = """\
 
 class QMTmplt(object):
     """Class for input templates for QM softwares."""
+
     def __init__(self, qmSoftware=None, qmPBC=None):
         if qmSoftware is not None:
             self.qmSoftware = qmSoftware
         else:
-            raise ValueError("Please choose 'qchem', 'dftb+', or 'orca' for qmSoftware.")
+            raise ValueError(
+                "Please choose 'qchem', 'dftb+', or 'orca' for qmSoftware.")
 
         if self.qmSoftware.lower() == 'qchem':
             pass
@@ -110,7 +110,9 @@ class QMTmplt(object):
         elif self.qmSoftware.lower() == 'orca':
             pass
         else:
-            raise ValueError("Only 'qchem', 'dftb+', and 'orca' are supported at the moment.")
+            raise ValueError(
+                "Only 'qchem', 'dftb+', and 'orca' are supported at the moment."
+            )
 
         if qmPBC is not None:
             self.qmPBC = qmPBC
@@ -126,9 +128,12 @@ class QMTmplt(object):
                 raise ValueError("Not implemented yet.")
         elif self.qmSoftware.lower() == 'dftb+':
             if self.qmPBC.lower() == 'no':
-                return Template(Template(dftb_tmplt).safe_substitute(KPointsAndWeights=''))
+                return Template(
+                    Template(dftb_tmplt).safe_substitute(KPointsAndWeights=''))
             if self.qmPBC.lower() == 'yes':
-                return Template(Template(dftb_tmplt).safe_substitute(KPointsAndWeights=dftbewald_tmplt))
+                return Template(
+                    Template(dftb_tmplt).safe_substitute(
+                        KPointsAndWeights=dftbewald_tmplt))
         if self.qmSoftware.lower() == 'orca':
             if self.qmPBC.lower() == 'no':
                 return Template(orca_tmplt)
@@ -139,19 +144,24 @@ class QMTmplt(object):
 if __name__ == "__main__":
     qmtmplt = QMTmplt('qchem', 'no')
     print(qmtmplt.gen_qmtmplt().safe_substitute(
-              jobtype='force', method='hf', basis='6-31g',
-              read_guess='\nscf_guess read', pop='\nchelpg true',
-              addparam='esp_charges true\n'))
+        jobtype='force',
+        method='hf',
+        basis='6-31g',
+        read_guess='\nscf_guess read',
+        pop='\nchelpg true',
+        addparam='esp_charges true\n'))
     qmtmplt = QMTmplt('dftb+', 'no')
     print(qmtmplt.gen_qmtmplt().safe_substitute(
-              charge=0, numPntChrgs=1000, read_guess='No',
-              calcforces='Yes'))
+        charge=0, numPntChrgs=1000, read_guess='No', calcforces='Yes'))
     qmtmplt = QMTmplt('dftb+', 'yes')
     print(qmtmplt.gen_qmtmplt().safe_substitute(
-              charge=0, numPntChrgs=1000, read_guess='No',
-              calcforces='Yes'))
+        charge=0, numPntChrgs=1000, read_guess='No', calcforces='Yes'))
     qmtmplt = QMTmplt('orca', 'no')
     print(qmtmplt.gen_qmtmplt().safe_substitute(
-              method='HF', basis='6-31G', calcforces='EnGrad ',
-              read_guess='NoAutoStart ', pop='CHELPG ',
-              addparam='MAYER ', nproc='8'))
+        method='HF',
+        basis='6-31G',
+        calcforces='EnGrad ',
+        read_guess='NoAutoStart ',
+        pop='CHELPG ',
+        addparam='MAYER ',
+        nproc='8'))

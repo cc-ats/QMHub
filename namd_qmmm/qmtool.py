@@ -533,7 +533,7 @@ class QM(object):
                                           dtype=float, skip_header=5,
                                           max_rows=self.numQMAtoms)
         elif self.software.lower() == 'orca':
-            self.qmForces = -1 * np.genfromtxt(self.baseDi r +"orca.engrad",
+            self.qmForces = -1 * np.genfromtxt(self.baseDir +"orca.engrad",
                                                dtype=float, skip_header=11,
                                                max_rows=self.numQMAtoms*3).reshape((self.numQMAtoms, 3))
         self.qmForces *= HARTREE2KCALMOL / BOHR2ANGSTROM

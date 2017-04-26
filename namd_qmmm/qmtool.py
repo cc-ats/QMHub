@@ -143,7 +143,7 @@ class QM(object):
         self.dij = np.sqrt(self.dij2)
 
         # Load unit cell information
-        if self.pbc.lower() == 'yes':
+        if self.pbc:
             if self.numAtoms != self.numRealQMAtoms+self.numRPntChrgs:
                 raise ValueError("Unit cell is not complete.")
 
@@ -210,8 +210,9 @@ class QM(object):
         self.pntScale = np.append(self.pntScale, np.ones(self.numVPntChrgs))
         self.pntChrgsScld = self.pntChrgs * self.pntScale
 
-    def get_qmparams(self, method=None, basis=None, read_first='no',
-                     read_guess=None, calc_forces=None, pop=None, addparam=None):
+    def get_qmparams(self, method=None, basis=None, skfpath=None,
+                     read_first=False, read_guess=None, calc_forces=None,
+                     addparam=None):
         """Get the parameters for QM calculation."""
         if self.software.lower() == 'qchem':
             if method is not None:
@@ -224,21 +225,11 @@ class QM(object):
             else:
                 raise ValueError("Please set basis for Q-Chem.")
 
-            if pop is not None:
-                self.pop = pop
-            elif not hasattr(self, 'pop'):
-                self.pop = 'mulliken'
-
-            if addparam is not None:
-                if isinstance(addparam, list):
-                    self.addparam = "".join(["%s\n" % i for i in addparam])
-                else:
-                    self.addparam = addparam + '\n'
-            else:
-                self.addparam = ''
-
         elif self.software.lower() == 'dftb+':
-            pass
+            if skfpath is not None:
+                self.skfpath = skfpath
+            else:
+                raise ValueError("Please set skfpath for DFTB+.")
 
         elif self.software.lower() == 'orca':
             if method is not None:
@@ -251,36 +242,25 @@ class QM(object):
             else:
                 raise ValueError("Please set basis for ORCA.")
 
-            if pop is not None:
-                self.pop = pop
-            elif not hasattr(self, 'pop'):
-                self.pop = 'mulliken'
-
-            if addparam is not None:
-                if isinstance(addparam, list):
-                    self.addparam = "".join(["%s " % i for i in addparam])
-                else:
-                    self.addparam = addparam + " "
-            else:
-                self.addparam = ''
-
         else:
             raise ValueError("Only 'qchem', 'dftb+', and 'orca' are supported at the moment.")
 
         if calc_forces is not None:
             self.calc_forces = calc_forces
         elif not hasattr(self, 'calc_forces'):
-            self.calc_forces = 'yes'
+            self.calc_forces = True
 
         self.read_first = read_first
 
         if read_guess is not None:
-            if self.stepNum == 0 and self.read_first.lower() == 'no':
-                self.read_guess = 'no'
+            if self.stepNum == 0 and not self.read_first:
+                self.read_guess = False
             else:
                 self.read_guess = read_guess
         else:
-            self.read_guess = 'no'
+            self.read_guess = False
+
+        self.addparam = addparam
 
     def get_nproc(self):
         """Get the number of processes for QM calculation."""
@@ -309,30 +289,30 @@ class QM(object):
         qmPosSorted = self.qmPos[self.map2sorted]
         qmIdxSorted = self.qmIdx[self.map2sorted]
 
-        if self.software.lower() == 'qchem' and self.pbc.lower() == 'no':
+        if self.software.lower() == 'qchem' and not self.pbc:
 
-            if self.calc_forces.lower() == 'yes':
+            if self.calc_forces:
                 jobtype = 'force'
-            elif self.calc_forces.lower() == 'no':
+            else:
                 jobtype = 'sp'
 
-            if self.read_guess.lower() == 'yes':
-                read_guess = '\nscf_guess read'
-            elif self.read_guess.lower() == 'no':
+            if self.read_guess:
+                read_guess = 'scf_guess read\n'
+            else:
                 read_guess = ''
 
-            if self.pop == 'mulliken':
-                pop = ''
-            elif self.pop == 'esp':
-                pop = '\nesp_charges true'
-            elif self.pop == 'chelpg':
-                pop = '\nchelpg true'
+            if self.addparam is not None:
+                if isinstance(self.addparam, list):
+                    addparam = "".join(["%s\n" % i for i in self.addparam])
+                else:
+                    addparam = self.addparam + '\n'
+            else:
+                addparam = ''
 
             with open(self.baseDir+"qchem.inp", "w") as f:
                 f.write(qmtmplt.gen_qmtmplt().substitute(jobtype=jobtype,
                         method=self.method, basis=self.basis,
-                        read_guess=read_guess, pop=pop,
-                        addparam=self.addparam))
+                        read_guess=read_guess, addparam=addparam))
                 f.write("$molecule\n")
                 f.write("%d %d\n" % (self.charge, self.mult))
 
@@ -357,27 +337,33 @@ class QM(object):
             outMaxAngularMomentum = "\n    ".join([i+" = "+qmtmplt.MaxAngularMomentum[i] for i in listElmnts])
             outHubbardDerivs = "\n    ".join([i+" = "+qmtmplt.HubbardDerivs[i] for i in listElmnts])
 
-            if self.calc_forces.lower() == 'yes':
+            if self.calc_forces:
                 calcforces = 'Yes'
-            elif self.calc_forces.lower() == 'no':
+            else:
                 calcforces = 'No'
 
-            if self.read_guess.lower() == 'yes':
+            if self.read_guess:
                 read_guess = 'Yes'
-            elif self.read_guess.lower() == 'no':
+            else:
                 read_guess = 'No'
+
+            if self.addparam is not None:
+                addparam = self.addparam
+            else:
+                addparam = ''
 
             with open(self.baseDir+"dftb_in.hsd", 'w') as f:
                 f.write(qmtmplt.gen_qmtmplt().substitute(charge=self.charge,
                         numPntChrgs=self.numPntChrgs, read_guess=read_guess,
-                        calcforces=calcforces,
+                        calcforces=calcforces, skfpath=self.skfpath,
                         MaxAngularMomentum=outMaxAngularMomentum,
-                        HubbardDerivs=outHubbardDerivs))
+                        HubbardDerivs=outHubbardDerivs,
+                        addparam=addparam))
             with open(self.baseDir+"input_geometry.gen", 'w') as f:
-                if self.pbc.lower() == 'no':
-                    f.write(str(self.numQMAtoms) + " C" + "\n")
-                elif self.pbc.lower() == 'yes':
+                if self.pbc:
                     f.write(str(self.numQMAtoms) + " S" + "\n")
+                else:
+                    f.write(str(self.numQMAtoms) + " C" + "\n")
                 f.write(" ".join(listElmnts) + "\n")
                 for i in range(self.numQMAtoms):
                     f.write("".join(["%6d" % (i+1),
@@ -385,7 +371,7 @@ class QM(object):
                                      "%22.14e" % qmPosSorted[i, 0],
                                      "%22.14e" % qmPosSorted[i, 1],
                                      "%22.14e" % qmPosSorted[i, 2], "\n"]))
-                if self.pbc.lower() == 'yes':
+                if self.pbc:
                     f.write("".join(["%22.14e" % i for i in self.cellOrigin]) + "\n")
                     f.write("".join(["%22.14e" % i for i in self.cellBasisVector1]) + "\n")
                     f.write("".join(["%22.14e" % i for i in self.cellBasisVector2]) + "\n")
@@ -400,28 +386,31 @@ class QM(object):
 
         elif self.software.lower() == 'orca':
 
-            if self.calc_forces.lower() == 'yes':
+            if self.calc_forces:
                 calcforces = 'EnGrad '
-            elif self.calc_forces.lower() == 'no':
+            else:
                 calcforces = ''
 
-            if self.read_guess.lower() == 'yes':
+            if self.read_guess:
                 read_guess = ''
-            elif self.read_guess.lower() == 'no':
+            else:
                 read_guess = 'NoAutoStart '
 
-            if self.pop == 'mulliken':
-                pop = ''
-            elif self.pop == 'chelpg':
-                pop = 'CHELPG '
+            if self.addparam is not None:
+                if isinstance(self.addparam, list):
+                    addparam = "".join(["%s " % i for i in self.addparam])
+                else:
+                    addparam = self.addparam + " "
+            else:
+                addparam = ''
 
-            nproc = get_nproc()
+            nproc = self.get_nproc()
 
             with open(self.baseDir + "orca.inp", 'w') as f:
                 f.write(qmtmplt.gen_qmtmplt().substitute(
                         method=self.method, basis=self.basis,
                         calcforces=calcforces, read_guess=read_guess,
-                        pop=pop, addparam=self.addparam, nproc=nproc,
+                        addparam=addparam, nproc=nproc,
                         pntchrgspath="\"orca.pntchrg\""))
                 f.write("%coords\n")
                 f.write("  CTyp xyz\n")
@@ -453,7 +442,7 @@ class QM(object):
                                      "%22.14e" % (self.pntPos[i, 1] / BOHR2ANGSTROM),
                                      "%22.14e" % (self.pntPos[i, 2] / BOHR2ANGSTROM), "\n"]))
 
-        elif self.software.lower() == 'qchem' and self.pbc.lower() == 'yes':
+        elif self.software.lower() == 'qchem' and self.pbc:
             raise ValueError("Not implemented yet.")
         else:
             raise ValueError("Only 'qchem' and 'dftb+' are supported at the moment.")
@@ -464,14 +453,14 @@ class QM(object):
         if not hasattr(self, 'baseDir'):
             self.gen_input(**kwargs)
 
-        nproc = get_nproc()
+        nproc = self.get_nproc()
 
         cmdline = "cd " + self.baseDir + "; "
 
         if self.software.lower() == 'qchem':
             cmdline += "qchem -nt %d qchem.inp qchem.out save > qchem_run.log" % nproc
 
-            if self.stepNum == 0 and self.read_first.lower() == 'no':
+            if self.stepNum == 0 and not self.read_first:
                 if 'QCSCRATCH' in os.environ:
                     qcsave = os.environ['QCSCRATCH'] + "/save"
                     if os.path.isdir(qcsave):
@@ -533,7 +522,7 @@ class QM(object):
                                           dtype=float, skip_header=5,
                                           max_rows=self.numQMAtoms)
         elif self.software.lower() == 'orca':
-            self.qmForces = -1 * np.genfromtxt(self.baseDir +"orca.engrad",
+            self.qmForces = -1 * np.genfromtxt(self.baseDir + "orca.engrad",
                                                dtype=float, skip_header=11,
                                                max_rows=self.numQMAtoms*3).reshape((self.numQMAtoms, 3))
         self.qmForces *= HARTREE2KCALMOL / BOHR2ANGSTROM
@@ -562,9 +551,19 @@ class QM(object):
         return self.pntChrgForces
 
     def get_qmchrgs(self):
-        """Get QM atomic charges from output of QM calculation."""
+        """Get Mulliken charges from output of QM calculation."""
         if self.software.lower() == 'qchem':
-            self.qmChrgs = np.loadtxt(self.baseDir + "charges.dat")
+            with open(self.baseDir + "qchem.out", 'r') as f:
+                for line in f:
+                    if "Ground-State Mulliken Net Atomic Charges" in line:
+                        charges = []
+                        for i in range(3):
+                            line = next(f)
+                        for i in range(self.numQMAtoms):
+                            line = next(f)
+                            charges.append(float(line.split()[2]))
+                        break
+            self.qmChrgs = np.array(charges)
         elif self.software.lower() == 'dftb+':
             if self.numQMAtoms > 3:
                 self.qmChrgs = np.genfromtxt(
@@ -581,13 +580,9 @@ class QM(object):
                                  + int(np.ceil(self.numQMAtoms/3.))*2 + 13),
                     max_rows=1).flatten())
         elif self.software.lower() == 'orca':
-            if self.pop == 'mulliken':
-                beg = "MULLIKEN ATOMIC CHARGES"
-            elif self.pop == 'chelpg':
-                beg = "CHELPG Charges"
             with open(self.baseDir + "orca.out", 'r') as f:
                 for line in f:
-                    if beg in line:
+                    if "MULLIKEN ATOMIC CHARGES" in line:
                         charges = []
                         line = next(f)
                         for i in range(self.numQMAtoms):
@@ -619,8 +614,8 @@ class QM(object):
         self.pntESP *= HARTREE2KCALMOL
         return self.pntESP
 
-    def corr_pntchrgscale(self):
-        """Correct forces due to scaling external point charges."""
+    def corr_elecembed(self):
+        """Correct forces due to scaling external point charges in Electrostatic Embedding."""
         if not hasattr(self, 'pntESP'):
             self.get_pntesp()
 
@@ -631,8 +626,8 @@ class QM(object):
         for i in range(self.numRealQMAtoms):
             self.qmForces[i] -= fCorr[self.dij_min_j == i].sum(axis=0)
 
-    def corr_qmpntchrgs(self):
-        """Correct forces and energy due to using partial charges for QM atoms."""
+    def corr_mechembed(self):
+        """Correct forces and energy due to mechanical embedding."""
         pntChrgsD = self.pntChrgs4MM[0:self.numRPntChrgs] - self.pntChrgs4QM[0:self.numRPntChrgs]
 
         fCorr = -1 * KE * pntChrgsD[:, np.newaxis] * self.qmChrgs4MM[np.newaxis, :] / self.dij**3
@@ -645,7 +640,7 @@ class QM(object):
         self.pntChrgForces[0:self.numRPntChrgs] += fCorr.sum(axis=1)
         self.qmForces -= fCorr.sum(axis=0)
 
-        if hasattr(self, 'pntChrgsScld') and self.pntChrgs4QM is not self.pntChrgs4MM:
+        if hasattr(self, 'pntChrgsScld'):
             fCorr = KE * self.pntChrgs[0:self.numRPntChrgs, np.newaxis] * self.qmChrgs4MM[np.newaxis, :] / self.dij
             if self.numVPntChrgs > 0:
                 for i in range(self.numMM1):
@@ -722,8 +717,8 @@ class QM(object):
 if __name__ == "__main__":
     import sys
     qchem = QM(sys.argv[1], 'qchem', 0, 1)
-    qchem.get_qmparams(method='hf', basis='6-31g', pop='mulliken')
+    qchem.get_qmparams(method='hf', basis='6-31g')
     qchem.gen_input()
     dftb = QM(sys.argv[1], 'dftb+', 0, 1)
-    dftb.get_qmparams(read_guess='No')
+    dftb.get_qmparams(read_guess=False)
     dftb.gen_input()

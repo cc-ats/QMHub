@@ -2,17 +2,16 @@ from string import Template
 
 qc_tmplt = """\
 $$rem
-jobtype $jobtype
+jobtype ${jobtype}
 scf_convergence 8
-method $method
-basis $basis\
-$read_guess
+method ${method}
+basis ${basis}
+${read_guess}\
 maxscf 200
 qm_mm true
-qmmm_charges true\
-$pop
+qmmm_charges true
 igdefield 1
-$addparam\
+${addparam}\
 $$end
 
 """
@@ -27,20 +26,20 @@ Hamiltonian = DFTB {
   SCCTolerance = 1e-9
   MaxSCCIterations = 200
   MaxAngularMomentum = {
-    $MaxAngularMomentum
+    ${MaxAngularMomentum}
   }
   Charge = $charge
   SlaterKosterFiles = Type2FileNames {
-    Prefix = "/home/panxl/dftb/3ob-3-1/"
+    Prefix = "${skfpath}"
     Separator = "-"
     Suffix = ".skf"
     LowerCaseTypeName = No
   }
-  ReadInitialCharges = $read_guess
+  ReadInitialCharges = ${read_guess}
   ElectricField = {
     PointCharges = {
       CoordsAndCharges [Angstrom] = DirectRead {
-        Records = $numPntChrgs
+        Records = ${numPntChrgs}
         File = "charges.dat" }
     }
   }
@@ -49,9 +48,9 @@ Hamiltonian = DFTB {
   DampXHExponent = 4.00
   ThirdOrderFull = Yes
   HubbardDerivs = {
-    $HubbardDerivs
+    ${HubbardDerivs}
   }
-$KPointsAndWeights\
+${KPointsAndWeights}\
 }
 
 Options {
@@ -60,8 +59,9 @@ Options {
 
 Analysis {
   WriteBandOut = No
-  CalculateForces = $calcforces
+  CalculateForces = ${calcforces}
 }
+${addparam}\
 """
 
 dftbewald_tmplt = """\
@@ -86,17 +86,30 @@ MaxAngularMomentum = dict([('Br', 'd'), ('C', 'p'), ('Ca', 'p'),
                            ('P', 'd'), ('S', 'd'), ('Zn', 'd')])
 
 orca_tmplt = """\
-! $method $basis Grid4 TightSCF NOFINALGRID ${calcforces}${read_guess}${pop}${addparam}KeepDens
+! ${method} ${basis} Grid4 TightSCF NOFINALGRID ${calcforces}${read_guess}${addparam}KeepDens
 %output PrintLevel Mini Print[ P_Mulliken ] 1 Print[P_AtCharges_M] 1 end
-%pal nprocs $nproc end
-%pointcharges $pntchrgspath
+%pal nprocs ${nproc} end
+%pointcharges ${pntchrgspath}
 
 """
 
 
 class QMTmplt(object):
-    """Class for input templates for QM softwares."""
+    """Input templates for QM softwares."""
+
     def __init__(self, qmSoftware=None, qmPBC=None):
+        """Input templates for QM softwares.
+
+        Parameters
+        ----------
+        qmSoftware : str
+            Software to do the QM calculation
+
+        qmPBC : bool
+           If periodic boundary conditions will be used in the QM calculation
+
+        """
+
         if qmSoftware is not None:
             self.qmSoftware = qmSoftware
         else:
@@ -115,43 +128,43 @@ class QMTmplt(object):
         if qmPBC is not None:
             self.qmPBC = qmPBC
         else:
-            raise ValueError("Please choose 'yes' or 'no' for 'qmPBC'.")
+            raise ValueError("Please choose True or False for 'qmPBC'.")
 
     def gen_qmtmplt(self):
         """Generare input templates for QM softwares."""
         if self.qmSoftware.lower() == 'qchem':
-            if self.qmPBC.lower() == 'no':
-                return Template(qc_tmplt)
-            if self.qmPBC.lower() == 'yes':
+            if self.qmPBC:
                 raise ValueError("Not implemented yet.")
+            else:
+                return Template(qc_tmplt)
         elif self.qmSoftware.lower() == 'dftb+':
-            if self.qmPBC.lower() == 'no':
-                return Template(Template(dftb_tmplt).safe_substitute(KPointsAndWeights=''))
-            if self.qmPBC.lower() == 'yes':
+            if self.qmPBC:
                 return Template(Template(dftb_tmplt).safe_substitute(KPointsAndWeights=dftbewald_tmplt))
+            else:
+                return Template(Template(dftb_tmplt).safe_substitute(KPointsAndWeights=''))
         if self.qmSoftware.lower() == 'orca':
-            if self.qmPBC.lower() == 'no':
-                return Template(orca_tmplt)
-            if self.qmPBC.lower() == 'yes':
+            if self.qmPBC:
                 raise ValueError("Not supported.")
+            else:
+                return Template(orca_tmplt)
 
 
 if __name__ == "__main__":
-    qmtmplt = QMTmplt('qchem', 'no')
+    qmtmplt = QMTmplt('qchem', False)
     print(qmtmplt.gen_qmtmplt().safe_substitute(
               jobtype='force', method='hf', basis='6-31g',
-              read_guess='\nscf_guess read', pop='\nchelpg true',
-              addparam='esp_charges true\n'))
-    qmtmplt = QMTmplt('dftb+', 'no')
+              read_guess='scf_guess read\n',
+              addparam='chelpg true\n'))
+    qmtmplt = QMTmplt('dftb+', False)
     print(qmtmplt.gen_qmtmplt().safe_substitute(
               charge=0, numPntChrgs=1000, read_guess='No',
-              calcforces='Yes'))
-    qmtmplt = QMTmplt('dftb+', 'yes')
+              calcforces='Yes', addparam=''))
+    qmtmplt = QMTmplt('dftb+', True)
     print(qmtmplt.gen_qmtmplt().safe_substitute(
               charge=0, numPntChrgs=1000, read_guess='No',
-              calcforces='Yes'))
-    qmtmplt = QMTmplt('orca', 'no')
+              calcforces='Yes', addparam=''))
+    qmtmplt = QMTmplt('orca', False)
     print(qmtmplt.gen_qmtmplt().safe_substitute(
               method='HF', basis='6-31G', calcforces='EnGrad ',
-              read_guess='NoAutoStart ', pop='CHELPG ',
-              addparam='MAYER ', nproc='8'))
+              read_guess='NoAutoStart ',
+              addparam='CHELPG ', nproc='8'))

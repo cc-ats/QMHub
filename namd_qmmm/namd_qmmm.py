@@ -212,3 +212,8 @@ if __name__ == "__main__":
                 elecMode='mmewald', qmSwitchingType='shift', qmCutoff=12.)
     orca.run_qm(method='HF', basis='6-31G')
     orca.parse_output()
+
+    mopac = QMMM(sys.argv[1], qmSoftware='mopac', qmCharge=0, qmMult=1,
+                elecMode='mmewald', qmSwitchingType='shift', qmCutoff=12.)
+    mopac.run_qm(method='PM7')
+    mopac.parse_output()

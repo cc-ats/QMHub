@@ -210,6 +210,14 @@ class QM(object):
         self.pntScale = np.append(self.pntScale, np.ones(self.numVPntChrgs))
         self.pntChrgsScld = self.pntChrgs * self.pntScale
 
+    def get_qmesp(self):
+        """Get electrostatic potential due to external point charges."""
+        self.qmESP = (np.sum(self.pntChrgs4QM[:, np.newaxis]
+                                / self.dij, axis=0)
+                        * BOHR2ANGSTROM)
+        self.qmESP *= HARTREE2KCALMOL
+        return self.qmESP
+
     def get_qmparams(self, method=None, basis=None, skfpath=None,
                      read_first=False, read_guess=None, calc_forces=None,
                      addparam=None):
@@ -242,8 +250,14 @@ class QM(object):
             else:
                 raise ValueError("Please set basis for ORCA.")
 
+        elif self.software.lower() == 'mopac':
+            if method is not None:
+                self.method = method
+            else:
+                raise ValueError("Please set method for MOPAC.")
+
         else:
-            raise ValueError("Only 'qchem', 'dftb+', and 'orca' are supported at the moment.")
+            raise ValueError("Only 'qchem', 'dftb+', 'orca', and 'mopac' are supported at the moment.")
 
         if calc_forces is not None:
             self.calc_forces = calc_forces
@@ -288,6 +302,10 @@ class QM(object):
         qmElmntsSorted = self.qmElmnts[self.map2sorted]
         qmPosSorted = self.qmPos[self.map2sorted]
         qmIdxSorted = self.qmIdx[self.map2sorted]
+
+        if self.software == 'mopac':
+            self.get_qmesp()
+            qmESPSorted = self.qmESP[self.map2sorted]
 
         if self.software.lower() == 'qchem' and not self.pbc:
 
@@ -442,6 +460,45 @@ class QM(object):
                                      "%22.14e" % (self.pntPos[i, 1] / BOHR2ANGSTROM),
                                      "%22.14e" % (self.pntPos[i, 2] / BOHR2ANGSTROM), "\n"]))
 
+        elif self.software.lower() == 'mopac':
+
+            if self.calc_forces:
+                calcforces = 'GRAD '
+            else:
+                calcforces = ''
+
+            if self.addparam is not None:
+                if isinstance(self.addparam, list):
+                    addparam = "".join([" %s" % i for i in self.addparam])
+                else:
+                    addparam = " " + self.addparam
+            else:
+                addparam = ''
+
+            nproc = self.get_nproc()
+
+            with open(self.baseDir+"mopac.mop", 'w') as f:
+                f.write(qmtmplt.gen_qmtmplt().substitute(method=self.method,
+                        charge=self.charge, calcforces=calcforces,
+                        addparam=addparam, nproc=nproc))
+                f.write("NAMD QM/MM\n\n")
+                for i in range(self.numQMAtoms):
+                    f.write(" ".join(["%6s" % qmElmntsSorted[i],
+                                     "%22.14e 1" % qmPosSorted[i, 0],
+                                     "%22.14e 1" % qmPosSorted[i, 1],
+                                     "%22.14e 1" % qmPosSorted[i, 2], "\n"]))
+
+            with open(self.baseDir+"mol.in", 'w') as f:
+                f.write("\n")
+                f.write("%d %d\n" % (self.numRealQMAtoms, self.numMM1))
+
+                for i in range(self.numQMAtoms):
+                    f.write(" ".join(["%6s" % qmElmntsSorted[i],
+                                     "%22.14e" % qmPosSorted[i, 0],
+                                     "%22.14e" % qmPosSorted[i, 1],
+                                     "%22.14e" % qmPosSorted[i, 2],
+                                     " %22.14e" % qmESPSorted[i], "\n"]))
+
         elif self.software.lower() == 'qchem' and self.pbc:
             raise ValueError("Not implemented yet.")
         else:
@@ -472,6 +529,9 @@ class QM(object):
         elif self.software.lower() == 'orca':
             cmdline += "orca orca.inp > orca.out; "
             cmdline += "orca_vpot orca.gbw orca.scfp orca.pntvpot.xyz orca.pntvpot.out >> orca.out"
+
+        elif self.software.lower() == 'mopac':
+            cmdline += "mopac mopac.mop 2> /dev/null"
 
         proc = sp.Popen(args=cmdline, shell=True)
         proc.wait()
@@ -508,6 +568,13 @@ class QM(object):
                         self.qmEnergy = float(line.split()[-1])
                         break
 
+        elif self.software.lower() == 'mopac':
+            with open(self.baseDir + "mopac.aux", 'r') as f:
+                for line in f:
+                    if "TOTAL_ENERGY" in line:
+                        self.qmEnergy = float(line[17:].replace("D", "E")) / 27.21138602
+                        break
+
         self.qmEnergy *= HARTREE2KCALMOL
         return self.qmEnergy
 
@@ -525,6 +592,18 @@ class QM(object):
             self.qmForces = -1 * np.genfromtxt(self.baseDir + "orca.engrad",
                                                dtype=float, skip_header=11,
                                                max_rows=self.numQMAtoms*3).reshape((self.numQMAtoms, 3))
+        elif self.software.lower() == 'mopac':
+            numLines = int(np.ceil(self.numQMAtoms * 3 / 10))
+            with open(self.baseDir + "mopac.aux", 'r') as f:
+                for line in f:
+                    if "GRADIENTS" in line:
+                        gradients = np.array([])
+                        for i in range(numLines):
+                            line = next(f)
+                            gradients = np.append(gradients, np.fromstring(line, sep=' '))
+                        break
+            self.qmForces = -1 * gradients.reshape(self.numQMAtoms, 3) / HARTREE2KCALMOL * BOHR2ANGSTROM
+
         self.qmForces *= HARTREE2KCALMOL / BOHR2ANGSTROM
         # Unsort QM atoms
         self.qmForces = self.qmForces[self.map2unsorted]
@@ -547,6 +626,14 @@ class QM(object):
                                                     dtype=float,
                                                     skip_header=1,
                                                     max_rows=self.numPntChrgs)
+        elif self.software.lower() == 'mopac':
+            if not hasattr(self, 'qmChrgs'):
+                self.get_qmchrgs()
+            forces = (-1 * self.pntChrgs4QM[:, np.newaxis] * self.qmChrgs[np.newaxis, :]
+                      / self.dij**3) * BOHR2ANGSTROM * BOHR2ANGSTROM
+            forces = forces[:, :, np.newaxis] * self.rij
+            self.pntChrgForces = forces.sum(axis=1)
+
         self.pntChrgForces *= HARTREE2KCALMOL / BOHR2ANGSTROM
         return self.pntChrgForces
 
@@ -590,6 +677,17 @@ class QM(object):
                             charges.append(float(line.split()[3]))
                         break
             self.qmChrgs = np.array(charges)
+        elif self.software.lower() == 'mopac':
+            numLines = int(np.ceil(self.numQMAtoms / 10))
+            with open(self.baseDir + "mopac.aux", 'r') as f:
+                for line in f:
+                    if "ATOM_CHARGES" in line:
+                        charges = np.array([])
+                        for i in range(numLines):
+                            line = next(f)
+                            charges = np.append(charges, np.fromstring(line, sep=' '))
+                        break
+            self.qmChrgs = charges
 
         # Unsort QM atoms
         self.qmChrgs = self.qmChrgs[self.map2unsorted]
@@ -599,7 +697,7 @@ class QM(object):
         """Get ESP at external point charges from output of QM calculation."""
         if self.software.lower() == 'qchem':
             self.pntESP = np.loadtxt(self.baseDir + "esp.dat")
-        elif self.software.lower() == 'dftb+':
+        elif self.software.lower() in {'dftb+', 'mopac'}:
             if not hasattr(self, 'qmChrgs'):
                 self.get_qmchrgs()
             self.pntESP = (np.sum(self.qmChrgs[np.newaxis, :]

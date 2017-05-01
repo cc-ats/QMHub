@@ -137,7 +137,7 @@ class QM(object):
 
         # Pair-wise vectors between QM and MM atoms
         self.rij = (self.qmPos[np.newaxis, :, :]
-                    - self.pntPos[0:self.numRPntChrgs, np.newaxis, :])
+                    - self.pntPos[:, np.newaxis, :])
         # Pair-wise distances between QM and MM atoms
         self.dij2 = np.sum(self.rij**2, axis=2)
         self.dij = np.sqrt(self.dij2)
@@ -157,9 +157,9 @@ class QM(object):
     def scale_charges(self, qmSwitchingType=None,
                       qmCutoff=None, qmSwdist=None, **kwargs):
         """Scale external point charges."""
-        dij_min2 = self.dij2[:, 0:self.numRealQMAtoms].min(axis=1)
+        dij_min2 = self.dij2[0:self.numRPntChrgs, 0:self.numRealQMAtoms].min(axis=1)
         self.dij_min2 = dij_min2
-        dij_min_j = self.dij2[:, 0:self.numRealQMAtoms].argmin(axis=1)
+        dij_min_j = self.dij2[0:self.numRPntChrgs, 0:self.numRealQMAtoms].argmin(axis=1)
         self.dij_min_j = dij_min_j
         self.pntDist = np.sqrt(self.dij_min2)
 
@@ -469,7 +469,7 @@ class QM(object):
         elif self.software.lower() == 'dftb+':
             cmdline += "export OMP_NUM_THREADS=%d; dftb+ > dftb.out" % nproc
 
-        if self.software.lower() == 'orca':
+        elif self.software.lower() == 'orca':
             cmdline += "orca orca.inp > orca.out; "
             cmdline += "orca_vpot orca.gbw orca.scfp orca.pntvpot.xyz orca.pntvpot.out >> orca.out"
 
@@ -605,7 +605,7 @@ class QM(object):
             self.pntESP = (np.sum(self.qmChrgs[np.newaxis, :]
                                   / self.dij, axis=1)
                            * BOHR2ANGSTROM)
-        if self.software.lower() == 'orca':
+        elif self.software.lower() == 'orca':
             self.pntESP = np.genfromtxt(self.baseDir + "orca.pntvpot.out",
                                         dtype=float,
                                         skip_header=1,
@@ -630,8 +630,9 @@ class QM(object):
         """Correct forces and energy due to mechanical embedding."""
         pntChrgsD = self.pntChrgs4MM[0:self.numRPntChrgs] - self.pntChrgs4QM[0:self.numRPntChrgs]
 
-        fCorr = -1 * KE * pntChrgsD[:, np.newaxis] * self.qmChrgs4MM[np.newaxis, :] / self.dij**3
-        fCorr = fCorr[:, :, np.newaxis] * self.rij
+        fCorr = (-1 * KE * pntChrgsD[:, np.newaxis] * self.qmChrgs4MM[np.newaxis, :]
+                 / self.dij[0:self.numRPntChrgs]**3)
+        fCorr = fCorr[:, :, np.newaxis] * self.rij[0:self.numRPntChrgs]
 
         if self.numVPntChrgs > 0:
             for i in range(self.numMM1):
@@ -641,7 +642,9 @@ class QM(object):
         self.qmForces -= fCorr.sum(axis=0)
 
         if hasattr(self, 'pntChrgsScld'):
-            fCorr = KE * self.pntChrgs[0:self.numRPntChrgs, np.newaxis] * self.qmChrgs4MM[np.newaxis, :] / self.dij
+            fCorr = (KE * self.pntChrgs[0:self.numRPntChrgs, np.newaxis]
+                     * self.qmChrgs4MM[np.newaxis, :]
+                     / self.dij[0:self.numRPntChrgs])
             if self.numVPntChrgs > 0:
                 for i in range(self.numMM1):
                     fCorr[self.mm2LocalIdx[i], self.qmHostLocalIdx[i]] = 0.0
@@ -655,7 +658,8 @@ class QM(object):
             for i in range(self.numRealQMAtoms):
                 self.qmForces[i] += fCorr[self.dij_min_j == i].sum(axis=0)
 
-        eCorr = KE * pntChrgsD[:, np.newaxis] * self.qmChrgs4MM[np.newaxis, :] / self.dij
+        eCorr = (KE * pntChrgsD[:, np.newaxis] * self.qmChrgs4MM[np.newaxis, :]
+                 / self.dij[0:self.numRPntChrgs])
 
         if self.numVPntChrgs > 0:
             for i in range(self.numMM1):

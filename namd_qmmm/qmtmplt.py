@@ -142,7 +142,7 @@ class QMTmplt(object):
                 return Template(Template(dftb_tmplt).safe_substitute(KPointsAndWeights=dftbewald_tmplt))
             else:
                 return Template(Template(dftb_tmplt).safe_substitute(KPointsAndWeights=''))
-        if self.qmSoftware.lower() == 'orca':
+        elif self.qmSoftware.lower() == 'orca':
             if self.qmPBC:
                 raise ValueError("Not supported.")
             else:

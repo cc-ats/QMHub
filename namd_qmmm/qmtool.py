@@ -4,12 +4,13 @@ import subprocess as sp
 import numpy as np
 from .qmtmplt import QMTmplt
 
-HARTREE2KCALMOL = 6.275094737775374e+02
-BOHR2ANGSTROM = 5.2917721067e-01
-KE = HARTREE2KCALMOL * BOHR2ANGSTROM
-
 
 class QM(object):
+
+    HARTREE2KCALMOL = 6.275094737775374e+02
+    BOHR2ANGSTROM = 5.2917721067e-01
+    KE = HARTREE2KCALMOL * BOHR2ANGSTROM
+
     def __init__(self, fin, software=None, charge=None, mult=None, pbc=None):
         """
         Creat a QM object.
@@ -128,7 +129,7 @@ class QM(object):
                 for i in range(self.numMM1):
                     self.mm2LocalIdx.append(self.mm2VIdx[self.mm1VIdx == self.mm1LocalIdx[i]])
             elif self.numVPntChrgsPerMM2 == 2:
-                raise ValueError("Not implemented yet.")
+                raise NotImplementedError()
 
         # Sort QM atoms
         self.map2sorted = np.concatenate((np.argsort(self.qmIdx[0:self.numRealQMAtoms]),
@@ -212,10 +213,8 @@ class QM(object):
 
     def get_qmesp(self):
         """Get electrostatic potential due to external point charges."""
-        self.qmESP = (np.sum(self.pntChrgs4QM[:, np.newaxis]
-                                / self.dij, axis=0)
-                        * BOHR2ANGSTROM)
-        self.qmESP *= HARTREE2KCALMOL
+        self.qmESP = (self.KE * np.sum(self.pntChrgs4QM[:, np.newaxis]
+                                       / self.dij, axis=0))
         return self.qmESP
 
     def get_qmparams(self, method=None, basis=None, skfpath=None,
@@ -500,7 +499,7 @@ class QM(object):
                                      " %22.14e" % qmESPSorted[i], "\n"]))
 
         elif self.software.lower() == 'qchem' and self.pbc:
-            raise ValueError("Not implemented yet.")
+            raise NotImplementedError()
         else:
             raise ValueError("Only 'qchem' and 'dftb+' are supported at the moment.")
 
@@ -728,7 +727,7 @@ class QM(object):
         """Correct forces and energy due to mechanical embedding."""
         pntChrgsD = self.pntChrgs4MM[0:self.numRPntChrgs] - self.pntChrgs4QM[0:self.numRPntChrgs]
 
-        fCorr = (-1 * KE * pntChrgsD[:, np.newaxis] * self.qmChrgs4MM[np.newaxis, :]
+        fCorr = (-1 * self.KE * pntChrgsD[:, np.newaxis] * self.qmChrgs4MM[np.newaxis, :]
                  / self.dij[0:self.numRPntChrgs]**3)
         fCorr = fCorr[:, :, np.newaxis] * self.rij[0:self.numRPntChrgs]
 
@@ -740,7 +739,7 @@ class QM(object):
         self.qmForces -= fCorr.sum(axis=0)
 
         if hasattr(self, 'pntChrgsScld'):
-            fCorr = (KE * self.pntChrgs[0:self.numRPntChrgs, np.newaxis]
+            fCorr = (self.KE * self.pntChrgs[0:self.numRPntChrgs, np.newaxis]
                      * self.qmChrgs4MM[np.newaxis, :]
                      / self.dij[0:self.numRPntChrgs])
             if self.numVPntChrgs > 0:
@@ -756,7 +755,7 @@ class QM(object):
             for i in range(self.numRealQMAtoms):
                 self.qmForces[i] += fCorr[self.dij_min_j == i].sum(axis=0)
 
-        eCorr = (KE * pntChrgsD[:, np.newaxis] * self.qmChrgs4MM[np.newaxis, :]
+        eCorr = (self.KE * pntChrgsD[:, np.newaxis] * self.qmChrgs4MM[np.newaxis, :]
                  / self.dij[0:self.numRPntChrgs])
 
         if self.numVPntChrgs > 0:
@@ -781,7 +780,7 @@ class QM(object):
                 self.pntChrgForces[self.numRPntChrgs:] = 0.
 
             elif self.numVPntChrgsPerMM2 == 2:
-                raise ValueError("Not implemented yet.")
+                raise NotImplementedError()
         else:
             pass
 
@@ -811,7 +810,7 @@ class QM(object):
                     self.pntChrgForces[mm1Idx] += self.pntChrgForces[self.numRPntChrgs + i * 3 + 2] * -0.06
                     self.pntChrgForces[self.numRPntChrgs + i * 3 + 2] = 0.
             elif self.numVPntChrgsPerMM2 == 2:
-                raise ValueError("Not implemented yet.")
+                raise NotImplementedError()
         else:
             pass
 

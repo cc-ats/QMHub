@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(name='namd_qmmm',
       version='2.12.1',
@@ -7,5 +7,5 @@ setup(name='namd_qmmm',
       author='Xiaoliang Pan',
       author_email='panxl@ou.edu',
       license='MIT',
-      packages=['namd_qmmm'],
+      packages=find_packages(),
       zip_safe=False)

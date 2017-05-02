@@ -1,8 +1,7 @@
 import os
 import sys
-import warnings
 import numpy as np
-from .qmtool import QM
+from .qmtools import *
 
 
 class QMMM(object):
@@ -28,7 +27,7 @@ class QMMM(object):
         else:
             raise ValueError("Only 'truncation', 'mmewald', and 'qmewald' are supported at the moment.")
 
-        self.QM = QM(fin, self.qmSoftware, self.qmCharge, self.qmMult, self.qmPBC)
+        self.QM = self.choose_qmtool(fin)
 
         if qmRefChrgs is not None:
             self.qmRefChrgs = qmRefChrgs
@@ -92,9 +91,16 @@ class QMMM(object):
         self.cmd = os.popen("ps -p %s -ocommand=" % self.pid).read().strip().split()
         self.cwd = os.popen("pwdx %s" % self.pid).read().strip().split()[1]
 
+    def choose_qmtool(self, fin):
+        QMTOOLS = [QChem, DFTB, ORCA, MOPAC]
+        for qmtool in QMTOOLS:
+            if qmtool.check_software(self.qmSoftware):
+                return qmtool(fin, self.qmCharge, self.qmMult, self.qmPBC)
+
     def run_qm(self, **kwargs):
         """Run QM calculation."""
         self.QM.get_qmparams(**kwargs)
+        self.QM.gen_input()
         self.QM.run()
         if self.QM.exitcode != 0:
             sys.exit(self.QM.exitcode)
@@ -193,27 +199,3 @@ class QMMM(object):
 
         if os.path.isfile(self.QM.fin):
             shutil.copyfile(self.QM.fin, self.QM.fin+"_"+str(idx))
-
-
-if __name__ == "__main__":
-    import sys
-
-    qchem = QMMM(sys.argv[1], qmSoftware='qchem', qmCharge=0, qmMult=1,
-                 elecMode='mmewald', qmSwitchingType='shift', qmCutoff=12.)
-    qchem.run_qm(method='hf', basis='6-31g')
-    qchem.parse_output()
-
-    dftb = QMMM(sys.argv[1], qmSoftware='dftb+', qmCharge=0, qmMult=1, 
-                elecMode='mmewald', qmSwitchingType='shift', qmCutoff=12.)
-    dftb.run_qm()
-    dftb.parse_output()
-
-    orca = QMMM(sys.argv[1], qmSoftware='orca', qmCharge=0, qmMult=1,
-                elecMode='mmewald', qmSwitchingType='shift', qmCutoff=12.)
-    orca.run_qm(method='HF', basis='6-31G')
-    orca.parse_output()
-
-    mopac = QMMM(sys.argv[1], qmSoftware='mopac', qmCharge=0, qmMult=1,
-                elecMode='mmewald', qmSwitchingType='shift', qmCutoff=12.)
-    mopac.run_qm(method='PM7')
-    mopac.parse_output()

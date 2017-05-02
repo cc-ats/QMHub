@@ -116,9 +116,9 @@ class QMTmplt(object):
         if qmSoftware is not None:
             self.qmSoftware = qmSoftware
         else:
-            raise ValueError("Please choose 'qchem', 'dftb+', 'orca', 'mopac' for qmSoftware.")
+            raise ValueError("Please choose 'q-chem', 'dftb+', 'orca', 'mopac' for qmSoftware.")
 
-        if self.qmSoftware.lower() == 'qchem':
+        if self.qmSoftware.lower() == 'q-chem':
             pass
         elif self.qmSoftware.lower() == 'dftb+':
             self.HubbardDerivs = HubbardDerivs
@@ -128,7 +128,7 @@ class QMTmplt(object):
         elif self.qmSoftware.lower() == 'mopac':
             pass
         else:
-            raise ValueError("Only 'qchem', 'dftb+', 'orca', and 'mopac' are supported at the moment.")
+            raise ValueError("Only 'q-chem', 'dftb+', 'orca', and 'mopac' are supported at the moment.")
 
         if qmPBC is not None:
             self.qmPBC = qmPBC
@@ -137,9 +137,9 @@ class QMTmplt(object):
 
     def gen_qmtmplt(self):
         """Generare input templates for QM softwares."""
-        if self.qmSoftware.lower() == 'qchem':
+        if self.qmSoftware.lower() == 'q-chem':
             if self.qmPBC:
-                raise ValueError("Not implemented yet.")
+                raise NotImplementedError()
             else:
                 return Template(qc_tmplt)
         elif self.qmSoftware.lower() == 'dftb+':
@@ -160,7 +160,7 @@ class QMTmplt(object):
 
 
 if __name__ == "__main__":
-    qmtmplt = QMTmplt('qchem', False)
+    qmtmplt = QMTmplt('q-chem', False)
     print(qmtmplt.gen_qmtmplt().safe_substitute(
               jobtype='force', method='hf', basis='6-31g',
               read_guess='scf_guess read\n',

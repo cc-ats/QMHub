@@ -1,7 +1,7 @@
 import os
 import sys
 import numpy as np
-from .qmtools import *
+from . import qmtools
 
 
 class QMMM(object):
@@ -92,8 +92,8 @@ class QMMM(object):
         self.cwd = os.popen("pwdx %s" % self.pid).read().strip().split()[1]
 
     def choose_qmtool(self, fin):
-        QMTOOLS = [QChem, DFTB, ORCA, MOPAC]
-        for qmtool in QMTOOLS:
+        for qmtool in qmtools.__all__:
+            qmtool = getattr(qmtools, qmtool)
             if qmtool.check_software(self.qmSoftware):
                 return qmtool(fin, self.qmCharge, self.qmMult, self.qmPBC)
 

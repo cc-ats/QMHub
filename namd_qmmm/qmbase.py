@@ -215,9 +215,12 @@ class QMBase(object):
 
     def get_qmesp(self):
         """Get electrostatic potential due to external point charges."""
-        self.qmESP = (self.KE * np.sum(self.pntChrgs4QM[:, np.newaxis]
-                                       / self.dij, axis=0))
-        return self.qmESP
+        if self.pbc:
+            raise NotImplementedError()
+        else:
+            self.qmESP = (self.KE * np.sum(self.pntChrgs4QM[:, np.newaxis]
+                                        / self.dij, axis=0))
+            return self.qmESP
 
     def get_qmparams(self, calc_forces=None, read_first=False, read_guess=None, addparam=None):
         if calc_forces is not None:

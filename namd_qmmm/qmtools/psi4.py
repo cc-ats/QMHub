@@ -30,12 +30,12 @@ class PSI4(QMBase):
     def gen_input(self):
         """Generate input file for QM software."""
 
-        psi4.set_options({'dft_functional': '%s' % self.method})
-        psi4.set_options({'basis': '%s' % self.basis})
+        psi4.set_options({'dft_functional': '%s' % self.method,
+                          'basis': '%s' % self.basis})
 
         if self.calc_forces:
-            psi4.set_options({'e_convergence': 8})
-            psi4.set_options({'d_convergence': 8})
+            psi4.set_options({'e_convergence': 1e-8,
+                              'd_convergence': 1e-8})
 
         # if self.read_guess:
         #     psi4.set_options({'guess': 'read'})
@@ -50,6 +50,7 @@ class PSI4(QMBase):
                                  "%22.14e" % self.qmPosSorted[i, 0],
                                  "%22.14e" % self.qmPosSorted[i, 1],
                                  "%22.14e" % self.qmPosSorted[i, 2], "\n"]))
+        geom.append("symmetry c1\n")
         geom = "".join(geom)
 
         self.molecule = psi4.geometry(geom)
@@ -101,6 +102,9 @@ class PSI4(QMBase):
         self.oeprop.compute()
 
         os.chdir(oldpwd)
+
+        self.exitcode = 0
+        return self.exitcode
 
     def gen_cmdline(self):
         """Generate commandline for QM calculation."""

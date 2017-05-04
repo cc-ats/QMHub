@@ -32,8 +32,10 @@ class PSI4(QMBase):
 
         psi4.set_options({'dft_functional': '%s' % self.method})
         psi4.set_options({'basis': '%s' % self.basis})
-        psi4.set_options({'e_convergence': 8})
-        psi4.set_options({'d_convergence': 8})
+
+        if self.calc_forces:
+            psi4.set_options({'e_convergence': 8})
+            psi4.set_options({'d_convergence': 8})
 
         # if self.read_guess:
         #     psi4.set_options({'guess': 'read'})

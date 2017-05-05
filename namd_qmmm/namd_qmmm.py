@@ -67,6 +67,7 @@ class QMMM(object):
         if self.elecMode.lower() == 'qmewald':
             if not self.qmElecEmbed:
                 raise ValueError("Can not use elecMode='qmewald' with qmElecEmbed=False.")
+            self.QM.pntChrgs4QM = self.QM.pntChrgs
         elif self.elecMode.lower() == 'mmewald':
             self.QM.pntChrgs4MM = self.QM.pntChrgs
             if self.qmElecEmbed:

@@ -64,9 +64,9 @@ class DFTB(QMBase):
                                     "%22.14e" % self.qmPosSorted[i, 2], "\n"]))
             if self.pbc:
                 f.write("".join(["%22.14e" % i for i in self.cellOrigin]) + "\n")
-                f.write("".join(["%22.14e" % i for i in self.cellBasisVector1]) + "\n")
-                f.write("".join(["%22.14e" % i for i in self.cellBasisVector2]) + "\n")
-                f.write("".join(["%22.14e" % i for i in self.cellBasisVector3]) + "\n")
+                f.write("".join(["%22.14e" % i for i in self.cellBasis[0]]) + "\n")
+                f.write("".join(["%22.14e" % i for i in self.cellBasis[1]]) + "\n")
+                f.write("".join(["%22.14e" % i for i in self.cellBasis[2]]) + "\n")
 
         with open(self.baseDir+"charges.dat", 'w') as f:
             for i in range(self.numPntChrgs):

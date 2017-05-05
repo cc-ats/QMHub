@@ -153,9 +153,7 @@ class QMBase(object):
             cellList = np.genfromtxt(fin, dtype=None, skip_header=1+self.numQMAtoms+self.numPntChrgs,
                                      max_rows=4)
             self.cellOrigin = cellList[0]
-            self.cellBasisVector1 = cellList[1]
-            self.cellBasisVector2 = cellList[2]
-            self.cellBasisVector3 = cellList[3]
+            self.cellBasis = cellList[1:4]
 
     def scale_charges(self, qmSwitchingType=None,
                       qmCutoff=None, qmSwdist=None, **kwargs):

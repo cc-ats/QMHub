@@ -220,20 +220,15 @@ class QMBase(object):
                                         / self.dij, axis=0))
             return self.qmESP
 
-    def get_qmparams(self, calc_forces=None, read_first=False, read_guess=None, addparam=None):
+    def get_qmparams(self, calc_forces=None, read_guess=None, addparam=None):
         if calc_forces is not None:
             self.calc_forces = calc_forces
         elif not hasattr(self, 'calc_forces'):
             self.calc_forces = True
 
-        self.read_first = read_first
-
         if read_guess is not None:
-            if self.stepNum == 0 and not self.read_first:
-                self.read_guess = False
-            else:
-                self.read_guess = read_guess
-        else:
+            self.read_guess = read_guess
+        elif not hasattr(self, 'read_guess'):
             self.read_guess = False
 
         self.addparam = addparam
@@ -253,7 +248,7 @@ class QMBase(object):
 
         cmdline = self.gen_cmdline()
 
-        if self.stepNum == 0 and not self.read_first:
+        if not self.read_guess:
             self.rm_guess()
 
         proc = sp.Popen(args=cmdline, shell=True)

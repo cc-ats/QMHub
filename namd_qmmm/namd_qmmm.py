@@ -8,7 +8,8 @@ class QMMM(object):
     def __init__(self, fin, qmSoftware, qmCharge, qmMult,
                  elecMode, qmElecEmbed=True,
                  qmRefChrgs=None, qmSwitchingType=None,
-                 qmCutoff=None, qmSwdist=None, postProc=False):
+                 qmCutoff=None, qmSwdist=None, 
+                 postProc=False, qmReadGuess=False):
         """
         Creat a QMMM object.
         """
@@ -19,6 +20,7 @@ class QMMM(object):
         self.qmElecEmbed = qmElecEmbed
         self.qmRefChrgs = qmRefChrgs
         self.postProc = postProc
+        self.qmReadGuess = qmReadGuess
 
         if self.elecMode.lower() in {'truncation', 'mmewald'}:
             self.qmPBC = False
@@ -85,6 +87,11 @@ class QMMM(object):
             self.QM.calc_forces = False
         else:
             self.QM.calc_forces = True
+
+        if self.qmReadGuess and not self.stepNum == 0:
+            self.QM.read_guess = True
+        else:
+            self.QM.read_guess = False
 
     def get_namdinput(self):
         """Get the path of NAMD input file (Unfinished)."""

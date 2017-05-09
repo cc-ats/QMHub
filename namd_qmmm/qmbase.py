@@ -5,7 +5,7 @@ import numpy as np
 
 class QMBase(object):
 
-    SOFTWARE = None
+    QMTOOL = None
 
     HARTREE2KCALMOL = 6.275094737775374e+02
     HARTREE2EV = 2.721138602e+01
@@ -366,4 +366,4 @@ class QMBase(object):
 
     @classmethod
     def check_software(cls, software):
-        return software.lower() == cls.SOFTWARE.lower()
+        return software.lower() == cls.QMTOOL.lower()

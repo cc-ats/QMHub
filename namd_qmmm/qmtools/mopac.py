@@ -9,12 +9,12 @@ from ..qmtmplt import QMTmplt
 
 class MOPAC(QMBase):
 
-    SOFTWARE = 'MOPAC'
+    QMTOOL = 'MOPAC'
 
     def get_qmparams(self, method=None, **kwargs):
         """Get the parameters for QM calculation."""
 
-        super(self.__class__, self).get_qmparams(**kwargs)
+        super(MOPAC, self).get_qmparams(**kwargs)
 
         if method is not None:
             self.method = method
@@ -28,7 +28,7 @@ class MOPAC(QMBase):
             self.get_qmesp()
         qmESPSorted = self.qmESP[self.map2sorted]
 
-        qmtmplt = QMTmplt(self.SOFTWARE, self.pbc)
+        qmtmplt = QMTmplt(self.QMTOOL, self.pbc)
 
         if self.calc_forces:
             calcforces = 'GRAD '

@@ -10,12 +10,12 @@ import psi4
 
 class PSI4(QMBase):
 
-    SOFTWARE = 'PSI4'
+    QMTOOL = 'PSI4'
 
     def get_qmparams(self, method=None, basis=None, **kwargs):
         """Get the parameters for QM calculation."""
 
-        super(self.__class__, self).get_qmparams(**kwargs)
+        super(PSI4, self).get_qmparams(**kwargs)
 
         if method is not None:
             self.method = method

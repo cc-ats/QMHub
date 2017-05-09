@@ -8,12 +8,12 @@ from ..qmtmplt import QMTmplt
 
 class QChem(QMBase):
 
-    SOFTWARE = 'Q-Chem'
+    QMTOOL = 'Q-Chem'
 
     def get_qmparams(self, method=None, basis=None, **kwargs):
         """Get the parameters for QM calculation."""
 
-        super(self.__class__, self).get_qmparams(**kwargs)
+        super(QChem, self).get_qmparams(**kwargs)
 
         if method is not None:
             self.method = method
@@ -28,7 +28,7 @@ class QChem(QMBase):
     def gen_input(self):
         """Generate input file for QM software."""
 
-        qmtmplt = QMTmplt(self.SOFTWARE, self.pbc)
+        qmtmplt = QMTmplt(self.QMTOOL, self.pbc)
 
         if self.calc_forces:
             jobtype = 'force'

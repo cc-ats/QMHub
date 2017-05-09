@@ -7,12 +7,12 @@ from ..qmtmplt import QMTmplt
 
 class DFTB(QMBase):
 
-    SOFTWARE = 'DFTB+'
+    QMTOOL = 'DFTB+'
 
     def get_qmparams(self, skfpath=None, **kwargs):
         """Get the parameters for QM calculation."""
 
-        super(self.__class__, self).get_qmparams(**kwargs)
+        super(DFTB, self).get_qmparams(**kwargs)
 
         if skfpath is not None:
             self.skfpath = skfpath
@@ -22,7 +22,7 @@ class DFTB(QMBase):
     def gen_input(self):
         """Generate input file for QM software."""
 
-        qmtmplt = QMTmplt(self.SOFTWARE, self.pbc)
+        qmtmplt = QMTmplt(self.QMTOOL, self.pbc)
 
         listElmnts = np.unique(self.qmElmntsSorted).tolist()
         outMaxAngularMomentum = "\n    ".join([i+" = "+qmtmplt.MaxAngularMomentum[i] for i in listElmnts])

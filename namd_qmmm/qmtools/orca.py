@@ -6,12 +6,12 @@ from ..qmtmplt import QMTmplt
 
 class ORCA(QMBase):
 
-    SOFTWARE = 'ORCA'
+    QMTOOL = 'ORCA'
 
     def get_qmparams(self, method=None, basis=None, **kwargs):
         """Get the parameters for QM calculation."""
 
-        super(self.__class__, self).get_qmparams(**kwargs)
+        super(ORCA, self).get_qmparams(**kwargs)
 
         if method is not None:
             self.method = method
@@ -26,7 +26,7 @@ class ORCA(QMBase):
     def gen_input(self):
         """Generate input file for QM software."""
 
-        qmtmplt = QMTmplt(self.SOFTWARE, self.pbc)
+        qmtmplt = QMTmplt(self.QMTOOL, self.pbc)
 
         if self.calc_forces:
             calcforces = 'EnGrad '

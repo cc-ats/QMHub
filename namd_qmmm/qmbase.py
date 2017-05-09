@@ -155,6 +155,18 @@ class QMBase(object):
             self.cellOrigin = cellList[0]
             self.cellBasis = cellList[1:4]
 
+    @classmethod
+    def check_software(cls, software):
+        return software.lower() == cls.QMTOOL.lower()
+
+    @staticmethod
+    def get_nproc():
+        """Get the number of processes for QM calculation."""
+        if 'OMP_NUM_THREADS' in os.environ:
+            nproc = int(os.environ['OMP_NUM_THREADS'])
+        elif 'SLURM_NTASKS' in os.environ:
+            nproc = int(os.environ['SLURM_NTASKS']) - 4
+
     def scale_charges(self, qmSwitchingType=None,
                       qmCutoff=None, qmSwdist=None, **kwargs):
         """Scale external point charges."""
@@ -232,16 +244,6 @@ class QMBase(object):
             self.read_guess = False
 
         self.addparam = addparam
-
-    def get_nproc(self):
-        """Get the number of processes for QM calculation."""
-        if 'OMP_NUM_THREADS' in os.environ:
-            nproc = int(os.environ['OMP_NUM_THREADS'])
-        elif 'SLURM_NTASKS' in os.environ:
-            nproc = int(os.environ['SLURM_NTASKS']) - 4
-        else:
-            nproc = 1
-        return nproc
 
     def run(self):
         """Run QM calculation."""
@@ -358,7 +360,3 @@ class QMBase(object):
                 raise NotImplementedError()
         else:
             pass
-
-    @classmethod
-    def check_software(cls, software):
-        return software.lower() == cls.QMTOOL.lower()

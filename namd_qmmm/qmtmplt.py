@@ -93,9 +93,6 @@ orca_tmplt = """\
 
 """
 
-mopac_tmplt = """\
-${method} XYZ T=2M 1SCF SCFCRT=1.D-7 AUX(PRECISION=9) ${calcforces}QMMM NOMM CHARGE=${charge}${addparam} THREADS=${nproc}
-"""
 
 class QMTmplt(object):
     """Input templates for QM softwares."""
@@ -116,7 +113,7 @@ class QMTmplt(object):
         if qmSoftware is not None:
             self.qmSoftware = qmSoftware
         else:
-            raise ValueError("Please choose 'q-chem', 'dftb+', 'orca', 'mopac' for qmSoftware.")
+            raise ValueError("Please choose 'q-chem', 'dftb+', or 'orca' for qmSoftware.")
 
         if self.qmSoftware.lower() == 'q-chem':
             pass
@@ -125,10 +122,8 @@ class QMTmplt(object):
             self.MaxAngularMomentum = MaxAngularMomentum
         elif self.qmSoftware.lower() == 'orca':
             pass
-        elif self.qmSoftware.lower() == 'mopac':
-            pass
         else:
-            raise ValueError("Only 'q-chem', 'dftb+', 'orca', and 'mopac' are supported at the moment.")
+            raise ValueError("Only 'q-chem', 'dftb+', and 'orca' are supported at the moment.")
 
         if qmPBC is not None:
             self.qmPBC = qmPBC
@@ -152,11 +147,6 @@ class QMTmplt(object):
                 raise ValueError("Not supported.")
             else:
                 return Template(orca_tmplt)
-        elif self.qmSoftware.lower() == 'mopac':
-            if self.qmPBC:
-                raise ValueError("Not supported.")
-            else:
-                return Template(mopac_tmplt)
 
 
 if __name__ == "__main__":
@@ -178,7 +168,3 @@ if __name__ == "__main__":
               method='HF', basis='6-31G', calcforces='EnGrad ',
               read_guess='NoAutoStart ',
               addparam='CHELPG ', nproc='8'))
-    qmtmplt = QMTmplt('mopac', False)
-    print(qmtmplt.gen_qmtmplt().safe_substitute(
-              method='PM7', calcforces='GRAD ',
-              charge=0, addparam=' ESP', nproc='8'))

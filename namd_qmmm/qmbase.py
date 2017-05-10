@@ -7,8 +7,6 @@ class QMBase(object):
 
     QMTOOL = None
 
-    HARTREE2KCALMOL = 6.275094737775374e+02
-    HARTREE2EV = 2.721138602e+01
     BOHR2ANGSTROM = 5.2917721067e-01
 
     def __init__(self, system, charge=None, mult=None, pbc=None):

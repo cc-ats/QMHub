@@ -36,8 +36,7 @@ class MMBase(object):
                                      np.arange(self.numRealQMAtoms, self.numQMAtoms)))
         self.map2unsorted = np.argsort(self.map2sorted)
 
-    def scale_charges(self, qmSwitchingType=None,
-                      qmCutoff=None, qmSwdist=None, **kwargs):
+    def scale_charges(self, qmSwitchingType=None, qmCutoff=None, qmSwdist=None):
         """Scale external point charges."""
         dij_min2 = self.dij2[0:self.numRPntChrgs, 0:self.numRealQMAtoms].min(axis=1)
         self.dij_min2 = dij_min2

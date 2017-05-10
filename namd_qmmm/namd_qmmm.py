@@ -32,6 +32,10 @@ class QMMM(object):
 
         self.system = mmtools.NAMD(fin)
 
+        if self.qmPBC:
+            if self.system.numAtoms != self.system.numRealQMAtoms + self.system.numRPntChrgs:
+                raise ValueError("Unit cell is not complete.")
+
         if qmRefChrgs is not None:
             self.qmRefChrgs = qmRefChrgs
         else:

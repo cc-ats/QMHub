@@ -46,10 +46,10 @@ class PSI4(QMBase):
 
         geom = []
         for i in range(self.numQMAtoms):
-            geom.append("".join(["%3s" % self.qmElmntsSorted[i],
-                                 "%22.14e" % self.qmPosSorted[i, 0],
-                                 "%22.14e" % self.qmPosSorted[i, 1],
-                                 "%22.14e" % self.qmPosSorted[i, 2], "\n"]))
+            geom.append("".join(["%3s" % self.qmElmnts[i],
+                                 "%22.14e" % self.qmPos[i, 0],
+                                 "%22.14e" % self.qmPos[i, 1],
+                                 "%22.14e" % self.qmPos[i, 2], "\n"]))
         geom.append("symmetry c1\n")
         geom = "".join(geom)
 
@@ -121,7 +121,6 @@ class PSI4(QMBase):
         """Get QM energy from output of QM calculation."""
 
         self.qmEnergy = self.scf_wfn.energy()
-        self.qmEnergy *= self.HARTREE2KCALMOL
 
         return self.qmEnergy
 
@@ -129,10 +128,6 @@ class PSI4(QMBase):
         """Get QM forces from output of QM calculation."""
 
         self.qmForces = -1 * np.array(self.scf_wfn.gradient())
-        self.qmForces *= self.HARTREE2KCALMOL / self.BOHR2ANGSTROM
-
-        # Unsort QM atoms
-        self.qmForces = self.qmForces[self.map2unsorted]
 
         return self.qmForces
 
@@ -143,7 +138,6 @@ class PSI4(QMBase):
                                                self.oeprop.Eyvals(),
                                                self.oeprop.Ezvals()])
                               * self.pntChrgs4QM[:, np.newaxis])
-        self.pntChrgForces *= self.HARTREE2KCALMOL / self.BOHR2ANGSTROM
 
         return self.pntChrgForces
 
@@ -151,15 +145,11 @@ class PSI4(QMBase):
         """Get Mulliken charges from output of QM calculation."""
         self.qmChrgs = np.array(self.scf_wfn.atomic_point_charges())
 
-        # Unsort QM atoms
-        self.qmChrgs = self.qmChrgs[self.map2unsorted]
-
         return self.qmChrgs
 
     def get_pntesp(self):
         """Get ESP at external point charges from output of QM calculation."""
 
         self.pntESP = np.array(self.oeprop.Vvals())
-        self.pntESP *= self.HARTREE2KCALMOL
 
         return self.pntESP

@@ -62,10 +62,10 @@ class ORCA(QMBase):
             f.write("  coords\n")
 
             for i in range(self.numQMAtoms):
-                f.write(" ".join(["%6s" % self.qmElmntsSorted[i],
-                                    "%22.14e" % self.qmPosSorted[i, 0],
-                                    "%22.14e" % self.qmPosSorted[i, 1],
-                                    "%22.14e" % self.qmPosSorted[i, 2], "\n"]))
+                f.write(" ".join(["%6s" % self.qmElmnts[i],
+                                    "%22.14e" % self.qmPos[i, 0],
+                                    "%22.14e" % self.qmPos[i, 1],
+                                    "%22.14e" % self.qmPos[i, 2], "\n"]))
             f.write("  end\n")
             f.write("end\n")
 
@@ -110,7 +110,6 @@ class ORCA(QMBase):
                 if "FINAL SINGLE POINT ENERGY" in line:
                     self.qmEnergy = float(line.split()[-1])
                     break
-        self.qmEnergy *= self.HARTREE2KCALMOL
 
         return self.qmEnergy
 
@@ -120,10 +119,6 @@ class ORCA(QMBase):
         self.qmForces = -1 * np.genfromtxt(self.baseDir + "orca.engrad",
                                     dtype=float, skip_header=11,
                                     max_rows=self.numQMAtoms*3).reshape((self.numQMAtoms, 3))
-        self.qmForces *= self.HARTREE2KCALMOL / self.BOHR2ANGSTROM
-
-        # Unsort QM atoms
-        self.qmForces = self.qmForces[self.map2unsorted]
 
         return self.qmForces
 
@@ -134,7 +129,6 @@ class ORCA(QMBase):
                                                 dtype=float,
                                                 skip_header=1,
                                                 max_rows=self.numPntChrgs)
-        self.pntChrgForces *= self.HARTREE2KCALMOL / self.BOHR2ANGSTROM
 
         return self.pntChrgForces
 
@@ -152,9 +146,6 @@ class ORCA(QMBase):
                     break
         self.qmChrgs = np.array(charges)
 
-        # Unsort QM atoms
-        self.qmChrgs = self.qmChrgs[self.map2unsorted]
-
         return self.qmChrgs
 
     def get_pntesp(self):
@@ -165,6 +156,5 @@ class ORCA(QMBase):
                                     skip_header=1,
                                     usecols=3,
                                     max_rows=self.numPntChrgs)
-        self.pntESP *= self.HARTREE2KCALMOL
 
         return self.pntESP

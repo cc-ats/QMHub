@@ -26,7 +26,6 @@ class MOPAC(QMBase):
 
         if not hasattr(self, 'qmESP'):
             self.get_qmesp()
-        qmESPSorted = self.qmESP[self.map2sorted]
 
         qmtmplt = QMTmplt(self.QMTOOL, self.pbc)
 
@@ -51,21 +50,21 @@ class MOPAC(QMBase):
                     addparam=addparam, nproc=nproc))
             f.write("NAMD QM/MM\n\n")
             for i in range(self.numQMAtoms):
-                f.write(" ".join(["%6s" % self.qmElmntsSorted[i],
-                                    "%22.14e 1" % self.qmPosSorted[i, 0],
-                                    "%22.14e 1" % self.qmPosSorted[i, 1],
-                                    "%22.14e 1" % self.qmPosSorted[i, 2], "\n"]))
+                f.write(" ".join(["%6s" % self.qmElmnts[i],
+                                    "%22.14e 1" % self.qmPos[i, 0],
+                                    "%22.14e 1" % self.qmPos[i, 1],
+                                    "%22.14e 1" % self.qmPos[i, 2], "\n"]))
 
         with open(self.baseDir+"mol.in", 'w') as f:
             f.write("\n")
             f.write("%d %d\n" % (self.numRealQMAtoms, self.numMM1))
 
             for i in range(self.numQMAtoms):
-                f.write(" ".join(["%6s" % self.qmElmntsSorted[i],
-                                    "%22.14e" % self.qmPosSorted[i, 0],
-                                    "%22.14e" % self.qmPosSorted[i, 1],
-                                    "%22.14e" % self.qmPosSorted[i, 2],
-                                    " %22.14e" % qmESPSorted[i], "\n"]))
+                f.write(" ".join(["%6s" % self.qmElmnts[i],
+                                    "%22.14e" % self.qmPos[i, 0],
+                                    "%22.14e" % self.qmPos[i, 1],
+                                    "%22.14e" % self.qmPos[i, 2],
+                                    " %22.14e" % self.qmESP[i] * self.HARTREE2KCALMOL, "\n"]))
 
     def gen_cmdline(self):
         """Generate commandline for QM calculation."""
@@ -88,7 +87,6 @@ class MOPAC(QMBase):
                 if "TOTAL_ENERGY" in line:
                     self.qmEnergy = float(line[17:].replace("D", "E")) / self.HARTREE2EV
                     break
-        self.qmEnergy *= self.HARTREE2KCALMOL
 
         return self.qmEnergy
 
@@ -105,9 +103,7 @@ class MOPAC(QMBase):
                         gradients = np.append(gradients, np.fromstring(line, sep=' '))
                     break
         self.qmForces = -1 * gradients.reshape(self.numQMAtoms, 3)
-
-        # Unsort QM atoms
-        self.qmForces = self.qmForces[self.map2unsorted]
+        self.qmForces *= self.BOHR2ANGSTROM / self.HARTREE2KCALMOL
 
         return self.qmForces
 
@@ -116,8 +112,8 @@ class MOPAC(QMBase):
 
         if not hasattr(self, 'qmChrgs'):
             self.get_qmchrgs()
-        forces = (-1 * self.KE * self.pntChrgs4QM[:, np.newaxis] * self.qmChrgs[np.newaxis, :]
-                    / self.dij**3)
+        forces = (-1 * self.pntChrgs4QM[:, np.newaxis] * self.qmChrgs[np.newaxis, :]
+                  / self.dij**3)
         forces = forces[:, :, np.newaxis] * self.rij
         self.pntChrgForces = forces.sum(axis=1)
 
@@ -137,9 +133,6 @@ class MOPAC(QMBase):
                     break
         self.qmChrgs = charges
 
-        # Unsort QM atoms
-        self.qmChrgs = self.qmChrgs[self.map2unsorted]
-
         return self.qmChrgs
 
     def get_pntesp(self):
@@ -147,7 +140,6 @@ class MOPAC(QMBase):
 
         if not hasattr(self, 'qmChrgs'):
             self.get_qmchrgs()
-        self.pntESP = self.KE * np.sum(self.qmChrgs[np.newaxis, :] 
-                                       / self.dij, axis=1)
+        self.pntESP = np.sum(self.qmChrgs[np.newaxis, :] / self.dij, axis=1)
 
         return self.pntESP

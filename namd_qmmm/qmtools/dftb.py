@@ -24,7 +24,7 @@ class DFTB(QMBase):
 
         qmtmplt = QMTmplt(self.QMTOOL, self.pbc)
 
-        listElmnts = np.unique(self.qmElmntsSorted).tolist()
+        listElmnts = np.unique(self.qmElmnts).tolist()
         outMaxAngularMomentum = "\n    ".join([i+" = "+qmtmplt.MaxAngularMomentum[i] for i in listElmnts])
         outHubbardDerivs = "\n    ".join([i+" = "+qmtmplt.HubbardDerivs[i] for i in listElmnts])
 
@@ -58,10 +58,10 @@ class DFTB(QMBase):
             f.write(" ".join(listElmnts) + "\n")
             for i in range(self.numQMAtoms):
                 f.write("".join(["%6d" % (i+1),
-                                    "%4d" % (listElmnts.index(self.qmElmntsSorted[i])+1),
-                                    "%22.14e" % self.qmPosSorted[i, 0],
-                                    "%22.14e" % self.qmPosSorted[i, 1],
-                                    "%22.14e" % self.qmPosSorted[i, 2], "\n"]))
+                                    "%4d" % (listElmnts.index(self.qmElmnts[i])+1),
+                                    "%22.14e" % self.qmPos[i, 0],
+                                    "%22.14e" % self.qmPos[i, 1],
+                                    "%22.14e" % self.qmPos[i, 2], "\n"]))
             if self.pbc:
                 f.write("".join(["%22.14e" % i for i in self.cellOrigin]) + "\n")
                 f.write("".join(["%22.14e" % i for i in self.cellBasis[0]]) + "\n")
@@ -97,7 +97,6 @@ class DFTB(QMBase):
         self.qmEnergy = np.genfromtxt(self.baseDir + "results.tag",
                                         dtype=float, skip_header=1,
                                         max_rows=1)
-        self.qmEnergy *= self.HARTREE2KCALMOL
 
         return self.qmEnergy
 
@@ -107,10 +106,6 @@ class DFTB(QMBase):
         self.qmForces = np.genfromtxt(self.baseDir + "results.tag",
                                         dtype=float, skip_header=5,
                                         max_rows=self.numQMAtoms)
-        self.qmForces *= self.HARTREE2KCALMOL / self.BOHR2ANGSTROM
-
-        # Unsort QM atoms
-        self.qmForces = self.qmForces[self.map2unsorted]
 
         return self.qmForces
 
@@ -121,7 +116,7 @@ class DFTB(QMBase):
                                             dtype=float,
                                             skip_header=self.numQMAtoms+6,
                                             max_rows=self.numPntChrgs)
-        self.pntChrgForces *= self.HARTREE2KCALMOL / self.BOHR2ANGSTROM
+
         return self.pntChrgForces
 
     def get_qmchrgs(self):
@@ -142,9 +137,6 @@ class DFTB(QMBase):
                                 + int(np.ceil(self.numQMAtoms/3.))*2 + 13),
                 max_rows=1).flatten())
 
-        # Unsort QM atoms
-        self.qmChrgs = self.qmChrgs[self.map2unsorted]
-
         return self.qmChrgs
 
     def get_pntesp(self):
@@ -152,7 +144,6 @@ class DFTB(QMBase):
 
         if not hasattr(self, 'qmChrgs'):
             self.get_qmchrgs()
-        self.pntESP = self.KE * np.sum(self.qmChrgs[np.newaxis, :] 
-                                       / self.dij, axis=1)
+        self.pntESP = np.sum(self.qmChrgs[np.newaxis, :] / self.dij, axis=1)
 
         return self.pntESP

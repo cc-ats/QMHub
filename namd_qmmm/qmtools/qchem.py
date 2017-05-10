@@ -56,10 +56,10 @@ class QChem(QMBase):
             f.write("%d %d\n" % (self.charge, self.mult))
 
             for i in range(self.numQMAtoms):
-                f.write("".join(["%3s" % self.qmElmntsSorted[i],
-                                    "%22.14e" % self.qmPosSorted[i, 0],
-                                    "%22.14e" % self.qmPosSorted[i, 1],
-                                    "%22.14e" % self.qmPosSorted[i, 2], "\n"]))
+                f.write("".join(["%3s" % self.qmElmnts[i],
+                                    "%22.14e" % self.qmPos[i, 0],
+                                    "%22.14e" % self.qmPos[i, 1],
+                                    "%22.14e" % self.qmPos[i, 2], "\n"]))
             f.write("$end" + "\n\n")
 
             f.write("$external_charges\n")
@@ -102,7 +102,6 @@ class QChem(QMBase):
                     break
 
         self.qmEnergy = float(scf_energy) - float(cc_energy)
-        self.qmEnergy *= self.HARTREE2KCALMOL
 
         return self.qmEnergy
 
@@ -112,10 +111,6 @@ class QChem(QMBase):
         self.qmForces = -1 * np.genfromtxt(self.baseDir + "efield.dat",
                                             dtype=float,
                                             skip_header=self.numPntChrgs)
-        self.qmForces *= self.HARTREE2KCALMOL / self.BOHR2ANGSTROM
-
-        # Unsort QM atoms
-        self.qmForces = self.qmForces[self.map2unsorted]
 
         return self.qmForces
 
@@ -126,7 +121,6 @@ class QChem(QMBase):
                                             dtype=float,
                                             max_rows=self.numPntChrgs)
                                 * self.pntChrgs4QM[:, np.newaxis])
-        self.pntChrgForces *= self.HARTREE2KCALMOL / self.BOHR2ANGSTROM
 
         return self.pntChrgForces
 
@@ -145,15 +139,11 @@ class QChem(QMBase):
                     break
         self.qmChrgs = np.array(charges)
 
-        # Unsort QM atoms
-        self.qmChrgs = self.qmChrgs[self.map2unsorted]
-
         return self.qmChrgs
 
     def get_pntesp(self):
         """Get ESP at external point charges from output of QM calculation."""
 
         self.pntESP = np.loadtxt(self.baseDir + "esp.dat")
-        self.pntESP *= self.HARTREE2KCALMOL
 
         return self.pntESP

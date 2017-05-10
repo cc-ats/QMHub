@@ -166,6 +166,9 @@ class QMBase(object):
             nproc = int(os.environ['OMP_NUM_THREADS'])
         elif 'SLURM_NTASKS' in os.environ:
             nproc = int(os.environ['SLURM_NTASKS']) - 4
+        else:
+            nproc = 1
+        return nproc
 
     def scale_charges(self, qmSwitchingType=None,
                       qmCutoff=None, qmSwdist=None, **kwargs):

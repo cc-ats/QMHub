@@ -105,7 +105,7 @@ class QMMM(object):
             qmtool = getattr(qmtools, qmtool)
             if qmtool.check_software(self.qmSoftware):
                 return qmtool(self.system, self.qmCharge, self.qmMult, self.qmPBC)
-        raise ValueError("Please choose 'q-chem', 'dftb+', 'orca', or 'psi4' for qmSoftware.")
+        raise ValueError("Please choose 'q-chem', 'dftb+', 'orca', 'mopac', or 'psi4' for qmSoftware.")
 
     def run_qm(self, **kwargs):
         """Run QM calculation."""

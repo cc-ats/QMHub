@@ -57,14 +57,14 @@ class MOPAC(QMBase):
 
         with open(self.baseDir+"mol.in", 'w') as f:
             f.write("\n")
-            f.write("%d %d\n" % (self.numRealQMAtoms, self.numMM1))
+            f.write("%d %d\n" % (self.numQMAtoms, 0))
 
             for i in range(self.numQMAtoms):
                 f.write(" ".join(["%6s" % self.qmElmnts[i],
                                     "%22.14e" % self.qmPos[i, 0],
                                     "%22.14e" % self.qmPos[i, 1],
                                     "%22.14e" % self.qmPos[i, 2],
-                                    " %22.14e" % self.qmESP[i] * self.HARTREE2KCALMOL, "\n"]))
+                                    " %22.14e" % (self.qmESP[i] * self.HARTREE2KCALMOL), "\n"]))
 
     def gen_cmdline(self):
         """Generate commandline for QM calculation."""
@@ -90,8 +90,23 @@ class MOPAC(QMBase):
 
         return self.qmEnergy
 
+    def get_fij(self):
+        """Get pair-wise forces between QM atomic charges and external point charges."""
+
+        if not hasattr(self, 'qmChrgs'):
+            self.get_qmchrgs()
+
+        self.fij = (-1 * self.pntChrgs4QM[:, np.newaxis] * self.qmChrgs[np.newaxis, :]
+                  / self.dij**3)
+        self.fij = self.fij[:, :, np.newaxis] * self.rij
+
+        return self.fij
+
     def get_qmforces(self):
         """Get QM forces from output of QM calculation."""
+
+        if not hasattr(self, 'fij'):
+            self.get_fij()
 
         numLines = int(np.ceil(self.numQMAtoms * 3 / 10))
         with open(self.baseDir + "mopac.aux", 'r') as f:
@@ -104,18 +119,17 @@ class MOPAC(QMBase):
                     break
         self.qmForces = -1 * gradients.reshape(self.numQMAtoms, 3)
         self.qmForces *= self.BOHR2ANGSTROM / self.HARTREE2KCALMOL
+        self.qmForces -= self.fij.sum(axis=0)
 
         return self.qmForces
 
     def get_pntchrgforces(self):
         """Get external point charge forces from output of QM calculation."""
 
-        if not hasattr(self, 'qmChrgs'):
-            self.get_qmchrgs()
-        forces = (-1 * self.pntChrgs4QM[:, np.newaxis] * self.qmChrgs[np.newaxis, :]
-                  / self.dij**3)
-        forces = forces[:, :, np.newaxis] * self.rij
-        self.pntChrgForces = forces.sum(axis=1)
+        if not hasattr(self, 'fij'):
+            self.get_fij()
+
+        self.pntChrgForces = self.fij.sum(axis=1)
 
         return self.pntChrgForces
 

@@ -64,11 +64,9 @@ class MMBase(object):
             if qmCutoff is None:
                 raise ValueError("We need qmCutoff here.")
             qmCutoff2 = qmCutoff**2
-            self.pntScale = (1 - self.dij_min2/qmCutoff2)**2
-            self.pntScale_deriv = 4 * (1 - self.dij_min2/qmCutoff2) / qmCutoff2
-            self.pntScale_deriv = (self.pntScale_deriv[:, np.newaxis]
-                                   * (self.pntPos[0:self.numRPntChrgs]
-                                   - self.qmPos[self.dij_min_j]))
+            qmSwdist2 = 0.0
+            self.pntScale = (1 - self.dij_min2 / qmCutoff2)**2
+            self.pntScale_deriv = 4 * (1 - self.dij_min2 / qmCutoff2) / qmCutoff2
         elif qmSwitchingType.lower() == 'switch':
             if qmCutoff is None or qmSwdist is None:
                 raise ValueError("We need qmCutoff and qmSwdist here.")
@@ -77,28 +75,28 @@ class MMBase(object):
             qmCutoff2 = qmCutoff**2
             qmSwdist2 = qmSwdist**2
             self.pntScale = ((self.dij_min2 - qmCutoff2)**2
-                             * (qmCutoff2 + 2*self.dij_min2 - 3*qmSwdist2)
+                             * (qmCutoff2 + 2 * self.dij_min2 - 3 * qmSwdist2)
                              / (qmCutoff2 - qmSwdist2)**3
                              * (self.dij_min2 >= qmSwdist2)
                              + (self.dij_min2 < qmSwdist2))
             self.pntScale_deriv = (12 * (self.dij_min2 - qmSwdist2)
                                    * (qmCutoff2 - self.dij_min2)
                                    / (qmCutoff2 - qmSwdist2)**3)
-            self.pntScale_deriv = (self.pntScale_deriv[:, np.newaxis]
-                                   * (self.pntPos[0:self.numRPntChrgs]
-                                   - self.qmPos[self.dij_min_j]))
-            self.pntScale_deriv *= (self.dij_min2 > qmSwdist2)[:, np.newaxis]
         elif qmSwitchingType.lower() == 'lrec':
             if qmCutoff is None:
                 raise ValueError("We need qmCutoff here.")
+            qmCutoff2 = qmCutoff**2
+            qmSwdist2 = 0.0
             scale = 1 - self.dij_min / qmCutoff
-            self.pntScale = 1 - (2*scale**3 - 3*scale**2 + 1)**2
-            self.pntScale_deriv = 12 * scale * (2*scale**3 - 3*scale**2 + 1) / qmCutoff**2
-            self.pntScale_deriv = (self.pntScale_deriv[:, np.newaxis]
-                                   * (self.pntPos[0:self.numRPntChrgs]
-                                   - self.qmPos[self.dij_min_j]))
+            self.pntScale = 1 - (2 * scale**3 - 3 * scale**2 + 1)**2
+            self.pntScale_deriv = 12 * scale * (2 * scale**3 - 3 * scale**2 + 1) / qmCutoff2
         else:
             raise ValueError("Only 'shift', 'switch', and 'lrec' are supported at the moment.")
+
+        self.pntScale_deriv = (self.pntScale_deriv[:, np.newaxis]
+                                * (self.pntPos[0:self.numRPntChrgs]
+                                - self.qmPos[self.dij_min_j]))
+        self.pntScale_deriv *= (self.dij_min2 > qmSwdist2)[:, np.newaxis]
 
         # Just to be safe
         self.pntScale *= (self.dij_min < qmCutoff)

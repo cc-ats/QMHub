@@ -42,6 +42,12 @@ class MMBase(object):
 
         return self.dij_min
 
+    def sort_qmatoms(self):
+        """Sort QM atoms."""
+        self.map2sorted = np.concatenate((np.argsort(self.qmIdx[0:self.numRealQMAtoms]),
+                                     np.arange(self.numRealQMAtoms, self.numQMAtoms)))
+        self.map2unsorted = np.argsort(self.map2sorted)
+
     def get_pntchrg_types(self, qmCutoff=None):
         """Get the types of external point charges."""
 
@@ -51,11 +57,37 @@ class MMBase(object):
 
         return self.pntChrgTypes
 
-    def sort_qmatoms(self):
-        """Sort QM atoms."""
-        self.map2sorted = np.concatenate((np.argsort(self.qmIdx[0:self.numRealQMAtoms]),
-                                     np.arange(self.numRealQMAtoms, self.numQMAtoms)))
-        self.map2unsorted = np.argsort(self.map2sorted)
+    def absorb_vpntchrgs_mm1(self):
+        """Absorb the virtual point charges to MM1."""
+
+        rPntChrgs = self.pntChrgs[0:self.numRPntChrgs]
+
+        if self.numVPntChrgs > 0:
+            vPntChrgs = self.pntChrgs[self.numRPntChrgs:]
+            if self.numVPntChrgsPerMM2 == 3:
+                for i in range(self.numMM2):
+                    rPntChrgs[self.mm1VIdx[i]] += vPntChrgs[(i * 3):(i * 3 + 3)].sum()
+
+            elif self.numVPntChrgsPerMM2 == 2:
+                raise NotImplementedError()
+
+        return rPntChrgs
+
+    def split_pntchrgs(self, qmCutoff):
+        """Split external point charges into near- and far-fields."""
+
+        nearfield = np.append((self.dij_min <= qmCutoff), np.ones(self.numVPntChrgs, dtype=bool))
+        self.pntChrgsNear = self.pntChrgs[nearfield]
+        self.pntPosNear = self.pntPos[nearfield]
+        self.rijFar = self.rij[nearfield]
+        self.dijFar = self.dij[nearfield]
+        self.dij2Far = self.dij2[nearfield]
+
+        self.pntChrgsFar = self.absorb_vpntchrgs_mm1()
+        self.pntPosFar = self.pntPos[0:self.numRPntChrgs]
+        self.rijFar = self.rij[0:self.numRPntChrgs]
+        self.dijFar = self.dij[0:self.numRPntChrgs]
+        self.dij2Far = self.dij2[0:self.numRPntChrgs]
 
     def scale_charges(self, qmSwitchingType=None, qmCutoff=None, qmSwdist=None):
         """Scale external point charges."""

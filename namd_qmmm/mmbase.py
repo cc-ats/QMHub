@@ -93,7 +93,7 @@ class MMBase(object):
         else:
             raise ValueError("Only 'shift', 'switch', and 'lrec' are supported at the moment.")
 
-        self.pntScale_deriv *= (self.dij_min2 > qmSwdist2)[:, np.newaxis]
+        self.pntScale_deriv *= (self.dij_min2 > qmSwdist2)
         self.pntScale_deriv = (self.pntScale_deriv[:, np.newaxis]
                                 * (self.pntPos[0:self.numRPntChrgs]
                                 - self.qmPos[self.dij_min_j]))

@@ -145,7 +145,7 @@ class QMMM(object):
         mmChrgs = np.zeros(self.system.numAtoms)
 
         if hasattr(self.system, 'pntScale'):
-            mmScale[self.system.pntIdx[0:self.system.numRPntChrgs]] = self.system.pntScale[0:self.system.numRPntChrgs]
+            mmScale[self.system.pntIdx[0:self.system.numRPntChrgs]] = self.system.pntScale
             mmDist[self.system.pntIdx[0:self.system.numRPntChrgs]] = self.system.dij_min
         else:
             mmScale[self.system.pntIdx[0:self.system.numRPntChrgs]] += 1

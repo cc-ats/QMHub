@@ -129,16 +129,14 @@ class MMBase(object):
             raise ValueError("Only 'shift', 'switch', and 'lrec' are supported at the moment.")
 
         self.pntScale_deriv *= (self.dij_min2 > qmSwdist2)
-        self.pntScale_deriv = (self.pntScale_deriv[:, np.newaxis]
-                                * (self.pntPos[0:self.numRPntChrgs]
-                                - self.qmPos[self.dij_min_j]))
+        self.pntScale_deriv = (-1 * self.pntScale_deriv[:, np.newaxis]
+                               * self.rij[range(self.numRPntChrgs), dij_min_j])
 
         # Just to be safe
         self.pntScale *= (self.dij_min < qmCutoff)
         self.pntScale_deriv *= (self.dij_min < qmCutoff)[:, np.newaxis]
 
-        self.pntScale = np.append(self.pntScale, np.ones(self.numVPntChrgs))
-        self.pntChrgsScld = self.pntChrgs * self.pntScale
+        self.pntChrgsScld = self.pntChrgs * np.append(self.pntScale, np.ones(self.numVPntChrgs))
 
     def parse_output(self, qm):
         """Parse the output of QM calculation."""

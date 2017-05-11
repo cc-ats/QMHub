@@ -42,6 +42,15 @@ class MMBase(object):
 
         return self.dij_min
 
+    def get_pntchrg_types(self, qmCutoff=None):
+        """Get the types of external point charges."""
+
+        self.pntChrgTypes = np.zeros(self.numPntChrgs, dtype=int) 
+        self.pntChrgTypes[np.where(self.dij_min > qmCutoff)] = 1
+        self.pntChrgTypes[self.numRPntChrgs:] = -1
+
+        return self.pntChrgTypes
+
     def sort_qmatoms(self):
         """Sort QM atoms."""
         self.map2sorted = np.concatenate((np.argsort(self.qmIdx[0:self.numRealQMAtoms]),

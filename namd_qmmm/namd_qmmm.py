@@ -69,6 +69,7 @@ class QMMM(object):
             else:
                 self.qmSwdist = 0.75 * self.qmCutoff
 
+            self.system.get_min_distances()
             self.system.scale_charges(self.qmSwitchingType, self.qmCutoff, self.qmSwdist)
 
         if self.elecMode.lower() == 'qmewald':
@@ -145,7 +146,7 @@ class QMMM(object):
 
         if hasattr(self.system, 'pntScale'):
             mmScale[self.system.pntIdx[0:self.system.numRPntChrgs]] = self.system.pntScale[0:self.system.numRPntChrgs]
-            mmDist[self.system.pntIdx[0:self.system.numRPntChrgs]] = self.system.pntDist
+            mmDist[self.system.pntIdx[0:self.system.numRPntChrgs]] = self.system.dij_min
         else:
             mmScale[self.system.pntIdx[0:self.system.numRPntChrgs]] += 1
         mmChrgs[self.system.pntIdx[0:self.system.numRPntChrgs]] = self.system.pntChrgs4QM[0:self.system.numRPntChrgs]

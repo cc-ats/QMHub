@@ -20,6 +20,8 @@ class QMMM(object):
         self.elecMode = elecMode
         self.qmElecEmbed = qmElecEmbed
         self.qmRefChrgs = qmRefChrgs
+        self.qmCutoff = qmCutoff
+        self.qmSwdist = qmSwdist
         self.postProc = postProc
         self.qmReadGuess = qmReadGuess
 
@@ -35,6 +37,8 @@ class QMMM(object):
         if self.qmPBC:
             if self.system.numAtoms != self.system.numRealQMAtoms + self.system.numRPntChrgs:
                 raise ValueError("Unit cell is not complete.")
+
+            split_pntchrgs(qmCutoff=self.qmCutoff):
 
         if qmRefChrgs is not None:
             self.qmRefChrgs = qmRefChrgs
@@ -56,9 +60,6 @@ class QMMM(object):
                 self.qmSwitchingType = None
         elif self.elecMode.lower() == 'qmewald':
             self.qmSwitchingType = None
-
-        self.qmCutoff = qmCutoff
-        self.qmSwdist = qmSwdist
 
         if self.qmSwitchingType is not None:
             self.system.get_min_distances()

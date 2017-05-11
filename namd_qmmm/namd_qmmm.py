@@ -46,25 +46,21 @@ class QMMM(object):
         else:
             self.system.qmChrgs4MM = self.qmRefChrgs
 
-        if self.elecMode.lower() == 'truncation':
-            self.qmSwitching = True
-        elif self.elecMode.lower() == 'mmewald':
-            if self.qmElecEmbed:
-                self.qmSwitching = True
-            else:
-                self.qmSwitching = False
+        if qmSwitchingType is not None:
+            self.qmSwitchingType = qmSwitchingType
+        else:
+            self.qmSwitchingType = 'shift'
+
+        if self.elecMode.lower() == 'mmewald':
+            if not self.qmElecEmbed:
+                self.qmSwitchingType = None
         elif self.elecMode.lower() == 'qmewald':
-            self.qmSwitching = False
+            self.qmSwitchingType = None
 
         self.qmCutoff = qmCutoff
         self.qmSwdist = qmSwdist
 
-        if self.qmSwitching:
-            if qmSwitchingType is not None:
-                self.qmSwitchingType = qmSwitchingType
-            else:
-                self.qmSwitchingType = 'shift'
-
+        if self.qmSwitchingType is not None:
             self.system.get_min_distances()
             self.system.scale_charges(self.qmSwitchingType, self.qmCutoff, self.qmSwdist)
 

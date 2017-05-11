@@ -79,9 +79,12 @@ class MMBase(object):
         nearfield = np.append((self.dij_min <= qmCutoff), np.ones(self.numVPntChrgs, dtype=bool))
         self.pntChrgsNear = self.pntChrgs[nearfield]
         self.pntPosNear = self.pntPos[nearfield]
-        self.rijFar = self.rij[nearfield]
-        self.dijFar = self.dij[nearfield]
-        self.dij2Far = self.dij2[nearfield]
+        self.rijNear = self.rij[nearfield]
+        self.dijNear = self.dij[nearfield]
+        self.dij2Near = self.dij2[nearfield]
+        self.dij_minNear = self.dij_min[nearfield[0:self.numRPntChrgs]]
+        self.dij_min2Near = self.dij_min2[nearfield[0:self.numRPntChrgs]]
+        self.dij_min_jNear = self.dij_min_j[nearfield[0:self.numRPntChrgs]]
 
         self.pntChrgsFar = self.absorb_vpntchrgs_mm1()
         self.pntPosFar = self.pntPos[0:self.numRPntChrgs]

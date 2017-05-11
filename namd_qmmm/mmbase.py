@@ -95,16 +95,22 @@ class MMBase(object):
     def scale_charges(self, qmSwitchingType=None, qmCutoff=None, qmSwdist=None):
         """Scale external point charges."""
 
-        if qmSwitchingType.lower() == 'shift':
+        if qmSwitchingType is None:
+            qmSwdist = 0.0
+            self.pntScale = np.ones(self.numRPntChrgs)
+            self.pntScale_deriv = np.zeros(self.numRPntChrgs)
+        elif qmSwitchingType.lower() == 'shift':
             if qmCutoff is None:
                 raise ValueError("We need qmCutoff here.")
             qmCutoff2 = qmCutoff**2
-            qmSwdist2 = 0.0
+            qmSwdist = 0.0
             self.pntScale = (1 - self.dij_min2 / qmCutoff2)**2
             self.pntScale_deriv = 4 * (1 - self.dij_min2 / qmCutoff2) / qmCutoff2
         elif qmSwitchingType.lower() == 'switch':
-            if qmCutoff is None or qmSwdist is None:
-                raise ValueError("We need qmCutoff and qmSwdist here.")
+            if qmCutoff is None:
+                raise ValueError("We need qmCutoff here.")
+            if qmSwdist is None:
+                qmSwdist = 0.75 * qmCutoff
             if qmCutoff <= qmSwdist:
                 raise ValueError("qmCutoff should be greater than qmSwdist.")
             qmCutoff2 = qmCutoff**2
@@ -121,14 +127,14 @@ class MMBase(object):
             if qmCutoff is None:
                 raise ValueError("We need qmCutoff here.")
             qmCutoff2 = qmCutoff**2
-            qmSwdist2 = 0.0
+            qmSwdist = 0.0
             scale = 1 - self.dij_min / qmCutoff
             self.pntScale = 1 - (2 * scale**3 - 3 * scale**2 + 1)**2
             self.pntScale_deriv = 12 * scale * (2 * scale**3 - 3 * scale**2 + 1) / qmCutoff2
         else:
             raise ValueError("Only 'shift', 'switch', and 'lrec' are supported at the moment.")
 
-        self.pntScale_deriv *= (self.dij_min2 > qmSwdist2)
+        self.pntScale_deriv *= (self.dij_min > qmSwdist)
         self.pntScale_deriv = (-1 * self.pntScale_deriv[:, np.newaxis]
                                * self.rij[range(self.numRPntChrgs), dij_min_j])
 

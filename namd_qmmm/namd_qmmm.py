@@ -56,18 +56,14 @@ class QMMM(object):
         elif self.elecMode.lower() == 'qmewald':
             self.qmSwitching = False
 
+        self.qmCutoff = qmCutoff
+        self.qmSwdist = qmSwdist
+
         if self.qmSwitching:
             if qmSwitchingType is not None:
                 self.qmSwitchingType = qmSwitchingType
             else:
                 self.qmSwitchingType = 'shift'
-
-            self.qmCutoff = qmCutoff
-
-            if qmSwdist is not None:
-                self.qmSwdist = qmSwdist
-            else:
-                self.qmSwdist = 0.75 * self.qmCutoff
 
             self.system.get_min_distances()
             self.system.scale_charges(self.qmSwitchingType, self.qmCutoff, self.qmSwdist)

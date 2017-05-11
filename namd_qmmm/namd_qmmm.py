@@ -38,7 +38,7 @@ class QMMM(object):
             if self.system.numAtoms != self.system.numRealQMAtoms + self.system.numRPntChrgs:
                 raise ValueError("Unit cell is not complete.")
 
-            split_pntchrgs(qmCutoff=self.qmCutoff):
+            self.split_pntchrgs(qmCutoff=self.qmCutoff):
 
         if qmRefChrgs is not None:
             self.qmRefChrgs = qmRefChrgs

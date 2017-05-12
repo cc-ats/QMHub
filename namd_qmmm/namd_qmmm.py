@@ -112,15 +112,18 @@ class QMMM(object):
     def parse_output(self):
         """Parse the output of QM calculation."""
         if hasattr(self.qm, 'exitcode'):
-            self.system.parse_output(self.qm)
-            if not self.postProc:
-                if self.qmElecEmbed and not self.qmPBC:
-                    self.system.corr_elecembed()
+            if self.qm.exitcode == 0:
+                self.system.parse_output(self.qm)
+                if not self.postProc:
+                    if self.qmElecEmbed and not self.qmPBC:
+                        self.system.corr_elecembed()
 
-                if not self.qmElecEmbed or self.elecMode.lower() == 'mmewald':
-                    self.system.corr_mechembed()
+                    if not self.qmElecEmbed or self.elecMode.lower() == 'mmewald':
+                        self.system.corr_mechembed()
 
-                self.system.corr_vpntchrgs()
+                    self.system.corr_vpntchrgs()
+            else:
+                raise ValueError("QM calculation did not finish normally.")
         else:
             raise ValueError("Need to run_qm() first.")
 

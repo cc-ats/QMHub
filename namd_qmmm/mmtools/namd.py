@@ -9,8 +9,13 @@ class NAMD(MMBase):
     MMTOOL = 'NAMD'
 
     def load_system(self, fin):
+
+        # Open fin file
+        f = open(fin, 'r')
+        lines = f.readlines()
+
         # Load system information
-        sysList = np.genfromtxt(fin, dtype=int, max_rows=1, unpack=True)
+        sysList = np.loadtxt(lines[0:1], dtype=int)
         # Number of QM atoms including linking atoms
         self.numQMAtoms = sysList[0]
         # Number of external external point charges including virtual particles
@@ -23,14 +28,14 @@ class NAMD(MMBase):
         self.numSteps = sysList[4]
 
         # Load QM information
-        qmList = np.genfromtxt(fin, dtype=None, skip_header=1,
-                               max_rows=self.numQMAtoms)
+        qmList = np.loadtxt(lines[1:(1+self.numQMAtoms)],
+                            dtype='f8, f8, f8, U2, f8, i8')
         # Positions of QM atoms
         self.qmPos = np.column_stack((qmList['f0'],
                                       qmList['f1'],
                                       qmList['f2']))
         # Elements of QM atoms
-        self.qmElmnts = np.char.capitalize(np.core.defchararray.decode(qmList['f3']))
+        self.qmElmnts = np.char.capitalize(qmList['f3'])
         # Charges of QM atoms
         self.qmChrgs0 = qmList['f4']
         # Indexes of QM atoms
@@ -42,8 +47,8 @@ class NAMD(MMBase):
         self.numRealQMAtoms = self.numQMAtoms - self.numMM1
 
         # Load external point charge information
-        pntList = np.genfromtxt(fin, dtype=None, skip_header=1+self.numQMAtoms,
-                                max_rows=self.numPntChrgs)
+        pntList = np.loadtxt(lines[(1+self.numQMAtoms):(1+self.numQMAtoms+self.numPntChrgs)],
+                             dtype='f8, f8, f8, f8, i8, i8')
         # Positions of external point charges
         self.pntPos = np.column_stack((pntList['f0'],
                                        pntList['f1'],
@@ -56,10 +61,16 @@ class NAMD(MMBase):
         self.pntBondedToIdx = pntList['f5']
 
         # Load unit cell information
-        cellList = np.genfromtxt(fin, dtype=None, skip_header=1+self.numQMAtoms+self.numPntChrgs,
-                                 max_rows=4)
-        self.cellOrigin = cellList[0]
-        self.cellBasis = cellList[1:4]
+        if len(lines) > (1 + self.numQMAtoms + self.numPntChrgs):
+            cellList = np.loadtxt(lines[(1+self.numQMAtoms+self.numPntChrgs):(1+self.numQMAtoms+self.numPntChrgs+4)], dtype=float)
+            self.cellOrigin = cellList[0]
+            self.cellBasis = cellList[1:4]
+        else:
+            self.cellOrigin = None
+            self.cellBasis = None
+
+        # Close fin file
+        f.close()
 
         # Local indexes of MM1 and QM host atoms
         if self.numMM1 > 0:

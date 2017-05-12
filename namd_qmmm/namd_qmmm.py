@@ -25,31 +25,33 @@ class QMMM(object):
         self.postProc = postProc
         self.qmReadGuess = qmReadGuess
 
+        # Initialize the system
+        self.system = mmtools.NAMD(fin)
+
+        # Set the refernce charges for QM atoms
+        if qmRefChrgs is not None:
+            self.qmRefChrgs = qmRefChrgs
+        else:
+            self.qmRefChrgs = self.system.qmChrgs0
+
+        # Prepare for the electrostatic model
         if self.elecMode.lower() in {'truncation', 'mmewald'}:
             self.qmPBC = False
+            self.system.qmChrgs4MM = self.qmRefChrgs
         elif self.elecMode.lower() == 'qmewald':
             self.qmPBC = True
+            self.system.qmChrgs4MM = np.zeros(self.system.numQMAtoms)
         else:
             raise ValueError("Only 'truncation', 'mmewald', and 'qmewald' are supported at the moment.")
 
-        self.system = mmtools.NAMD(fin)
-
+        # Prepare for QM with PBC
         if self.qmPBC:
             if self.system.numAtoms != self.system.numRealQMAtoms + self.system.numRPntChrgs:
                 raise ValueError("Unit cell is not complete.")
 
             self.split_pntchrgs(qmCutoff=self.qmCutoff)
 
-        if qmRefChrgs is not None:
-            self.qmRefChrgs = qmRefChrgs
-        else:
-            self.qmRefChrgs = self.system.qmChrgs0
-
-        if self.elecMode.lower() == 'qmewald':
-            self.system.qmChrgs4MM = np.zeros(self.system.numQMAtoms)
-        else:
-            self.system.qmChrgs4MM = self.qmRefChrgs
-
+        # Set switching function for external point charges
         if qmSwitchingType is not None:
             self.qmSwitchingType = qmSwitchingType
         else:
@@ -61,6 +63,7 @@ class QMMM(object):
         elif self.elecMode.lower() == 'qmewald':
             self.qmSwitchingType = None
 
+        # Scale the external point charges
         if self.qmSwitchingType is not None:
             self.system.get_min_distances()
             self.system.scale_charges(self.qmSwitchingType, self.qmCutoff, self.qmSwdist)
@@ -82,6 +85,7 @@ class QMMM(object):
                 self.system.pntChrgs4MM = self.system.pntChrgsScld
                 self.system.pntChrgs4QM = np.zeros(self.system.numPntChrgs)
 
+        # Initialize the QM system
         self.qm = self.choose_qmtool()
 
         if self.postProc:

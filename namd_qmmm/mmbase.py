@@ -136,7 +136,7 @@ class MMBase(object):
 
         self.pntScale_deriv *= (self.dij_min > qmSwdist)
         self.pntScale_deriv = (-1 * self.pntScale_deriv[:, np.newaxis]
-                               * self.rij[range(self.numRPntChrgs), dij_min_j])
+                               * self.rij[range(self.numRPntChrgs), self.dij_min_j])
 
         # Just to be safe
         self.pntScale *= (self.dij_min < qmCutoff)

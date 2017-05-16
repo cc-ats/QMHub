@@ -86,7 +86,7 @@ class QMMM(object):
                 self.system.pntChrgs4QM = np.zeros(self.system.numPntChrgs)
 
         # Initialize the QM system
-        self.qm = self.choose_qmtool()
+        self.qm = qmtools.choose_qmtool(self.qmSoftware)(self.system, self.qmCharge, self.qmMult, self.qmPBC)
 
         if self.postProc:
             self.qm.calc_forces = False
@@ -97,13 +97,6 @@ class QMMM(object):
             self.qm.read_guess = True
         else:
             self.qm.read_guess = False
-
-    def choose_qmtool(self):
-        for qmtool in qmtools.__all__:
-            qmtool = getattr(qmtools, qmtool)
-            if qmtool.check_software(self.qmSoftware):
-                return qmtool(self.system, self.qmCharge, self.qmMult, self.qmPBC)
-        raise ValueError("Please choose 'q-chem', 'dftb+', 'orca', 'mopac', or 'psi4' for qmSoftware.")
 
     def run_qm(self, **kwargs):
         """Run QM calculation."""

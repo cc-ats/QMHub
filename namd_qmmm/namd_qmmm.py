@@ -150,17 +150,3 @@ class QMMM(object):
         np.save(self.qm.baseDir + "mmScale", mmScale)
         np.save(self.qm.baseDir + "mmDist", mmDist)
         np.save(self.qm.baseDir + "mmChrgs", mmChrgs)
-
-    def preserve_input(self):
-        """Preserve the input file passed from NAMD."""
-        import glob
-        import os
-        import shutil
-        listInputs = glob.glob(self.system.fin + "_*")
-        if listInputs:
-            idx = max([int(i.split('_')[-1]) for i in listInputs]) + 1
-        else:
-            idx = 0
-
-        if os.path.isfile(self.system.fin):
-            shutil.copyfile(self.system.fin, self.system.fin+"_"+str(idx))

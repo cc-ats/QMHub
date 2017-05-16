@@ -133,3 +133,16 @@ class NAMD(MMBase):
                         + "  " + format(self.qmChrgs4MM[i], "22.14e") + "\n")
             for i in range(self.numRPntChrgs):
                 f.write(" ".join(format(j, "22.14e") for j in self.pntChrgForces[i]) + "\n")
+
+    def preserve_input(self):
+        """Preserve the input file passed from NAMD."""
+        import glob
+        import shutil
+        listInputs = glob.glob(self.fin + "_*")
+        if listInputs:
+            idx = max([int(i.split('_')[-1]) for i in listInputs]) + 1
+        else:
+            idx = 0
+
+        if os.path.isfile(self.fin):
+            shutil.copyfile(self.fin, self.fin+"_"+str(idx))

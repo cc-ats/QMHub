@@ -1,1 +1,1 @@
-from .namd_qmmm import QMMM
+from .qmmm import QMMM

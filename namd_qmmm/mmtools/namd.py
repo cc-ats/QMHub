@@ -47,18 +47,22 @@ class NAMD(MMBase):
         self.numRealQMAtoms = self.numQMAtoms - self.numMM1
 
         # Load external point charge information
-        pntList = np.loadtxt(lines[(1+self.numQMAtoms):(1+self.numQMAtoms+self.numPntChrgs)],
-                             dtype='f8, f8, f8, f8, i8, i8')
-        # Positions of external point charges
-        self.pntPos = np.column_stack((pntList['f0'],
-                                       pntList['f1'],
-                                       pntList['f2']))
-        # Charges of external point charges
-        self.pntChrgs = pntList['f3']
-        # Indexes of external point charges
-        self.pntIdx = pntList['f4']
-        # Indexes of QM atoms MM1 atoms bonded to
-        self.pntBondedToIdx = pntList['f5']
+        if self.numPntChrgs > 0:
+            pntList = np.loadtxt(lines[(1+self.numQMAtoms):(1+self.numQMAtoms+self.numPntChrgs)],
+                                dtype='f8, f8, f8, f8, i8, i8')
+            # Positions of external point charges
+            self.pntPos = np.column_stack((pntList['f0'],
+                                        pntList['f1'],
+                                        pntList['f2']))
+            # Charges of external point charges
+            self.pntChrgs = pntList['f3']
+            # Indexes of external point charges
+            self.pntIdx = pntList['f4']
+            # Indexes of QM atoms MM1 atoms bonded to
+            self.pntBondedToIdx = pntList['f5']
+        else:
+            self.pntPos = None
+            self.pntChrgs = None
 
         # Load unit cell information
         if len(lines) > (1 + self.numQMAtoms + self.numPntChrgs):

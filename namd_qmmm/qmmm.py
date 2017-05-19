@@ -108,22 +108,27 @@ class QMMM(object):
 
     def dryrun_qm(self, **kwargs):
         """Generate input file without running QM calculation."""
-        self.qm.get_qmparams(**kwargs)
-        self.qm.gen_input()
+        if self.postProc:
+            self.qm.get_qmparams(**kwargs)
+            self.qm.gen_input()
+        else:
+            raise ValueError("dryrun_qm() can only be used with postProc=True.""")
 
     def parse_output(self):
         """Parse the output of QM calculation."""
-        if hasattr(self.qm, 'exitcode'):
+        if self.postProc:
+            self.system.parse_output(self.qm)
+        elif hasattr(self.qm, 'exitcode'):
             if self.qm.exitcode == 0:
                 self.system.parse_output(self.qm)
-                if not self.postProc:
-                    if self.qmElecEmbed and not self.qmPBC:
-                        self.system.corr_elecembed()
 
-                    if not self.qmElecEmbed or self.elecMode.lower() == 'mmewald':
-                        self.system.corr_mechembed()
+                if self.qmElecEmbed and not self.qmPBC:
+                    self.system.corr_elecembed()
 
-                    self.system.corr_vpntchrgs()
+                if not self.qmElecEmbed or self.elecMode.lower() == 'mmewald':
+                    self.system.corr_mechembed()
+
+                self.system.corr_vpntchrgs()
             else:
                 raise ValueError("QM calculation did not finish normally.")
         else:

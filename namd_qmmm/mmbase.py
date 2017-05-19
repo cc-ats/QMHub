@@ -146,13 +146,14 @@ class MMBase(object):
 
     def parse_output(self, qm):
         """Parse the output of QM calculation."""
-        self.qmEnergy = qm.get_qmenergy() * self.HARTREE2KCALMOL
         if qm.calc_forces:
+            self.qmEnergy = qm.get_qmenergy() * self.HARTREE2KCALMOL
             self.qmForces = qm.get_qmforces()[self.map2unsorted] * self.HARTREE2KCALMOL / self.BOHR2ANGSTROM
             self.pntChrgForces = qm.get_pntchrgforces() * self.HARTREE2KCALMOL / self.BOHR2ANGSTROM
             self.qmChrgs = qm.get_qmchrgs()[self.map2unsorted]
             self.pntESP = qm.get_pntesp() * self.HARTREE2KCALMOL
         else:
+            self.qmEnergy = 0.0
             self.qmForces = np.zeros((self.numQMAtoms, 3))
             self.pntChrgForces = np.zeros((self.numRPntChrgs, 3))
 

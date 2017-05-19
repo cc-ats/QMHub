@@ -27,7 +27,7 @@ class MOPAC(QMBase):
         if not hasattr(self, 'qmESP'):
             self.get_qmesp()
 
-        qmtmplt = QMTmplt(self.QMTOOL, self.pbc)
+        qmtmplt = QMTmplt(self.QMTOOL)
 
         if self.calc_forces:
             calcforces = 'GRAD '

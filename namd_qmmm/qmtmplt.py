@@ -64,7 +64,7 @@ Analysis {
 ${addparam}\
 """
 
-dftbewald_tmplt = """\
+KPointsAndWeights = """\
   KPointsAndWeights = SupercellFolding {
     1   0   0
     0   1   0
@@ -100,16 +100,13 @@ ${method} XYZ T=2M 1SCF SCFCRT=1.D-7 AUX(PRECISION=9) ${calcforces}QMMM NOMM CHA
 class QMTmplt(object):
     """Input templates for QM softwares."""
 
-    def __init__(self, qmSoftware=None, qmPBC=None):
+    def __init__(self, qmSoftware=None):
         """Input templates for QM softwares.
 
         Parameters
         ----------
         qmSoftware : str
             Software to do the QM calculation
-
-        qmPBC : bool
-           If periodic boundary conditions will be used in the QM calculation
 
         """
 
@@ -121,6 +118,7 @@ class QMTmplt(object):
         if self.qmSoftware.lower() == 'q-chem':
             pass
         elif self.qmSoftware.lower() == 'dftb+':
+            self.KPointsAndWeights = KPointsAndWeights
             self.HubbardDerivs = HubbardDerivs
             self.MaxAngularMomentum = MaxAngularMomentum
         elif self.qmSoftware.lower() == 'orca':
@@ -130,55 +128,35 @@ class QMTmplt(object):
         else:
             raise ValueError("Only 'q-chem', 'dftb+', 'orca', and 'mopac' are supported at the moment.")
 
-        if qmPBC is not None:
-            self.qmPBC = qmPBC
-        else:
-            raise ValueError("Please choose True or False for 'qmPBC'.")
-
     def gen_qmtmplt(self):
         """Generare input templates for QM softwares."""
         if self.qmSoftware.lower() == 'q-chem':
-            if self.qmPBC:
-                raise NotImplementedError()
-            else:
-                return Template(qc_tmplt)
+            return Template(qc_tmplt)
         elif self.qmSoftware.lower() == 'dftb+':
-            if self.qmPBC:
-                return Template(Template(dftb_tmplt).safe_substitute(KPointsAndWeights=dftbewald_tmplt))
-            else:
-                return Template(Template(dftb_tmplt).safe_substitute(KPointsAndWeights=''))
+            return Template(dftb_tmplt)
         elif self.qmSoftware.lower() == 'orca':
-            if self.qmPBC:
-                raise ValueError("Not supported.")
-            else:
-                return Template(orca_tmplt)
+            return Template(orca_tmplt)
         elif self.qmSoftware.lower() == 'mopac':
-            if self.qmPBC:
-                raise ValueError("Not supported.")
-            else:
-                return Template(mopac_tmplt)
+            return Template(mopac_tmplt)
 
 
 if __name__ == "__main__":
-    qmtmplt = QMTmplt('q-chem', False)
+    qmtmplt = QMTmplt('q-chem')
     print(qmtmplt.gen_qmtmplt().safe_substitute(
               jobtype='force', method='hf', basis='6-31g',
               read_guess='scf_guess read\n',
               addparam='chelpg true\n'))
-    qmtmplt = QMTmplt('dftb+', False)
+    qmtmplt = QMTmplt('dftb+')
     print(qmtmplt.gen_qmtmplt().safe_substitute(
               charge=0, numPntChrgs=1000, read_guess='No',
+              KPointsAndWeights=qmtmplt.KPointsAndWeights,
               calcforces='Yes', addparam=''))
-    qmtmplt = QMTmplt('dftb+', True)
-    print(qmtmplt.gen_qmtmplt().safe_substitute(
-              charge=0, numPntChrgs=1000, read_guess='No',
-              calcforces='Yes', addparam=''))
-    qmtmplt = QMTmplt('orca', False)
+    qmtmplt = QMTmplt('orca')
     print(qmtmplt.gen_qmtmplt().safe_substitute(
               method='HF', basis='6-31G', calcforces='EnGrad ',
               read_guess='NoAutoStart ',
               addparam='CHELPG ', nproc='8'))
-    qmtmplt = QMTmplt('mopac', False)
+    qmtmplt = QMTmplt('mopac')
     print(qmtmplt.gen_qmtmplt().safe_substitute(
               method='PM7', calcforces='GRAD ',
               charge=0, addparam=' ESP', nproc='8'))

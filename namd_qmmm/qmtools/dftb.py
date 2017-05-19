@@ -22,11 +22,16 @@ class DFTB(QMBase):
     def gen_input(self):
         """Generate input file for QM software."""
 
-        qmtmplt = QMTmplt(self.QMTOOL, self.pbc)
+        qmtmplt = QMTmplt(self.QMTOOL)
 
         listElmnts = np.unique(self.qmElmnts).tolist()
-        outMaxAngularMomentum = "\n    ".join([i+" = "+qmtmplt.MaxAngularMomentum[i] for i in listElmnts])
-        outHubbardDerivs = "\n    ".join([i+" = "+qmtmplt.HubbardDerivs[i] for i in listElmnts])
+        MaxAngularMomentum = "\n    ".join([i+" = "+qmtmplt.MaxAngularMomentum[i] for i in listElmnts])
+        HubbardDerivs = "\n    ".join([i+" = "+qmtmplt.HubbardDerivs[i] for i in listElmnts])
+
+        if self.pbc:
+            KPointsAndWeights = qmtmplt.KPointsAndWeights
+        else:
+            KPointsAndWeights = ""
 
         if self.calc_forces:
             calcforces = 'Yes'
@@ -47,8 +52,9 @@ class DFTB(QMBase):
             f.write(qmtmplt.gen_qmtmplt().substitute(charge=self.charge,
                     numPntChrgs=self.numPntChrgs, read_guess=read_guess,
                     calcforces=calcforces, skfpath=self.skfpath,
-                    MaxAngularMomentum=outMaxAngularMomentum,
-                    HubbardDerivs=outHubbardDerivs,
+                    MaxAngularMomentum=MaxAngularMomentum,
+                    HubbardDerivs=HubbardDerivs,
+                    KPointsAndWeights=KPointsAndWeights,
                     addparam=addparam))
         with open(self.baseDir+"input_geometry.gen", 'w') as f:
             if self.pbc:

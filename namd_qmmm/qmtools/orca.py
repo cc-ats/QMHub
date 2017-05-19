@@ -26,7 +26,7 @@ class ORCA(QMBase):
     def gen_input(self):
         """Generate input file for QM software."""
 
-        qmtmplt = QMTmplt(self.QMTOOL, self.pbc)
+        qmtmplt = QMTmplt(self.QMTOOL)
 
         if self.calc_forces:
             calcforces = 'EnGrad '

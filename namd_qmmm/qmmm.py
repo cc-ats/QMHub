@@ -106,6 +106,11 @@ class QMMM(object):
         if self.qm.exitcode != 0:
             sys.exit(self.qm.exitcode)
 
+    def dryrun_qm(self, **kwargs):
+        """Generate input file without running QM calculation."""
+        self.qm.get_qmparams(**kwargs)
+        self.qm.gen_input()
+
     def parse_output(self):
         """Parse the output of QM calculation."""
         if hasattr(self.qm, 'exitcode'):

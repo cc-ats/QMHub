@@ -15,7 +15,7 @@ class DFTB(QMBase):
         super(DFTB, self).get_qmparams(**kwargs)
 
         if skfpath is not None:
-            self.skfpath = skfpath
+            self.skfpath = os.path.join(skfpath, '')
         else:
             raise ValueError("Please set skfpath for DFTB+.")
 

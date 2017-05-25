@@ -1,6 +1,7 @@
 import os
 import numpy as np
 
+from .. import units
 from ..qmbase import QMBase
 from ..qmtmplt import QMTmplt
 
@@ -80,9 +81,9 @@ class ORCA(QMBase):
         with open(self.baseDir + "orca.pntvpot.xyz", 'w') as f:
             f.write("%d\n" % self.numPntChrgs)
             for i in range(self.numPntChrgs):
-                f.write("".join(["%22.14e" % (self.pntPos[i, 0] / self.BOHR2ANGSTROM),
-                                    "%22.14e" % (self.pntPos[i, 1] / self.BOHR2ANGSTROM),
-                                    "%22.14e" % (self.pntPos[i, 2] / self.BOHR2ANGSTROM), "\n"]))
+                f.write("".join(["%22.14e" % (self.pntPos[i, 0] / units.L_AU),
+                                    "%22.14e" % (self.pntPos[i, 1] / units.L_AU),
+                                    "%22.14e" % (self.pntPos[i, 2] / units.L_AU), "\n"]))
 
     def gen_cmdline(self):
         """Generate commandline for QM calculation."""

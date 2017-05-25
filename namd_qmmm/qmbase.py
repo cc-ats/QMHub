@@ -2,14 +2,11 @@ import os
 import subprocess as sp
 import numpy as np
 
+from . import units
 
 class QMBase(object):
 
     QMTOOL = None
-
-    HARTREE2KCALMOL = 6.275094737775374e+02
-    HARTREE2EV = 2.721138602e+01
-    BOHR2ANGSTROM = 5.2917721067e-01
 
     def __init__(self, system, charge=None, mult=None, pbc=None):
         """
@@ -37,8 +34,8 @@ class QMBase(object):
         self.pntPos = system.pntPos
         self.pntChrgs4QM = system.pntChrgs4QM
 
-        self.rij = system.rij[:, system.map2sorted] / self.BOHR2ANGSTROM
-        self.dij = system.dij[:, system.map2sorted] / self.BOHR2ANGSTROM
+        self.rij = system.rij[:, system.map2sorted] / units.L_AU
+        self.dij = system.dij[:, system.map2sorted] / units.L_AU
         self.cellOrigin = system.cellOrigin
         self.cellBasis = system.cellBasis
 

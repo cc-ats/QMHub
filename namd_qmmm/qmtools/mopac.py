@@ -3,9 +3,9 @@ from __future__ import division
 import os
 import numpy as np
 
+from .. import units
 from ..qmbase import QMBase
 from ..qmtmplt import QMTmplt
-
 
 class MOPAC(QMBase):
 
@@ -64,7 +64,7 @@ class MOPAC(QMBase):
                                     "%22.14e" % self.qmPos[i, 0],
                                     "%22.14e" % self.qmPos[i, 1],
                                     "%22.14e" % self.qmPos[i, 2],
-                                    " %22.14e" % (self.qmESP[i] * self.HARTREE2KCALMOL), "\n"]))
+                                    " %22.14e" % (self.qmESP[i] * units.E_AU), "\n"]))
 
     def gen_cmdline(self):
         """Generate commandline for QM calculation."""
@@ -85,7 +85,7 @@ class MOPAC(QMBase):
         with open(self.baseDir + "mopac.aux", 'r') as f:
             for line in f:
                 if "TOTAL_ENERGY" in line:
-                    self.qmEnergy = float(line[17:].replace("D", "E")) / self.HARTREE2EV
+                    self.qmEnergy = float(line[17:].replace("D", "E")) / units.EH_TO_EV
                     break
 
         return self.qmEnergy
@@ -118,7 +118,7 @@ class MOPAC(QMBase):
                         gradients = np.append(gradients, np.fromstring(line, sep=' '))
                     break
         self.qmForces = -1 * gradients.reshape(self.numQMAtoms, 3)
-        self.qmForces *= self.BOHR2ANGSTROM / self.HARTREE2KCALMOL
+        self.qmForces /= units.F_AU
         self.qmForces -= self.fij.sum(axis=0)
 
         return self.qmForces

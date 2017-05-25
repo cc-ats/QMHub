@@ -1,14 +1,11 @@
 import copy
 import numpy as np
 
+from . import units
 
 class MMBase(object):
 
     MMTOOL = None
-
-    HARTREE2KCALMOL = 6.275094737775374e+02
-    BOHR2ANGSTROM = 5.2917721067e-01
-    KE = HARTREE2KCALMOL * BOHR2ANGSTROM
 
     def __init__(self, fin=None):
 
@@ -147,11 +144,11 @@ class MMBase(object):
     def parse_output(self, qm):
         """Parse the output of QM calculation."""
         if qm.calc_forces:
-            self.qmEnergy = qm.get_qmenergy() * self.HARTREE2KCALMOL
-            self.qmForces = qm.get_qmforces()[self.map2unsorted] * self.HARTREE2KCALMOL / self.BOHR2ANGSTROM
-            self.pntChrgForces = qm.get_pntchrgforces() * self.HARTREE2KCALMOL / self.BOHR2ANGSTROM
+            self.qmEnergy = qm.get_qmenergy() * units.E_AU
+            self.qmForces = qm.get_qmforces()[self.map2unsorted] * units.F_AU
             self.qmChrgs = qm.get_qmchrgs()[self.map2unsorted]
-            self.pntESP = qm.get_pntesp() * self.HARTREE2KCALMOL
+            self.pntChrgForces = qm.get_pntchrgforces() * units.F_AU
+            self.pntESP = qm.get_pntesp() * units.E_AU
         else:
             self.qmEnergy = 0.0
             self.qmForces = np.zeros((self.numQMAtoms, 3))
@@ -171,7 +168,7 @@ class MMBase(object):
         """Correct forces and energy due to mechanical embedding."""
         pntChrgsD = self.pntChrgs4MM[0:self.numRPntChrgs] - self.pntChrgs4QM[0:self.numRPntChrgs]
 
-        fCorr = (-1 * self.KE * pntChrgsD[:, np.newaxis] * self.qmChrgs4MM[np.newaxis, :]
+        fCorr = (-1 * units.KE * pntChrgsD[:, np.newaxis] * self.qmChrgs4MM[np.newaxis, :]
                  / self.dij[0:self.numRPntChrgs]**3)
         fCorr = fCorr[:, :, np.newaxis] * self.rij[0:self.numRPntChrgs]
 
@@ -183,7 +180,7 @@ class MMBase(object):
         self.qmForces -= fCorr.sum(axis=0)
 
         if hasattr(self, 'pntChrgsScld'):
-            fCorr = (self.KE * self.pntChrgs[0:self.numRPntChrgs, np.newaxis]
+            fCorr = (units.KE * self.pntChrgs[0:self.numRPntChrgs, np.newaxis]
                      * self.qmChrgs4MM[np.newaxis, :]
                      / self.dij[0:self.numRPntChrgs])
             if self.numVPntChrgs > 0:
@@ -199,7 +196,7 @@ class MMBase(object):
             for i in range(self.numRealQMAtoms):
                 self.qmForces[i] += fCorr[self.dij_min_j == i].sum(axis=0)
 
-        eCorr = (self.KE * pntChrgsD[:, np.newaxis] * self.qmChrgs4MM[np.newaxis, :]
+        eCorr = (units.KE * pntChrgsD[:, np.newaxis] * self.qmChrgs4MM[np.newaxis, :]
                  / self.dij[0:self.numRPntChrgs])
 
         if self.numVPntChrgs > 0:

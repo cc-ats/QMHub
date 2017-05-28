@@ -13,7 +13,6 @@ class MMBase(object):
         self.load_system()
         self.get_pair_vectors()
         self.get_pair_distances()
-        self.sort_qmatoms()
 
     def get_pair_vectors(self):
         """Get pair-wise vectors between QM and MM atoms."""
@@ -48,7 +47,7 @@ class MMBase(object):
             vPntChrgs = self.mm_charge[self.n_real_mm_atoms:]
             if self.n_virt_mm_atoms__per_mm2 == 3:
                 for i in range(self.n_mm2):
-                    rPntChrgs[self.virt_atom_mm1_idx[i]] += vPntChrgs[(i * 3):(i * 3 + 3)].sum()
+                    rPntChrgs[self._virt_atom_mm1_idx[i]] += vPntChrgs[(i * 3):(i * 3 + 3)].sum()
 
             elif self.n_virt_mm_atoms_per_mm2 == 2:
                 raise NotImplementedError()
@@ -195,13 +194,13 @@ class MMBase(object):
         if self.n_virt_mm_atoms > 0:
             if self.n_virt_mm_atoms_per_mm2 == 3:
                 for i in range(self.n_mm2):
-                    self.mm_force[self.virt_atom_mm2_idx[i]] += self.mm_force[self.n_real_mm_atoms + i*3]
+                    self.mm_force[self._virt_atom_mm2_idx[i]] += self.mm_force[self.n_real_mm_atoms + i*3]
 
-                    self.mm_force[self.virt_atom_mm2_idx[i]] += self.mm_force[self.n_real_mm_atoms + i*3 + 1] * 0.94
-                    self.mm_force[self.virt_atom_mm1_idx[i]] += self.mm_force[self.n_real_mm_atoms + i*3 + 1] * 0.06
+                    self.mm_force[self._virt_atom_mm2_idx[i]] += self.mm_force[self.n_real_mm_atoms + i*3 + 1] * 0.94
+                    self.mm_force[self._virt_atom_mm1_idx[i]] += self.mm_force[self.n_real_mm_atoms + i*3 + 1] * 0.06
 
-                    self.mm_force[self.virt_atom_mm2_idx[i]] += self.mm_force[self.n_real_mm_atoms + i*3 + 2] * 1.06
-                    self.mm_force[self.virt_atom_mm1_idx[i]] += self.mm_force[self.n_real_mm_atoms + i*3 + 2] * -0.06
+                    self.mm_force[self._virt_atom_mm2_idx[i]] += self.mm_force[self.n_real_mm_atoms + i*3 + 2] * 1.06
+                    self.mm_force[self._virt_atom_mm1_idx[i]] += self.mm_force[self.n_real_mm_atoms + i*3 + 2] * -0.06
 
                 self.mm_force[self.n_real_mm_atoms:] = 0.
 

@@ -10,7 +10,7 @@ class MMBase(object):
     def __init__(self, fin=None):
 
         self.fin = fin
-        self.load_system(self.fin)
+        self.load_system()
         self.get_pair_vectors()
         self.get_pair_distances()
         self.sort_qmatoms()

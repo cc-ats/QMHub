@@ -8,82 +8,70 @@ class NAMD(MMBase):
 
     MMTOOL = 'NAMD'
 
-    def load_system(self, fin):
+    def load_system(self):
 
-        # Open fin file
-        f = open(fin, 'r')
+        # Read fin file
+        f = open(self.fin, 'r')
         lines = f.readlines()
+        f.close()
 
         # Load system information
-        sys_list = np.loadtxt(lines[0:1], dtype=int)
-        # Number of QM atoms including linking atoms
-        self.n_qm_atoms = sys_list[0]
-        # Number of external external point charges including virtual particles
-        self.n_mm_atoms = sys_list[1]
-        # Number of total atoms in the whole system
-        self.n_atoms = sys_list[2]
-        # Number of current step
-        self.step = sys_list[3]
-        # Number of total steps to run
-        self.n_steps = sys_list[4]
+        self.n_qm_atoms, self.n_mm_atoms, self.n_atoms, self.step, self.n_steps = \
+            np.loadtxt(lines[0:1], dtype=int, unpack=True)
 
         # Load QM information
-        qm_list = np.loadtxt(lines[1:(1+self.n_qm_atoms)],
-                            dtype='f8, f8, f8, U2, f8, i8')
-        # Positions of QM atoms
-        self.qm_position = np.column_stack((qm_list['f0'],
-                                      qm_list['f1'],
-                                      qm_list['f2']))
-        # Elements of QM atoms
-        self.qm_element = np.char.capitalize(qm_list['f3'])
-        # Charges of QM atoms
-        self.qm_charge0 = qm_list['f4']
-        # Indexes of QM atoms
-        self.qm_index = qm_list['f5']
+        qm_atoms = np.loadtxt(lines[1:(self.n_qm_atoms + 1)],
+                              dtype=[('position', [('x', 'f8'), ('y', 'f8'), ('z', 'f8')]),
+                                     ('element', 'U2'), ('charge', 'f8'), ('index', 'i8')])
+        qm_atoms = qm_atoms.view(np.recarray)
 
-        # Number of MM1 atoms which equals to number of linking atoms
-        self.n_virt_qm_atoms = np.count_nonzero(self.qm_index == -1)
-        # Number of Real QM atoms
+        self.n_virt_qm_atoms = np.count_nonzero(qm_atoms.index == -1)
         self.n_real_qm_atoms = self.n_qm_atoms - self.n_virt_qm_atoms
 
-        # Load external point charge information
+        # Positions of QM atoms
+        self.qm_position = qm_atoms.position.view((float, 3))
+        # Elements of QM atoms
+        self.qm_element = np.char.capitalize(qm_atoms.element)
+        # Charges of QM atoms
+        self.qm_charge0 = qm_atoms.charge
+        # Indexes of QM atoms
+        self.qm_index = qm_atoms.index
+
+        # Load unit cell information
+        start = 1 + self.n_qm_atoms + self.n_mm_atoms
+        stop = start + 4
+        cell_list = np.loadtxt(lines[start:stop], dtype=float)
+        self.cell_basis = cell_list[0:3]
+        self.cell_origin = cell_list[3]
+
+        # Load MM information
         if self.n_mm_atoms > 0:
-            mm_list = np.loadtxt(lines[(1+self.n_qm_atoms):(1+self.n_qm_atoms+self.n_mm_atoms)],
-                                dtype='f8, f8, f8, f8, i8, i8')
+            mm_atoms = np.loadtxt(lines[(1+self.n_qm_atoms):(1+self.n_qm_atoms+self.n_mm_atoms)],
+                                  dtype=[('position', [('x', 'f8'), ('y', 'f8'), ('z', 'f8')]),
+                                         ('charge', 'f8'), ('index', 'i8'), ('bonded_to_idx', 'i8')])
+            mm_atoms = mm_atoms.view(np.recarray)
+
+            virt_mm_mask = np.array((mm_atoms.index == -1), dtype=bool)
+
+            self.n_virt_mm_atoms = np.count_nonzero(virt_mm_mask)
+            self.n_real_mm_atoms = self.n_mm_atoms - self.n_virt_mm_atoms
+
             # Positions of external point charges
-            self.mm_position = np.column_stack((mm_list['f0'],
-                                        mm_list['f1'],
-                                        mm_list['f2']))
+            self.mm_position = mm_atoms.position.view((float, 3))
             # Charges of external point charges
-            self.mm_charge = mm_list['f3']
+            self.mm_charge = mm_atoms.charge
             # Indexes of external point charges
-            self.mm_index = mm_list['f4']
+            self.mm_index = mm_atoms.index
             # Indexes of QM atoms MM1 atoms bonded to
-            self.mm_bonded_to_idx = mm_list['f5']
+            self.mm_bonded_to_idx = mm_atoms.bonded_to_idx
         else:
             self.mm_position = None
             self.mm_charge = None
-
-        # Load unit cell information
-        if len(lines) > (1 + self.n_qm_atoms + self.n_mm_atoms):
-            cell_list = np.loadtxt(lines[(1+self.n_qm_atoms+self.n_mm_atoms):(1+self.n_qm_atoms+self.n_mm_atoms+4)], dtype=float)
-            self.cell_origin = cell_list[0]
-            self.cell_basis = cell_list[1:4]
-        else:
-            self.cell_origin = None
-            self.cell_basis = None
-
-        # Close fin file
-        f.close()
 
         # Local indexes of MM1 and QM host atoms
         if self.n_virt_qm_atoms > 0:
             self.mm1_local_idx = np.where(self.mm_bonded_to_idx != -1)[0]
             self.qm_host_local_idx = self.mm_bonded_to_idx[self.mm1_local_idx]
-        # Number of virtual external point charges
-        self.n_virt_mm_atoms = np.count_nonzero(self.mm_index == -1)
-        # Number of real external point charges
-        self.n_real_mm_atoms = self.n_mm_atoms - self.n_virt_mm_atoms
 
         # Numbers of MM2 atoms and virtual external point charges per MM2 atom
         if self.n_virt_mm_atoms > 0:

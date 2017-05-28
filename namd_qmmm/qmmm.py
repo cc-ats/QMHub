@@ -8,7 +8,7 @@ from . import qmtools
 class QMMM(object):
     def __init__(self, fin, qmSoftware, qmCharge, qmMult,
                  elecMode, qmElecEmbed=True,
-                 qmRefChrgs=None, qmSwitchingType=None,
+                 qmRefCharge='ff', qmSwitchingType=None,
                  qmCutoff=None, qmSwdist=None, 
                  postProc=False, qmReadGuess=False):
         """
@@ -19,7 +19,7 @@ class QMMM(object):
         self.qmMult = qmMult
         self.elecMode = elecMode
         self.qmElecEmbed = qmElecEmbed
-        self.qmRefChrgs = qmRefChrgs
+        self.qmRefCharge = qmRefCharge
         self.qmCutoff = qmCutoff
         self.qmSwdist = qmSwdist
         self.postProc = postProc
@@ -29,15 +29,16 @@ class QMMM(object):
         self.system = mmtools.NAMD(fin)
 
         # Set the refernce charges for QM atoms
-        if qmRefChrgs is not None:
-            self.qmRefChrgs = qmRefChrgs
-        else:
-            self.qmRefChrgs = self.system.qm_charge0
+        if not isinstance(self.qmRefCharge, np.ndarray):
+            if self.qmRefCharge == 'ff':
+                self.qmRefCharge = self.system.qm_atoms.charge
+            elif isinstance(self.qmRefCharge, list):
+                self.qmRefCharge = np.asarray(self.qmRefCharge)
 
         # Prepare for the electrostatic model
         if self.elecMode.lower() in {'truncation', 'mmewald'}:
             self.qmPBC = False
-            self.system.qm_charge_me = self.qmRefChrgs
+            self.system.qm_charge_me = self.qmRefCharge
         elif self.elecMode.lower() == 'qmewald':
             self.qmPBC = True
             self.system.qm_charge_me = np.zeros(self.system.n_qm_atoms)
@@ -143,7 +144,7 @@ class QMMM(object):
 
     def save_charges(self):
         """Save the QM and MM charges to file (for debugging only)."""
-        system_scale = np.zeros(self.system.n_atoms)
+        system_scale = np.ones(self.system.n_atoms)
         system_dij_min = np.zeros(self.system.n_atoms)
         system_charge = np.zeros(self.system.n_atoms)
 

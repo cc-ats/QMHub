@@ -44,8 +44,6 @@ class NAMD(MMBase):
         self.qm_position = qm_atoms.position.view((float, 3))
         # Elements of QM atoms
         self.qm_element = np.char.capitalize(qm_atoms.element)
-        # Charges of QM atoms
-        self.qm_charge0 = qm_atoms.charge
         # Indexes of QM atoms
         self.qm_index = qm_atoms.index
 

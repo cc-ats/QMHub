@@ -135,9 +135,9 @@ class PSI4(QMBase):
         """Get external point charge forces from output of QM calculation."""
 
         self.mm_force = (np.column_stack([self.oeprop.Exvals(),
-                                               self.oeprop.Eyvals(),
-                                               self.oeprop.Ezvals()])
-                              * self.mm_charge_qm[:, np.newaxis])
+                                          self.oeprop.Eyvals(),
+                                          self.oeprop.Ezvals()])
+                         * self.mm_charge_qm[:, np.newaxis])
 
         return self.mm_force
 
@@ -148,8 +148,9 @@ class PSI4(QMBase):
         return self.qm_charge
 
     def get_mm_esp(self):
-        """Get ESP at external point charges from output of QM calculation."""
+        """Get ESP at external point charges in the near field from QM density."""
 
         self.mm_esp = np.array(self.oeprop.Vvals())
 
         return self.mm_esp
+

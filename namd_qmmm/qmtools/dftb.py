@@ -1,3 +1,5 @@
+from __future__ import division
+
 import os
 import numpy as np
 
@@ -64,10 +66,10 @@ class DFTB(QMBase):
             f.write(" ".join(elements) + "\n")
             for i in range(self.n_qm_atoms):
                 f.write("".join(["%6d" % (i+1),
-                                    "%4d" % (elements.index(self.qm_element[i])+1),
-                                    "%22.14e" % self.qm_position[i, 0],
-                                    "%22.14e" % self.qm_position[i, 1],
-                                    "%22.14e" % self.qm_position[i, 2], "\n"]))
+                                 "%4d" % (elements.index(self.qm_element[i])+1),
+                                 "%22.14e" % self.qm_position[i, 0],
+                                 "%22.14e" % self.qm_position[i, 1],
+                                 "%22.14e" % self.qm_position[i, 2], "\n"]))
             if self.pbc:
                 f.write("".join(["%22.14e" % i for i in self.cell_origin]) + "\n")
                 f.write("".join(["%22.14e" % i for i in self.cell_basis[0]]) + "\n")
@@ -77,9 +79,9 @@ class DFTB(QMBase):
         with open(self.basedir + "charges.dat", 'w') as f:
             for i in range(self.n_mm_atoms):
                 f.write("".join(["%22.14e" % self.mm_position[i, 0],
-                                    "%22.14e" % self.mm_position[i, 1],
-                                    "%22.14e" % self.mm_position[i, 2],
-                                    " %22.14e" % self.mm_charge_qm[i], "\n"]))
+                                 "%22.14e" % self.mm_position[i, 1],
+                                 "%22.14e" % self.mm_position[i, 2],
+                                 " %22.14e" % self.mm_charge_qm[i], "\n"]))
 
     def gen_cmdline(self):
         """Generate commandline for QM calculation."""
@@ -97,53 +99,55 @@ class DFTB(QMBase):
         if os.path.isfile(qmsave):
             os.remove(qmsave)
 
-    def get_qm_energy(self):
+    def get_qm_energy(self, output=None):
         """Get QM energy from output of QM calculation."""
 
-        self.qm_energy = np.genfromtxt(self.basedir + "results.tag",
-                                        dtype=float, skip_header=1,
-                                        max_rows=1)
+        if output is None:
+            output = self.load_output(self.basedir + "results.tag")
+
+        self.qm_energy = np.loadtxt(output[1:2], dtype=float)
 
         return self.qm_energy
 
-    def get_qm_force(self):
+    def get_qm_charge(self, output=None):
+        """Get Mulliken charges from output of QM calculation."""
+
+        if output is None:
+            output = self.load_output(self.basedir + "results.tag")
+
+        self.qm_charge = np.array([], dtype=float)
+
+        n_lines = int(np.ceil(self.n_qm_atoms / 3))
+        start = self.n_qm_atoms + self.n_mm_atoms + n_lines + 14
+        stop = start + n_lines
+
+        for line in output[start:stop]:
+            self.qm_charge = np.append(self.qm_charge, np.fromstring(line, sep=' '))
+
+        return self.qm_charge
+
+    def get_qm_force(self, output=None):
         """Get QM forces from output of QM calculation."""
 
-        self.qm_force = np.genfromtxt(self.basedir + "results.tag",
-                                        dtype=float, skip_header=5,
-                                        max_rows=self.n_qm_atoms)
+        if output is None:
+            output = self.load_output(self.basedir + "results.tag")
+
+        self.qm_force = np.loadtxt(output[5:(self.n_qm_atoms + 5)], dtype=float)
 
         return self.qm_force
 
-    def get_mm_force(self):
+    def get_mm_force(self, output=None):
         """Get external point charge forces from output of QM calculation."""
 
-        self.mm_force = np.genfromtxt(self.basedir + "results.tag",
-                                            dtype=float,
-                                            skip_header=self.n_qm_atoms+6,
-                                            max_rows=self.n_mm_atoms)
+        if output is None:
+            output = self.load_output(self.basedir + "results.tag")
+
+        start = self.n_qm_atoms + 6
+        stop = start + self.n_mm_atoms
+
+        self.mm_force = np.loadtxt(output[start:stop], dtype=float)
 
         return self.mm_force
-
-    def get_qm_charge(self):
-        """Get Mulliken charges from output of QM calculation."""
-
-        if self.n_qm_atoms > 3:
-            self.qm_charge = np.genfromtxt(
-                self.basedir + "results.tag", dtype=float,
-                skip_header=(self.n_qm_atoms + self.n_mm_atoms
-                                + int(np.ceil(self.n_qm_atoms/3.)) + 14),
-                max_rows=int(np.ceil(self.n_qm_atoms/3.)-1.))
-        else:
-            self.qm_charge = np.array([])
-        self.qm_charge = np.append(
-            self.qm_charge.flatten(),
-            np.genfromtxt(self.basedir + "results.tag", dtype=float,
-                skip_header=(self.n_qm_atoms + self.n_mm_atoms
-                                + int(np.ceil(self.n_qm_atoms/3.))*2 + 13),
-                max_rows=1).flatten())
-
-        return self.qm_charge
 
     def get_mm_esp(self):
         """Get ESP at external point charges from output of QM calculation."""

@@ -1,7 +1,7 @@
 import os
 import numpy as np
 
-from ..mmbase import MMBase
+from .mmbase import MMBase
 
 
 class NAMD(MMBase):

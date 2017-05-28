@@ -3,9 +3,10 @@ from __future__ import absolute_import
 import os
 import numpy as np
 
-from ..qmbase import QMBase
+from .qmbase import QMBase
 
 import psi4
+
 
 class PSI4(QMBase):
 

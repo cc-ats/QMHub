@@ -4,8 +4,10 @@ import os
 import numpy as np
 
 from .. import units
-from ..qmbase import QMBase
+
+from .qmbase import QMBase
 from ..qmtmpl import QMTmpl
+
 
 class MOPAC(QMBase):
 

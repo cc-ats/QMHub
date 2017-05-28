@@ -1,7 +1,7 @@
 import os
 import numpy as np
 
-from ..qmbase import QMBase
+from .qmbase import QMBase
 from ..qmtmpl import QMTmpl
 
 

@@ -1,7 +1,7 @@
 import copy
 import numpy as np
 
-from . import units
+from .. import units
 
 class MMBase(object):
 

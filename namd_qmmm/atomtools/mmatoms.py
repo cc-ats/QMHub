@@ -5,7 +5,7 @@ from .atombase import AtomBase
 class MMAtoms(AtomBase):
     """Class to hold MM atoms."""
 
-    def __init__(self, x, y, z, charge, index, orig_charges, qm_atoms):
+    def __init__(self, x, y, z, charge, index, orig_charge, qm_atoms):
 
         super(MMAtoms, self).__init__(x, y, z, charge, index)
 
@@ -35,8 +35,8 @@ class MMAtoms(AtomBase):
         self._dij_min = np.sqrt(self._dij_min2)
 
         # Initialize original MM charges
-        self._orig_charges = np.zeros(self.n_atoms, dtype=float)
-        self._orig_charges[self._real_indices] = orig_charges
+        self._orig_charge = np.zeros(self.n_atoms, dtype=float)
+        self._orig_charge[self._real_indices] = orig_charge
 
         # Get array mask to cancel 1-2 and 1-3 interactions for coulomb
         self._coulomb_mask = np.ones((self.n_atoms, self._qm_atoms.n_atoms), dtype=bool)

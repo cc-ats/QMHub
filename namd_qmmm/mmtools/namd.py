@@ -85,39 +85,38 @@ class NAMD(MMBase):
                 self.qm_host_local_idx = self.mm_bonded_to_idx[self.mm1_local_idx]
                 self.qm_host_local_idx = self._map2unsorted[self.qm_host_local_idx]
 
-                # Numbers of MM2 atoms and virtual external point charges per MM2 atom
-                if self.mm_charge[-1] + self.mm_charge[-2] < 0.00001:
-                    self.n_virt_mm_atoms_per_mm2 = 3
+                # Number of MM2 atoms and coefficient to generate the virtual charges
+                mm_charge = mm_atoms.charge
+                if mm_charge[-1] + mm_charge[-2] < 0.00001:
                     self._mm1_coeff = np.array([0, 0.06, -0.06])
                     self._mm2_coeff  = np.array([1, 0.94, 1.06])
-                elif self.mm_charge[-1] + self.mm_charge[-2] * 2 < 0.00001:
-                    self.n_virt_mm_atoms_per_mm2 = 2
+                elif mm_charge[-1] + mm_charge[-2] * 2 < 0.00001:
                     self._mm1_coeff = np.array([0, 0.5])
                     self._mm2_coeff  = np.array([1, 0.5])
                 else:
                     raise ValueError('Something is wrong with point charge alterations.')
 
-                self.n_mm2 = self.n_virt_mm_atoms // self.n_virt_mm_atoms_per_mm2
+                n_mm2 = self.n_virt_mm_atoms // self._mm1_coeff.size
 
                 # Local indexes of MM1 and MM2 atoms the virtual point charges belong to
-                if self.n_virt_mm_atoms_per_mm2 == 3:
-                    virt_atom_mm1_pos = np.zeros((self.n_mm2, 3), dtype=float)
-                    virt_atom_mm2_pos = np.zeros((self.n_mm2, 3), dtype=float)
-                    for i in range(self.n_mm2):
+                if self._mm1_coeff.size== 3:
+                    virt_atom_mm1_pos = np.zeros((n_mm2, 3), dtype=float)
+                    virt_atom_mm2_pos = np.zeros((n_mm2, 3), dtype=float)
+                    for i in range(n_mm2):
                         virt_atom_mm1_pos[i] = (self.mm_position[self.n_real_mm_atoms + i*3 + 1]
                                     - self.mm_position[self.n_real_mm_atoms + i*3]
                                     * 0.94) / 0.06
                         virt_atom_mm2_pos[i] = self.mm_position[self.n_real_mm_atoms + i*3]
 
-                    self._virt_atom_mm1_idx = np.zeros(self.n_mm2, dtype=int)
-                    self._virt_atom_mm2_idx = np.zeros(self.n_mm2, dtype=int)
+                    self._virt_atom_mm1_idx = np.zeros(n_mm2, dtype=int)
+                    self._virt_atom_mm2_idx = np.zeros(n_mm2, dtype=int)
 
-                    for i in range(self.n_mm2):
+                    for i in range(n_mm2):
                         for j in range(self.n_virt_qm_atoms):
                             if np.abs(virt_atom_mm1_pos[i] - self.mm_position[self.mm1_local_idx[j]]).sum() < 0.001:
                                 self._virt_atom_mm1_idx[i] = self.mm1_local_idx[j]
                                 break
-                    for i in range(self.n_mm2):
+                    for i in range(n_mm2):
                         for j in range(self.n_real_mm_atoms):
                             if np.abs(virt_atom_mm2_pos[i] - self.mm_position[j]).sum() < 0.001:
                                 self._virt_atom_mm2_idx[i] = j
@@ -125,7 +124,7 @@ class NAMD(MMBase):
                     self.mm2_local_idx = []
                     for i in range(self.n_virt_qm_atoms):
                         self.mm2_local_idx.append(self._virt_atom_mm2_idx[self._virt_atom_mm1_idx == self.mm1_local_idx[i]])
-                elif self.n_virt_mm_atoms_per_mm2 == 2:
+                elif self._mm1_coeff.size == 2:
                     raise NotImplementedError()
 
                 # Get original MM charges

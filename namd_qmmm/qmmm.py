@@ -128,7 +128,7 @@ class QMMM(object):
                 if not self.qmElecEmbed or self.elecMode.lower() == 'mmewald':
                     self.system.corr_mechembed()
 
-                self.system.corr_vpntchrgs()
+                self.system.corr_virt_mm_atoms()
             else:
                 raise ValueError("QM calculation did not finish normally.")
         else:

@@ -38,22 +38,6 @@ class MMBase(object):
 
         return self.dij_min
 
-    def absorb_vpntchrgs_mm1(self):
-        """Absorb the virtual point charges to MM1."""
-
-        rPntChrgs = self.mm_charge[0:self.n_real_mm_atoms]
-
-        if self.n_virt_mm_atoms > 0:
-            vPntChrgs = self.mm_charge[self.n_real_mm_atoms:]
-            if self.n_virt_mm_atoms__per_mm2 == 3:
-                for i in range(self.n_mm2):
-                    rPntChrgs[self._virt_atom_mm1_idx[i]] += vPntChrgs[(i * 3):(i * 3 + 3)].sum()
-
-            elif self.n_virt_mm_atoms_per_mm2 == 2:
-                raise NotImplementedError()
-
-        return rPntChrgs
-
     def split_mm_atoms(self, qmCutoff):
         """Split external point charges into near- and far-fields."""
 
@@ -67,7 +51,7 @@ class MMBase(object):
         self.dij_min2_near = self.dij_min2[nearfield[0:self.n_real_mm_atoms]]
         self.dij_min_j_near = self.dij_min_j[nearfield[0:self.n_real_mm_atoms]]
 
-        self.mm_charge_far = self.absorb_vpntchrgs_mm1()
+        self.mm_charge_far = self.mm_atoms.orig_charge
         self.mm_position_far = self.mm_position[0:self.n_real_mm_atoms]
         self.rij_far = self.rij[0:self.n_real_mm_atoms]
         self.dij_far = self.dij[0:self.n_real_mm_atoms]
@@ -189,22 +173,18 @@ class MMBase(object):
 
         self.qm_energy += eCorr.sum()
 
-    def corr_vpntchrgs(self):
-        """Correct forces due to virtual external point charges."""
+    def corr_virt_mm_atoms(self):
+        """Correct forces due to virtual MM charges."""
+
         if self.n_virt_mm_atoms > 0:
-            if self.n_virt_mm_atoms_per_mm2 == 3:
-                for i in range(self.n_mm2):
-                    self.mm_force[self._virt_atom_mm2_idx[i]] += self.mm_force[self.n_real_mm_atoms + i*3]
 
-                    self.mm_force[self._virt_atom_mm2_idx[i]] += self.mm_force[self.n_real_mm_atoms + i*3 + 1] * 0.94
-                    self.mm_force[self._virt_atom_mm1_idx[i]] += self.mm_force[self.n_real_mm_atoms + i*3 + 1] * 0.06
+            virt_force = self.mm_force[self.n_real_mm_atoms:].reshape(-1, self._mm1_coeff.size, 3)
 
-                    self.mm_force[self._virt_atom_mm2_idx[i]] += self.mm_force[self.n_real_mm_atoms + i*3 + 2] * 1.06
-                    self.mm_force[self._virt_atom_mm1_idx[i]] += self.mm_force[self.n_real_mm_atoms + i*3 + 2] * -0.06
+            mm1_corr_force = (virt_force * self._mm1_coeff[:, np.newaxis]).sum(axis=1)
+            mm2_corr_force = (virt_force * self._mm2_coeff[:, np.newaxis]).sum(axis=1)
 
-                self.mm_force[self.n_real_mm_atoms:] = 0.
+            np.add.at(self.mm_force, self._virt_atom_mm1_idx, mm1_corr_force)
+            np.add.at(self.mm_force, self._virt_atom_mm2_idx, mm2_corr_force)
 
-            elif self.n_virt_mm_atoms_per_mm2 == 2:
-                raise NotImplementedError()
-        else:
-            pass
+            self.mm_force[self.n_real_mm_atoms:] = 0.
+

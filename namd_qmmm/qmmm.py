@@ -1,6 +1,7 @@
 import sys
 import numpy as np
 
+from . import embedtools
 from . import mmtools
 from . import qmtools
 
@@ -8,9 +9,10 @@ from . import qmtools
 class QMMM(object):
     def __init__(self, fin, qmSoftware, qmCharge, qmMult,
                  elecMode, qmElecEmbed=True,
+                 qmEmbedNear=None, qmEmbedFar=None,
                  qmRefCharge='ff', qmSwitchingType=None,
                  qmCutoff=None, qmSwdist=None, 
-                 postProc=False, qmReadGuess=False):
+                 qmReadGuess=False, postProc=False):
         """
         Creat a QMMM object.
         """
@@ -19,11 +21,14 @@ class QMMM(object):
         self.qmMult = qmMult
         self.elecMode = elecMode
         self.qmElecEmbed = qmElecEmbed
+        self.qmEmbedNear = qmEmbedNear
+        self.qmEmbedFar = qmEmbedFar
         self.qmRefCharge = qmRefCharge
+        self.qmSwitchingType = qmSwitchingType
         self.qmCutoff = qmCutoff
         self.qmSwdist = qmSwdist
-        self.postProc = postProc
         self.qmReadGuess = qmReadGuess
+        self.postProc = postProc
 
         # Initialize the system
         self.system = mmtools.NAMD(fin)
@@ -34,6 +39,10 @@ class QMMM(object):
                 self.qmRefCharge = self.system.qm_atoms.charge
             elif isinstance(self.qmRefCharge, list):
                 self.qmRefCharge = np.asarray(self.qmRefCharge)
+
+        # Set up embedding scheme
+        self.embed = embedtools.choose_embedtool(self.qmEmbedNear, self.qmEmbedFar)(self.system,
+                self.qmRefCharge, self.qmSwitchingType, self.qmCutoff, self.qmSwdist)
 
         # Prepare for the electrostatic model
         if self.elecMode.lower() in {'truncation', 'mmewald'}:
@@ -89,15 +98,15 @@ class QMMM(object):
         # Initialize the QM system
         self.qm = qmtools.choose_qmtool(self.qmSoftware)(self.system, self.qmCharge, self.qmMult, self.qmPBC)
 
-        if self.postProc:
-            self.qm.calc_forces = False
-        else:
-            self.qm.calc_forces = True
-
         if self.qmReadGuess and not self.system.step == 0:
             self.qm.read_guess = True
         else:
             self.qm.read_guess = False
+
+        if self.postProc:
+            self.qm.calc_forces = False
+        else:
+            self.qm.calc_forces = True
 
     def run_qm(self, **kwargs):
         """Run QM calculation."""

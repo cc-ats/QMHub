@@ -11,10 +11,10 @@ class PSI4(QMBase):
 
     QMTOOL = 'PSI4'
 
-    def get_qmparams(self, method=None, basis=None, **kwargs):
+    def get_qm_params(self, method=None, basis=None, **kwargs):
         """Get the parameters for QM calculation."""
 
-        super(PSI4, self).get_qmparams(**kwargs)
+        super(PSI4, self).get_qm_params(**kwargs)
 
         if method is not None:
             self.method = method
@@ -44,11 +44,11 @@ class PSI4(QMBase):
             psi4.set_options(addparam)
 
         geom = []
-        for i in range(self.numQMAtoms):
-            geom.append("".join(["%3s" % self.qmElmnts[i],
-                                 "%22.14e" % self.qmPos[i, 0],
-                                 "%22.14e" % self.qmPos[i, 1],
-                                 "%22.14e" % self.qmPos[i, 2], "\n"]))
+        for i in range(self.n_qm_atoms):
+            geom.append("".join(["%3s" % self.qm_element[i],
+                                 "%22.14e" % self.qm_position[i, 0],
+                                 "%22.14e" % self.qm_position[i, 1],
+                                 "%22.14e" % self.qm_position[i, 2], "\n"]))
         geom.append("symmetry c1\n")
         geom = "".join(geom)
 
@@ -58,21 +58,21 @@ class PSI4(QMBase):
         self.molecule.fix_com(True)
         self.molecule.fix_orientation(True)
 
-        pntChrgs = psi4.QMMM()
+        mm_charge = psi4.QMMM()
 
-        for i in range(self.numPntChrgs):
-            pntChrgs.addChargeAngstrom(self.pntChrgs4QM[i],
-                                       self.pntPos[i, 0],
-                                       self.pntPos[i, 1],
-                                       self.pntPos[i, 2])
-        pntChrgs.populateExtern()
-        psi4.core.set_global_option_python('EXTERN', pntChrgs.extern)
+        for i in range(self.n_mm_atoms):
+            mm_charge.addChargeAngstrom(self.mm_charge_qm[i],
+                                       self.mm_position[i, 0],
+                                       self.mm_position[i, 1],
+                                       self.mm_position[i, 2])
+        mm_charge.populateExtern()
+        psi4.core.set_global_option_python('EXTERN', mm_charge.extern)
 
-        with open(self.baseDir+"grid.dat", "w") as f:
-            for i in range(self.numPntChrgs):
-                f.write("".join(["%22.14e" % self.pntPos[i, 0],
-                                 "%22.14e" % self.pntPos[i, 1],
-                                 "%22.14e" % self.pntPos[i, 2], "\n"]))
+        with open(self.basedir + "grid.dat", 'w') as f:
+            for i in range(self.n_mm_atoms):
+                f.write("".join(["%22.14e" % self.mm_position[i, 0],
+                                 "%22.14e" % self.mm_position[i, 1],
+                                 "%22.14e" % self.mm_position[i, 2], "\n"]))
 
     def run(self):
         """Run QM calculation."""
@@ -81,11 +81,11 @@ class PSI4(QMBase):
         psi4.core.set_num_threads(nproc, True)
 
         oldpwd = os.getcwd()
-        os.chdir(self.baseDir)
-        psi4.core.set_output_file(self.baseDir + "psi4.out", False)
+        os.chdir(self.basedir)
+        psi4.core.set_output_file(self.basedir + "psi4.out", False)
 
         # psi4_io = psi4.core.IOManager.shared_object()
-        # psi4_io.set_specific_path(32, self.baseDir)
+        # psi4_io.set_specific_path(32, self.basedir)
         # psi4_io.set_specific_retention(32, True)
 
         scf_e, self.scf_wfn = psi4.energy('scf', return_wfn=True)
@@ -116,39 +116,39 @@ class PSI4(QMBase):
 
         raise NotImplementedError()
 
-    def get_qmenergy(self):
+    def get_qm_energy(self):
         """Get QM energy from output of QM calculation."""
 
-        self.qmEnergy = self.scf_wfn.energy()
+        self.qm_energy = self.scf_wfn.energy()
 
-        return self.qmEnergy
+        return self.qm_energy
 
-    def get_qmforces(self):
+    def get_qm_force(self):
         """Get QM forces from output of QM calculation."""
 
-        self.qmForces = -1 * np.array(self.scf_wfn.gradient())
+        self.qm_force = -1 * np.array(self.scf_wfn.gradient())
 
-        return self.qmForces
+        return self.qm_force
 
-    def get_pntchrgforces(self):
+    def get_mm_force(self):
         """Get external point charge forces from output of QM calculation."""
 
-        self.pntChrgForces = (np.column_stack([self.oeprop.Exvals(),
+        self.mm_force = (np.column_stack([self.oeprop.Exvals(),
                                                self.oeprop.Eyvals(),
                                                self.oeprop.Ezvals()])
-                              * self.pntChrgs4QM[:, np.newaxis])
+                              * self.mm_charge_qm[:, np.newaxis])
 
-        return self.pntChrgForces
+        return self.mm_force
 
-    def get_qmchrgs(self):
+    def get_qm_charge(self):
         """Get Mulliken charges from output of QM calculation."""
-        self.qmChrgs = np.array(self.scf_wfn.atomic_point_charges())
+        self.qm_charge = np.array(self.scf_wfn.atomic_point_charges())
 
-        return self.qmChrgs
+        return self.qm_charge
 
-    def get_pntesp(self):
+    def get_mm_esp(self):
         """Get ESP at external point charges from output of QM calculation."""
 
-        self.pntESP = np.array(self.oeprop.Vvals())
+        self.mm_esp = np.array(self.oeprop.Vvals())
 
-        return self.pntESP
+        return self.mm_esp

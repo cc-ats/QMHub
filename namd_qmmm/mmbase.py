@@ -18,8 +18,8 @@ class MMBase(object):
     def get_pair_vectors(self):
         """Get pair-wise vectors between QM and MM atoms."""
 
-        self.rij = (self.qmPos[np.newaxis, :, :]
-                    - self.pntPos[:, np.newaxis, :])
+        self.rij = (self.qm_position[np.newaxis, :, :]
+                    - self.mm_position[:, np.newaxis, :])
 
         return self.rij
 
@@ -33,76 +33,67 @@ class MMBase(object):
 
     def get_min_distances(self):
         """Get minimum distances between QM and MM atoms."""
-        self.dij_min2 = self.dij2[0:self.numRPntChrgs, 0:self.numRealQMAtoms].min(axis=1)
-        self.dij_min_j = self.dij2[0:self.numRPntChrgs, 0:self.numRealQMAtoms].argmin(axis=1)
+        self.dij_min2 = self.dij2[0:self.n_real_mm_atoms, 0:self.n_real_qm_atoms].min(axis=1)
+        self.dij_min_j = self.dij2[0:self.n_real_mm_atoms, 0:self.n_real_qm_atoms].argmin(axis=1)
         self.dij_min = np.sqrt(self.dij_min2)
 
         return self.dij_min
 
     def sort_qmatoms(self):
         """Sort QM atoms."""
-        self.map2sorted = np.concatenate((np.argsort(self.qmIdx[0:self.numRealQMAtoms]),
-                                     np.arange(self.numRealQMAtoms, self.numQMAtoms)))
+        self.map2sorted = np.concatenate((np.argsort(self.qm_index[0:self.n_real_qm_atoms]),
+                                     np.arange(self.n_real_qm_atoms, self.n_qm_atoms)))
         self.map2unsorted = np.argsort(self.map2sorted)
-
-    def get_pntchrg_types(self, qmCutoff=None):
-        """Get the types of external point charges."""
-
-        self.pntChrgTypes = np.zeros(self.numPntChrgs, dtype=int) 
-        self.pntChrgTypes[np.where(self.dij_min > qmCutoff)] = 1
-        self.pntChrgTypes[self.numRPntChrgs:] = -1
-
-        return self.pntChrgTypes
 
     def absorb_vpntchrgs_mm1(self):
         """Absorb the virtual point charges to MM1."""
 
-        rPntChrgs = self.pntChrgs[0:self.numRPntChrgs]
+        rPntChrgs = self.mm_charge[0:self.n_real_mm_atoms]
 
-        if self.numVPntChrgs > 0:
-            vPntChrgs = self.pntChrgs[self.numRPntChrgs:]
-            if self.numVPntChrgsPerMM2 == 3:
-                for i in range(self.numMM2):
-                    rPntChrgs[self.mm1VIdx[i]] += vPntChrgs[(i * 3):(i * 3 + 3)].sum()
+        if self.n_virt_mm_atoms > 0:
+            vPntChrgs = self.mm_charge[self.n_real_mm_atoms:]
+            if self.n_virt_mm_atoms__per_mm2 == 3:
+                for i in range(self.n_mm2):
+                    rPntChrgs[self.virt_atom_mm1_idx[i]] += vPntChrgs[(i * 3):(i * 3 + 3)].sum()
 
-            elif self.numVPntChrgsPerMM2 == 2:
+            elif self.n_virt_mm_atoms_per_mm2 == 2:
                 raise NotImplementedError()
 
         return rPntChrgs
 
-    def split_pntchrgs(self, qmCutoff):
+    def split_mm_atoms(self, qmCutoff):
         """Split external point charges into near- and far-fields."""
 
-        nearfield = np.append((self.dij_min <= qmCutoff), np.ones(self.numVPntChrgs, dtype=bool))
-        self.pntChrgsNear = self.pntChrgs[nearfield]
-        self.pntPosNear = self.pntPos[nearfield]
-        self.rijNear = self.rij[nearfield]
-        self.dijNear = self.dij[nearfield]
-        self.dij2Near = self.dij2[nearfield]
-        self.dij_minNear = self.dij_min[nearfield[0:self.numRPntChrgs]]
-        self.dij_min2Near = self.dij_min2[nearfield[0:self.numRPntChrgs]]
-        self.dij_min_jNear = self.dij_min_j[nearfield[0:self.numRPntChrgs]]
+        nearfield = np.append((self.dij_min <= qmCutoff), np.ones(self.n_virt_mm_atoms, dtype=bool))
+        self.mm_charge_near = self.mm_charge[nearfield]
+        self.mm_position_near = self.mm_position[nearfield]
+        self.rij_near = self.rij[nearfield]
+        self.dij_near = self.dij[nearfield]
+        self.dij2_near = self.dij2[nearfield]
+        self.dij_min_near = self.dij_min[nearfield[0:self.n_real_mm_atoms]]
+        self.dij_min2_near = self.dij_min2[nearfield[0:self.n_real_mm_atoms]]
+        self.dij_min_j_near = self.dij_min_j[nearfield[0:self.n_real_mm_atoms]]
 
-        self.pntChrgsFar = self.absorb_vpntchrgs_mm1()
-        self.pntPosFar = self.pntPos[0:self.numRPntChrgs]
-        self.rijFar = self.rij[0:self.numRPntChrgs]
-        self.dijFar = self.dij[0:self.numRPntChrgs]
-        self.dij2Far = self.dij2[0:self.numRPntChrgs]
+        self.mm_charge_far = self.absorb_vpntchrgs_mm1()
+        self.mm_position_far = self.mm_position[0:self.n_real_mm_atoms]
+        self.rij_far = self.rij[0:self.n_real_mm_atoms]
+        self.dij_far = self.dij[0:self.n_real_mm_atoms]
+        self.dij2_far = self.dij2[0:self.n_real_mm_atoms]
 
     def scale_charges(self, qmSwitchingType=None, qmCutoff=None, qmSwdist=None):
         """Scale external point charges."""
 
         if qmSwitchingType is None:
             qmSwdist = 0.0
-            self.pntScale = np.ones(self.numRPntChrgs)
-            self.pntScale_deriv = np.zeros(self.numRPntChrgs)
+            self.charge_scale = np.ones(self.n_real_mm_atoms)
+            self.scale_deriv = np.zeros(self.n_real_mm_atoms)
         elif qmSwitchingType.lower() == 'shift':
             if qmCutoff is None:
                 raise ValueError("We need qmCutoff here.")
             qmCutoff2 = qmCutoff**2
             qmSwdist = 0.0
-            self.pntScale = (1 - self.dij_min2 / qmCutoff2)**2
-            self.pntScale_deriv = 4 * (1 - self.dij_min2 / qmCutoff2) / qmCutoff2
+            self.charge_scale = (1 - self.dij_min2 / qmCutoff2)**2
+            self.scale_deriv = 4 * (1 - self.dij_min2 / qmCutoff2) / qmCutoff2
         elif qmSwitchingType.lower() == 'switch':
             if qmCutoff is None:
                 raise ValueError("We need qmCutoff here.")
@@ -112,12 +103,12 @@ class MMBase(object):
                 raise ValueError("qmCutoff should be greater than qmSwdist.")
             qmCutoff2 = qmCutoff**2
             qmSwdist2 = qmSwdist**2
-            self.pntScale = ((self.dij_min2 - qmCutoff2)**2
+            self.charge_scale = ((self.dij_min2 - qmCutoff2)**2
                              * (qmCutoff2 + 2 * self.dij_min2 - 3 * qmSwdist2)
                              / (qmCutoff2 - qmSwdist2)**3
                              * (self.dij_min2 >= qmSwdist2)
                              + (self.dij_min2 < qmSwdist2))
-            self.pntScale_deriv = (12 * (self.dij_min2 - qmSwdist2)
+            self.scale_deriv = (12 * (self.dij_min2 - qmSwdist2)
                                    * (qmCutoff2 - self.dij_min2)
                                    / (qmCutoff2 - qmSwdist2)**3)
         elif qmSwitchingType.lower() == 'lrec':
@@ -126,101 +117,101 @@ class MMBase(object):
             qmCutoff2 = qmCutoff**2
             qmSwdist = 0.0
             scale = 1 - self.dij_min / qmCutoff
-            self.pntScale = 1 - (2 * scale**3 - 3 * scale**2 + 1)**2
-            self.pntScale_deriv = 12 * scale * (2 * scale**3 - 3 * scale**2 + 1) / qmCutoff2
+            self.charge_scale = 1 - (2 * scale**3 - 3 * scale**2 + 1)**2
+            self.scale_deriv = 12 * scale * (2 * scale**3 - 3 * scale**2 + 1) / qmCutoff2
         else:
             raise ValueError("Only 'shift', 'switch', and 'lrec' are supported at the moment.")
 
-        self.pntScale_deriv *= (self.dij_min > qmSwdist)
-        self.pntScale_deriv = (-1 * self.pntScale_deriv[:, np.newaxis]
-                               * self.rij[range(self.numRPntChrgs), self.dij_min_j])
+        self.scale_deriv *= (self.dij_min > qmSwdist)
+        self.scale_deriv = (-1 * self.scale_deriv[:, np.newaxis]
+                               * self.rij[range(self.n_real_mm_atoms), self.dij_min_j])
 
         # Just to be safe
-        self.pntScale *= (self.dij_min < qmCutoff)
-        self.pntScale_deriv *= (self.dij_min < qmCutoff)[:, np.newaxis]
+        self.charge_scale *= (self.dij_min < qmCutoff)
+        self.scale_deriv *= (self.dij_min < qmCutoff)[:, np.newaxis]
 
-        self.pntChrgsScld = self.pntChrgs * np.append(self.pntScale, np.ones(self.numVPntChrgs))
+        self.mm_charge_scaled = self.mm_charge * np.append(self.charge_scale, np.ones(self.n_virt_mm_atoms))
 
     def parse_output(self, qm):
         """Parse the output of QM calculation."""
         if qm.calc_forces:
-            self.qmEnergy = qm.get_qmenergy() * units.E_AU
-            self.qmForces = qm.get_qmforces()[self.map2unsorted] * units.F_AU
-            self.qmChrgs = qm.get_qmchrgs()[self.map2unsorted]
-            self.pntChrgForces = qm.get_pntchrgforces() * units.F_AU
-            self.pntESP = qm.get_pntesp() * units.E_AU
+            self.qm_energy = qm.get_qm_energy() * units.E_AU
+            self.qm_force = qm.get_qm_force()[self.map2unsorted] * units.F_AU
+            self.qm_charge = qm.get_qm_charge()[self.map2unsorted]
+            self.mm_force = qm.get_mm_force() * units.F_AU
+            self.mm_esp = qm.get_mm_esp() * units.E_AU
         else:
-            self.qmEnergy = 0.0
-            self.qmForces = np.zeros((self.numQMAtoms, 3))
-            self.pntChrgForces = np.zeros((self.numRPntChrgs, 3))
+            self.qm_energy = 0.0
+            self.qm_force = np.zeros((self.n_qm_atoms, 3))
+            self.mm_force = np.zeros((self.n_real_mm_atoms, 3))
 
     def corr_elecembed(self):
         """Correct forces due to scaling external point charges in Electrostatic Embedding."""
 
-        fCorr = self.pntESP[0:self.numRPntChrgs] * self.pntChrgs[0:self.numRPntChrgs]
-        fCorr = fCorr[:, np.newaxis] * self.pntScale_deriv
-        self.pntChrgForces[0:self.numRPntChrgs] += fCorr
+        fCorr = self.mm_esp[0:self.n_real_mm_atoms] * self.mm_charge[0:self.n_real_mm_atoms]
+        fCorr = fCorr[:, np.newaxis] * self.scale_deriv
+        self.mm_force[0:self.n_real_mm_atoms] += fCorr
 
-        for i in range(self.numRealQMAtoms):
-            self.qmForces[i] -= fCorr[self.dij_min_j == i].sum(axis=0)
+        for i in range(self.n_real_qm_atoms):
+            self.qm_force[i] -= fCorr[self.dij_min_j == i].sum(axis=0)
 
     def corr_mechembed(self):
         """Correct forces and energy due to mechanical embedding."""
-        pntChrgsD = self.pntChrgs4MM[0:self.numRPntChrgs] - self.pntChrgs4QM[0:self.numRPntChrgs]
+        mm_charge_diff = self.mm_charge_mm[0:self.n_real_mm_atoms] - self.mm_charge_qm[0:self.n_real_mm_atoms]
 
-        fCorr = (-1 * units.KE * pntChrgsD[:, np.newaxis] * self.qmChrgs4MM[np.newaxis, :]
-                 / self.dij[0:self.numRPntChrgs]**3)
-        fCorr = fCorr[:, :, np.newaxis] * self.rij[0:self.numRPntChrgs]
+        fCorr = (-1 * units.KE * mm_charge_diff[:, np.newaxis] * self.qm_charge_me[np.newaxis, :]
+                 / self.dij[0:self.n_real_mm_atoms]**3)
+        fCorr = fCorr[:, :, np.newaxis] * self.rij[0:self.n_real_mm_atoms]
 
-        if self.numVPntChrgs > 0:
-            for i in range(self.numMM1):
-                fCorr[self.mm2LocalIdx[i], self.qmHostLocalIdx[i]] = 0.0
+        if self.n_virt_mm_atoms > 0:
+            for i in range(self.n_virt_qm_atoms):
+                fCorr[self.mm2_local_idx[i], self.qm_host_local_idx[i]] = 0.0
 
-        self.pntChrgForces[0:self.numRPntChrgs] += fCorr.sum(axis=1)
-        self.qmForces -= fCorr.sum(axis=0)
+        self.mm_force[0:self.n_real_mm_atoms] += fCorr.sum(axis=1)
+        self.qm_force -= fCorr.sum(axis=0)
 
-        if hasattr(self, 'pntChrgsScld'):
-            fCorr = (units.KE * self.pntChrgs[0:self.numRPntChrgs, np.newaxis]
-                     * self.qmChrgs4MM[np.newaxis, :]
-                     / self.dij[0:self.numRPntChrgs])
-            if self.numVPntChrgs > 0:
-                for i in range(self.numMM1):
-                    fCorr[self.mm2LocalIdx[i], self.qmHostLocalIdx[i]] = 0.0
+        if hasattr(self, 'mm_charge_scaled'):
+            fCorr = (units.KE * self.mm_charge[0:self.n_real_mm_atoms, np.newaxis]
+                     * self.qm_charge_me[np.newaxis, :]
+                     / self.dij[0:self.n_real_mm_atoms])
+            if self.n_virt_mm_atoms > 0:
+                for i in range(self.n_virt_qm_atoms):
+                    fCorr[self.mm2_local_idx[i], self.qm_host_local_idx[i]] = 0.0
             fCorr = np.sum(fCorr, axis=1)
-            fCorr = fCorr[:, np.newaxis] * self.pntScale_deriv
+            fCorr = fCorr[:, np.newaxis] * self.scale_deriv
 
-            if self.pntChrgs4MM is self.pntChrgsScld:
+            if self.mm_charge_mm is self.mm_charge_scaled:
                 fCorr *= -1
 
-            self.pntChrgForces[0:self.numRPntChrgs] -= fCorr
-            for i in range(self.numRealQMAtoms):
-                self.qmForces[i] += fCorr[self.dij_min_j == i].sum(axis=0)
+            self.mm_force[0:self.n_real_mm_atoms] -= fCorr
+            for i in range(self.n_real_qm_atoms):
+                self.qm_force[i] += fCorr[self.dij_min_j == i].sum(axis=0)
 
-        eCorr = (units.KE * pntChrgsD[:, np.newaxis] * self.qmChrgs4MM[np.newaxis, :]
-                 / self.dij[0:self.numRPntChrgs])
+        eCorr = (units.KE * mm_charge_diff[:, np.newaxis] * self.qm_charge_me[np.newaxis, :]
+                 / self.dij[0:self.n_real_mm_atoms])
 
-        if self.numVPntChrgs > 0:
-            for i in range(self.numMM1):
-                eCorr[self.mm2LocalIdx[i], self.qmHostLocalIdx[i]] = 0.0
+        if self.n_virt_mm_atoms > 0:
+            for i in range(self.n_virt_qm_atoms):
+                eCorr[self.mm2_local_idx[i], self.qm_host_local_idx[i]] = 0.0
 
-        self.qmEnergy += eCorr.sum()
+        self.qm_energy += eCorr.sum()
 
     def corr_vpntchrgs(self):
         """Correct forces due to virtual external point charges."""
-        if self.numVPntChrgs > 0:
-            if self.numVPntChrgsPerMM2 == 3:
-                for i in range(self.numMM2):
-                    self.pntChrgForces[self.mm2VIdx[i]] += self.pntChrgForces[self.numRPntChrgs + i*3]
+        if self.n_virt_mm_atoms > 0:
+            if self.n_virt_mm_atoms_per_mm2 == 3:
+                for i in range(self.n_mm2):
+                    self.mm_force[self.virt_atom_mm2_idx[i]] += self.mm_force[self.n_real_mm_atoms + i*3]
 
-                    self.pntChrgForces[self.mm2VIdx[i]] += self.pntChrgForces[self.numRPntChrgs + i*3 + 1] * 0.94
-                    self.pntChrgForces[self.mm1VIdx[i]] += self.pntChrgForces[self.numRPntChrgs + i*3 + 1] * 0.06
+                    self.mm_force[self.virt_atom_mm2_idx[i]] += self.mm_force[self.n_real_mm_atoms + i*3 + 1] * 0.94
+                    self.mm_force[self.virt_atom_mm1_idx[i]] += self.mm_force[self.n_real_mm_atoms + i*3 + 1] * 0.06
 
-                    self.pntChrgForces[self.mm2VIdx[i]] += self.pntChrgForces[self.numRPntChrgs + i*3 + 2] * 1.06
-                    self.pntChrgForces[self.mm1VIdx[i]] += self.pntChrgForces[self.numRPntChrgs + i*3 + 2] * -0.06
+                    self.mm_force[self.virt_atom_mm2_idx[i]] += self.mm_force[self.n_real_mm_atoms + i*3 + 2] * 1.06
+                    self.mm_force[self.virt_atom_mm1_idx[i]] += self.mm_force[self.n_real_mm_atoms + i*3 + 2] * -0.06
 
-                self.pntChrgForces[self.numRPntChrgs:] = 0.
+                self.mm_force[self.n_real_mm_atoms:] = 0.
 
-            elif self.numVPntChrgsPerMM2 == 2:
+            elif self.n_virt_mm_atoms_per_mm2 == 2:
                 raise NotImplementedError()
         else:
             pass

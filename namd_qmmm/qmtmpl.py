@@ -39,7 +39,7 @@ Hamiltonian = DFTB {
   ElectricField = {
     PointCharges = {
       CoordsAndCharges [Angstrom] = DirectRead {
-        Records = ${numPntChrgs}
+        Records = ${n_mm_atoms}
         File = "charges.dat" }
     }
   }
@@ -59,7 +59,7 @@ Options {
 
 Analysis {
   WriteBandOut = No
-  CalculateForces = ${calcforces}
+  CalculateForces = ${calc_forces}
 }
 ${addparam}\
 """
@@ -86,7 +86,7 @@ MaxAngularMomentum = dict([('Br', 'd'), ('C', 'p'), ('Ca', 'p'),
                            ('P', 'd'), ('S', 'd'), ('Zn', 'd')])
 
 orca_tmpl = """\
-! ${method} ${basis} Grid4 TightSCF NOFINALGRID ${calcforces}${read_guess}${addparam}KeepDens
+! ${method} ${basis} Grid4 TightSCF NOFINALGRID ${calc_forces}${read_guess}${addparam}KeepDens
 %output PrintLevel Mini Print[ P_Mulliken ] 1 Print[P_AtCharges_M] 1 end
 %pal nprocs ${nproc} end
 %pointcharges ${pntchrgspath}
@@ -94,7 +94,7 @@ orca_tmpl = """\
 """
 
 mopac_tmpl = """\
-${method} XYZ T=2M 1SCF SCFCRT=1.D-7 AUX(PRECISION=9) ${calcforces}QMMM NOMM CHARGE=${charge}${addparam} THREADS=${nproc}
+${method} XYZ T=2M 1SCF SCFCRT=1.D-7 AUX(PRECISION=9) ${calc_forces}QMMM NOMM CHARGE=${charge}${addparam} THREADS=${nproc}
 """
 
 class QMTmpl(object):
@@ -148,15 +148,15 @@ if __name__ == "__main__":
               addparam='chelpg true\n'))
     qmtmpl = QMTmpl('dftb+')
     print(qmtmpl.gen_qmtmpl().safe_substitute(
-              charge=0, numPntChrgs=1000, read_guess='No',
+              charge=0, n_mm_atoms=1000, read_guess='No',
               KPointsAndWeights=qmtmpl.KPointsAndWeights,
-              calcforces='Yes', addparam=''))
+              calc_forces='Yes', addparam=''))
     qmtmpl = QMTmpl('orca')
     print(qmtmpl.gen_qmtmpl().safe_substitute(
-              method='HF', basis='6-31G', calcforces='EnGrad ',
+              method='HF', basis='6-31G', calc_forces='EnGrad ',
               read_guess='NoAutoStart ',
               addparam='CHELPG ', nproc='8'))
     qmtmpl = QMTmpl('mopac')
     print(qmtmpl.gen_qmtmpl().safe_substitute(
-              method='PM7', calcforces='GRAD ',
+              method='PM7', calc_forces='GRAD ',
               charge=0, addparam=' ESP', nproc='8'))

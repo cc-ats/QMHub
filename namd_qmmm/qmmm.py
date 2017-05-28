@@ -32,24 +32,24 @@ class QMMM(object):
         if qmRefChrgs is not None:
             self.qmRefChrgs = qmRefChrgs
         else:
-            self.qmRefChrgs = self.system.qmChrgs0
+            self.qmRefChrgs = self.system.qm_charge0
 
         # Prepare for the electrostatic model
         if self.elecMode.lower() in {'truncation', 'mmewald'}:
             self.qmPBC = False
-            self.system.qmChrgs4MM = self.qmRefChrgs
+            self.system.qm_charge_me = self.qmRefChrgs
         elif self.elecMode.lower() == 'qmewald':
             self.qmPBC = True
-            self.system.qmChrgs4MM = np.zeros(self.system.numQMAtoms)
+            self.system.qm_charge_me = np.zeros(self.system.n_qm_atoms)
         else:
             raise ValueError("Only 'truncation', 'mmewald', and 'qmewald' are supported at the moment.")
 
         # Prepare for QM with PBC
         if self.qmPBC:
-            if self.system.numAtoms != self.system.numRealQMAtoms + self.system.numRPntChrgs:
+            if self.system.n_atoms != self.system.n_real_qm_atoms + self.system.n_real_mm_atoms:
                 raise ValueError("Unit cell is not complete.")
 
-            self.split_pntchrgs(qmCutoff=self.qmCutoff)
+            self.split_mm_atoms(qmCutoff=self.qmCutoff)
 
         # Set switching function for external point charges
         if qmSwitchingType is not None:
@@ -71,19 +71,19 @@ class QMMM(object):
         if self.elecMode.lower() == 'qmewald':
             if not self.qmElecEmbed:
                 raise ValueError("Can not use elecMode='qmewald' with qmElecEmbed=False.")
-            self.system.pntChrgs4QM = self.system.pntChrgs
+            self.system.mm_charge_qm = self.system.mm_charge
         elif self.elecMode.lower() == 'mmewald':
-            self.system.pntChrgs4MM = self.system.pntChrgs
+            self.system.mm_charge_mm = self.system.mm_charge
             if self.qmElecEmbed:
-                self.system.pntChrgs4QM = self.system.pntChrgsScld
+                self.system.mm_charge_qm = self.system.mm_charge_scaled
             else:
-                self.system.pntChrgs4QM = np.zeros(self.system.numPntChrgs)
+                self.system.mm_charge_qm = np.zeros(self.system.n_mm_atoms)
         elif self.elecMode.lower() == 'truncation':
             if self.qmElecEmbed:
-                self.system.pntChrgs4QM = self.system.pntChrgsScld
+                self.system.mm_charge_qm = self.system.mm_charge_scaled
             else:
-                self.system.pntChrgs4MM = self.system.pntChrgsScld
-                self.system.pntChrgs4QM = np.zeros(self.system.numPntChrgs)
+                self.system.mm_charge_mm = self.system.mm_charge_scaled
+                self.system.mm_charge_qm = np.zeros(self.system.n_mm_atoms)
 
         # Initialize the QM system
         self.qm = qmtools.choose_qmtool(self.qmSoftware)(self.system, self.qmCharge, self.qmMult, self.qmPBC)
@@ -93,23 +93,23 @@ class QMMM(object):
         else:
             self.qm.calc_forces = True
 
-        if self.qmReadGuess and not self.stepNum == 0:
+        if self.qmReadGuess and not self.system.step == 0:
             self.qm.read_guess = True
         else:
             self.qm.read_guess = False
 
     def run_qm(self, **kwargs):
         """Run QM calculation."""
-        self.qm.get_qmparams(**kwargs)
+        self.qm.get_qm_params(**kwargs)
         self.qm.gen_input()
         self.qm.run()
         if self.qm.exitcode != 0:
             sys.exit(self.qm.exitcode)
 
-    def dryrun_qm(self, **kwargs):
+    def dry_run_qm(self, **kwargs):
         """Generate input file without running QM calculation."""
         if self.postProc:
-            self.qm.get_qmparams(**kwargs)
+            self.qm.get_qm_params(**kwargs)
             self.qm.gen_input()
         else:
             raise ValueError("dryrun_qm() can only be used with postProc=True.""")
@@ -136,27 +136,27 @@ class QMMM(object):
 
     def save_results(self):
         """Save the results of QM calculation to file."""
-        if hasattr(self.system, 'qmEnergy'):
+        if hasattr(self.system, 'qm_energy'):
             self.system.save_results()
         else:
             raise ValueError("Need to parse_output() first.")
 
-    def save_pntchrgs(self):
+    def save_charges(self):
         """Save the QM and MM charges to file (for debugging only)."""
-        mmScale = np.zeros(self.system.numAtoms)
-        mmDist = np.zeros(self.system.numAtoms)
-        mmChrgs = np.zeros(self.system.numAtoms)
+        system_scale = np.zeros(self.system.n_atoms)
+        system_dij_min = np.zeros(self.system.n_atoms)
+        system_charge = np.zeros(self.system.n_atoms)
 
-        if hasattr(self.system, 'pntScale'):
-            mmScale[self.system.pntIdx[0:self.system.numRPntChrgs]] = self.system.pntScale
-            mmDist[self.system.pntIdx[0:self.system.numRPntChrgs]] = self.system.dij_min
+        if hasattr(self.system, 'charge_scale'):
+            system_scale[self.system.mm_index[0:self.system.n_real_mm_atoms]] = self.system.charge_scale
+            system_dij_min[self.system.mm_index[0:self.system.n_real_mm_atoms]] = self.system.dij_min
         else:
-            mmScale[self.system.pntIdx[0:self.system.numRPntChrgs]] += 1
-        mmChrgs[self.system.pntIdx[0:self.system.numRPntChrgs]] = self.system.pntChrgs4QM[0:self.system.numRPntChrgs]
+            system_scale[self.system.mm_index[0:self.system.n_real_mm_atoms]] += 1
+        system_charge[self.system.mm_index[0:self.system.n_real_mm_atoms]] = self.system.mm_charge_qm[0:self.system.n_real_mm_atoms]
 
-        mmScale[self.system.qmIdx[0:self.system.numRealQMAtoms]] = np.ones(self.system.numRealQMAtoms)
-        mmChrgs[self.system.qmIdx[0:self.system.numRealQMAtoms]] = self.system.qmChrgs4MM[0:self.system.numRealQMAtoms]
+        system_scale[self.system.qm_index[0:self.system.n_real_qm_atoms]] = np.ones(self.system.n_real_qm_atoms)
+        system_charge[self.system.qm_index[0:self.system.n_real_qm_atoms]] = self.system.qm_charge_me[0:self.system.n_real_qm_atoms]
 
-        np.save(self.qm.baseDir + "mmScale", mmScale)
-        np.save(self.qm.baseDir + "mmDist", mmDist)
-        np.save(self.qm.baseDir + "mmChrgs", mmChrgs)
+        np.save(self.qm.basedir + "system_scale", system_scale)
+        np.save(self.qm.basedir + "system_dij_min", system_dij_min)
+        np.save(self.qm.basedir + "system_charge", system_charge)

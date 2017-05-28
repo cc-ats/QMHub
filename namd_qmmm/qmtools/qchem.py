@@ -10,10 +10,10 @@ class QChem(QMBase):
 
     QMTOOL = 'Q-Chem'
 
-    def get_qmparams(self, method=None, basis=None, **kwargs):
+    def get_qm_params(self, method=None, basis=None, **kwargs):
         """Get the parameters for QM calculation."""
 
-        super(QChem, self).get_qmparams(**kwargs)
+        super(QChem, self).get_qm_params(**kwargs)
 
         if method is not None:
             self.method = method
@@ -48,33 +48,33 @@ class QChem(QMBase):
         else:
             addparam = ''
 
-        with open(self.baseDir+"qchem.inp", "w") as f:
+        with open(self.basedir + "qchem.inp", 'w') as f:
             f.write(qmtmpl.gen_qmtmpl().substitute(jobtype=jobtype,
                     method=self.method, basis=self.basis,
                     read_guess=read_guess, addparam=addparam))
             f.write("$molecule\n")
             f.write("%d %d\n" % (self.charge, self.mult))
 
-            for i in range(self.numQMAtoms):
-                f.write("".join(["%3s" % self.qmElmnts[i],
-                                    "%22.14e" % self.qmPos[i, 0],
-                                    "%22.14e" % self.qmPos[i, 1],
-                                    "%22.14e" % self.qmPos[i, 2], "\n"]))
+            for i in range(self.n_qm_atoms):
+                f.write("".join(["%3s" % self.qm_element[i],
+                                    "%22.14e" % self.qm_position[i, 0],
+                                    "%22.14e" % self.qm_position[i, 1],
+                                    "%22.14e" % self.qm_position[i, 2], "\n"]))
             f.write("$end" + "\n\n")
 
             f.write("$external_charges\n")
-            for i in range(self.numPntChrgs):
-                f.write("".join(["%22.14e" % self.pntPos[i, 0],
-                                    "%22.14e" % self.pntPos[i, 1],
-                                    "%22.14e" % self.pntPos[i, 2],
-                                    " %22.14e" % self.pntChrgs4QM[i], "\n"]))
+            for i in range(self.n_mm_atoms):
+                f.write("".join(["%22.14e" % self.mm_position[i, 0],
+                                    "%22.14e" % self.mm_position[i, 1],
+                                    "%22.14e" % self.mm_position[i, 2],
+                                    " %22.14e" % self.mm_charge_qm[i], "\n"]))
             f.write("$end" + "\n")
 
     def gen_cmdline(self):
         """Generate commandline for QM calculation."""
 
         nproc = self.get_nproc()
-        cmdline = "cd " + self.baseDir + "; "
+        cmdline = "cd " + self.basedir + "; "
         cmdline += "qchem -nt %d qchem.inp qchem.out save > qchem_run.log" % nproc
 
         return cmdline
@@ -87,10 +87,10 @@ class QChem(QMBase):
             if os.path.isdir(qmsave):
                 shutil.rmtree(qmsave)
 
-    def get_qmenergy(self):
+    def get_qm_energy(self):
         """Get QM energy from output of QM calculation."""
 
-        with open(self.baseDir + "qchem.out", 'r') as f:
+        with open(self.basedir + "qchem.out", 'r') as f:
             for line in f:
                 line = line.strip().expandtabs()
 
@@ -101,50 +101,50 @@ class QChem(QMBase):
                     scf_energy = line.split()[-1]
                     break
 
-        self.qmEnergy = float(scf_energy) - float(cc_energy)
+        self.qm_energy = float(scf_energy) - float(cc_energy)
 
-        return self.qmEnergy
+        return self.qm_energy
 
-    def get_qmforces(self):
+    def get_qm_force(self):
         """Get QM forces from output of QM calculation."""
 
-        self.qmForces = -1 * np.genfromtxt(self.baseDir + "efield.dat",
+        self.qm_force = -1 * np.genfromtxt(self.basedir + "efield.dat",
                                             dtype=float,
-                                            skip_header=self.numPntChrgs,
-                                            max_rows=self.numQMAtoms)
+                                            skip_header=self.n_mm_atoms,
+                                            max_rows=self.n_qm_atoms)
 
-        return self.qmForces
+        return self.qm_force
 
-    def get_pntchrgforces(self):
+    def get_mm_force(self):
         """Get external point charge forces from output of QM calculation."""
 
-        self.pntChrgForces = (np.genfromtxt(self.baseDir + "efield.dat",
+        self.mm_force = (np.genfromtxt(self.basedir + "efield.dat",
                                             dtype=float,
-                                            max_rows=self.numPntChrgs)
-                                * self.pntChrgs4QM[:, np.newaxis])
+                                            max_rows=self.n_mm_atoms)
+                                * self.mm_charge_qm[:, np.newaxis])
 
-        return self.pntChrgForces
+        return self.mm_force
 
-    def get_qmchrgs(self):
+    def get_qm_charge(self):
         """Get Mulliken charges from output of QM calculation."""
 
-        with open(self.baseDir + "qchem.out", 'r') as f:
+        with open(self.basedir + "qchem.out", 'r') as f:
             for line in f:
                 if "Ground-State Mulliken Net Atomic Charges" in line:
                     charges = []
                     for i in range(3):
                         line = next(f)
-                    for i in range(self.numQMAtoms):
+                    for i in range(self.n_qm_atoms):
                         line = next(f)
                         charges.append(float(line.split()[2]))
                     break
-        self.qmChrgs = np.array(charges)
+        self.qm_charge = np.array(charges)
 
-        return self.qmChrgs
+        return self.qm_charge
 
-    def get_pntesp(self):
+    def get_mm_esp(self):
         """Get ESP at external point charges from output of QM calculation."""
 
-        self.pntESP = np.loadtxt(self.baseDir + "esp.dat")
+        self.mm_esp = np.loadtxt(self.basedir + "esp.dat")
 
-        return self.pntESP
+        return self.mm_esp

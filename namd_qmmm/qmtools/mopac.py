@@ -112,7 +112,7 @@ class MOPAC(QMBase):
         if output is None:
             output = self.load_output(self.basedir + "mopac.aux")
 
-        n_lines = int(np.ceil(self._n_qm_atoms * 3 / 10))
+        n_lines = int(np.ceil(self.n_qm_atoms * 3 / 10))
 
         for i in range(len(output)):
             if "GRADIENTS" in output[i]:
@@ -121,7 +121,7 @@ class MOPAC(QMBase):
                     gradients = np.append(gradients, np.fromstring(line, sep=' '))
                 break
 
-        self.qm_force = -1 * gradients.reshape(self._n_qm_atoms, 3)
+        self.qm_force = -1 * gradients.reshape(self.n_qm_atoms, 3)
 
         if not hasattr(self, 'fij'):
             self.get_fij()
@@ -148,7 +148,7 @@ class MOPAC(QMBase):
         if output is None:
             output = self.load_output(self.basedir + "mopac.aux")
 
-        n_lines = int(np.ceil(self._n_qm_atoms / 10))
+        n_lines = int(np.ceil(self.n_qm_atoms / 10))
 
         for i in range(len(output)):
             if "ATOM_CHARGES" in output[i]:

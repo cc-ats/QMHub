@@ -75,14 +75,13 @@ class NAMD(MMBase):
             self.mm_charge = mm_atoms.charge
             # Indexes of external point charges
             self.mm_index = mm_atoms.index
-            # Indexes of QM atoms MM1 atoms bonded to
-            self.mm_bonded_to_idx = mm_atoms.bonded_to_idx
 
             # Prepare for link atoms
             if self.n_virt_mm_atoms > 0:
                 # Local indexes of MM1 and QM host atoms
-                self.mm1_local_idx = np.where(self.mm_bonded_to_idx != -1)[0]
-                self.qm_host_local_idx = self.mm_bonded_to_idx[self.mm1_local_idx]
+                mm_bonded_to_idx = mm_atoms.bonded_to_idx
+                self.mm1_local_idx = np.where(mm_bonded_to_idx != -1)[0]
+                self.qm_host_local_idx = mm_bonded_to_idx[self.mm1_local_idx]
                 self.qm_host_local_idx = self._map2unsorted[self.qm_host_local_idx]
 
                 # Number of MM2 atoms and coefficient to generate the virtual charges

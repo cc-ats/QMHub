@@ -3,6 +3,8 @@ from __future__ import division
 import os
 import numpy as np
 
+from .. import units
+
 from .qmbase import QMBase
 from ..qmtmpl import QMTmpl
 
@@ -10,6 +12,23 @@ from ..qmtmpl import QMTmpl
 class DFTB(QMBase):
 
     QMTOOL = 'DFTB+'
+
+    def get_mm_system(self, embed):
+        """Load MM information."""
+
+        super(DFTB, self).get_mm_system(embed)
+
+        if self.mm_atoms_far.charge_eeq is not None:
+            self._pbc = True
+            self._mm_atoms = embed.mm_atoms
+            self._mm_charge = self._mm_atoms.charge
+        else:
+            self._pbc = False
+            self._mm_atoms = embed.mm_atoms_near
+            self._mm_charge = self._mm_atoms.charge_eeq
+
+        self._n_mm_atoms = self._mm_atoms.n_atoms
+        self._mm_position = self._mm_atoms.position
 
     def get_qm_params(self, skfpath=None, **kwargs):
         """Get the parameters for QM calculation."""
@@ -26,11 +45,11 @@ class DFTB(QMBase):
 
         qmtmpl = QMTmpl(self.QMTOOL)
 
-        elements = np.unique(self.qm_element).tolist()
+        elements = np.unique(self._qm_element).tolist()
         MaxAngularMomentum = "\n    ".join([i+" = "+qmtmpl.MaxAngularMomentum[i] for i in elements])
         HubbardDerivs = "\n    ".join([i+" = "+qmtmpl.HubbardDerivs[i] for i in elements])
 
-        if self.pbc:
+        if self._pbc:
             KPointsAndWeights = qmtmpl.KPointsAndWeights
         else:
             KPointsAndWeights = ""
@@ -52,36 +71,36 @@ class DFTB(QMBase):
 
         with open(self.basedir + "dftb_in.hsd", 'w') as f:
             f.write(qmtmpl.gen_qmtmpl().substitute(charge=self.charge,
-                    n_mm_atoms=self.n_mm_atoms, read_guess=read_guess,
+                    n_mm_atoms=self._n_mm_atoms, read_guess=read_guess,
                     calc_forces=calc_forces, skfpath=self.skfpath,
                     MaxAngularMomentum=MaxAngularMomentum,
                     HubbardDerivs=HubbardDerivs,
                     KPointsAndWeights=KPointsAndWeights,
                     addparam=addparam))
         with open(self.basedir + "input_geometry.gen", 'w') as f:
-            if self.pbc:
-                f.write(str(self.n_qm_atoms) + " S" + "\n")
+            if self._pbc:
+                f.write(str(self._n_qm_atoms) + " S" + "\n")
             else:
-                f.write(str(self.n_qm_atoms) + " C" + "\n")
+                f.write(str(self._n_qm_atoms) + " C" + "\n")
             f.write(" ".join(elements) + "\n")
-            for i in range(self.n_qm_atoms):
+            for i in range(self._n_qm_atoms):
                 f.write("".join(["%6d" % (i+1),
-                                 "%4d" % (elements.index(self.qm_element[i])+1),
-                                 "%22.14e" % self.qm_position[i, 0],
-                                 "%22.14e" % self.qm_position[i, 1],
-                                 "%22.14e" % self.qm_position[i, 2], "\n"]))
-            if self.pbc:
+                                 "%4d" % (elements.index(self._qm_element[i])+1),
+                                 "%22.14e" % self._qm_position[i, 0],
+                                 "%22.14e" % self._qm_position[i, 1],
+                                 "%22.14e" % self._qm_position[i, 2], "\n"]))
+            if self._pbc:
                 f.write("".join(["%22.14e" % i for i in self.cell_origin]) + "\n")
                 f.write("".join(["%22.14e" % i for i in self.cell_basis[0]]) + "\n")
                 f.write("".join(["%22.14e" % i for i in self.cell_basis[1]]) + "\n")
                 f.write("".join(["%22.14e" % i for i in self.cell_basis[2]]) + "\n")
 
         with open(self.basedir + "charges.dat", 'w') as f:
-            for i in range(self.n_mm_atoms):
-                f.write("".join(["%22.14e" % self.mm_position[i, 0],
-                                 "%22.14e" % self.mm_position[i, 1],
-                                 "%22.14e" % self.mm_position[i, 2],
-                                 " %22.14e" % self.mm_charge_qm[i], "\n"]))
+            for i in range(self._n_mm_atoms):
+                f.write("".join(["%22.14e" % self._mm_position[i, 0],
+                                 "%22.14e" % self._mm_position[i, 1],
+                                 "%22.14e" % self._mm_position[i, 2],
+                                 " %22.14e" % self._mm_charge[i], "\n"]))
 
     def gen_cmdline(self):
         """Generate commandline for QM calculation."""
@@ -98,6 +117,21 @@ class DFTB(QMBase):
         qmsave = self.basedir + "charges.bin"
         if os.path.isfile(qmsave):
             os.remove(qmsave)
+
+    def parse_output(self):
+        """Parse the output of QM calculation."""
+
+        output = self.load_output(self.basedir + "results.tag")
+
+        self.get_qm_energy(output)
+        self.get_qm_charge(output)
+        self.get_qm_force(output)
+        self.get_mm_force(output)
+
+        self.qm_atoms.qm_energy = self.qm_energy * units.E_AU
+        self.qm_atoms.qm_charge = self.qm_charge
+        self.qm_atoms.force = self.qm_force * units.F_AU
+        self._mm_atoms.force = self.mm_force * units.F_AU
 
     def get_qm_energy(self, output=None):
         """Get QM energy from output of QM calculation."""
@@ -117,8 +151,8 @@ class DFTB(QMBase):
 
         self.qm_charge = np.array([], dtype=float)
 
-        n_lines = int(np.ceil(self.n_qm_atoms / 3))
-        start = self.n_qm_atoms + self.n_mm_atoms + n_lines + 14
+        n_lines = int(np.ceil(self._n_qm_atoms / 3))
+        start = self._n_qm_atoms + self._n_mm_atoms + n_lines + 14
         stop = start + n_lines
 
         for line in output[start:stop]:
@@ -132,7 +166,7 @@ class DFTB(QMBase):
         if output is None:
             output = self.load_output(self.basedir + "results.tag")
 
-        self.qm_force = np.loadtxt(output[5:(self.n_qm_atoms + 5)], dtype=float)
+        self.qm_force = np.loadtxt(output[5:(self._n_qm_atoms + 5)], dtype=float)
 
         return self.qm_force
 
@@ -142,8 +176,8 @@ class DFTB(QMBase):
         if output is None:
             output = self.load_output(self.basedir + "results.tag")
 
-        start = self.n_qm_atoms + 6
-        stop = start + self.n_mm_atoms
+        start = self._n_qm_atoms + 6
+        stop = start + self._n_mm_atoms
 
         self.mm_force = np.loadtxt(output[start:stop], dtype=float)
 

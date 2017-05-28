@@ -3,6 +3,8 @@ from __future__ import absolute_import
 import os
 import numpy as np
 
+from .. import units
+
 from .qmbase import QMBase
 
 import psi4
@@ -11,6 +13,36 @@ import psi4
 class PSI4(QMBase):
 
     QMTOOL = 'PSI4'
+
+    def get_mm_system(self, embed):
+        """Load MM information."""
+
+        super(PSI4, self).get_mm_system(embed)
+
+        self._n_mm_atoms = self.mm_atoms_near.n_atoms
+        self._mm_position = self.mm_atoms_near.position
+        self._mm_charge = self.mm_atoms_near.charge_eed
+
+        if self.mm_atoms_far.charge_eeq is not None:
+            self._qm_esp_near = embed.qm_esp_near
+            self._qm_efield_near = embed.qm_efield_near
+            raise NotImplementedError()
+
+    def parse_output(self):
+        """Parse the output of QM calculation."""
+
+        self.get_qm_energy()
+        self.get_qm_charge()
+        self.get_qm_force()
+        self.get_mm_force()
+
+        self.get_mm_esp_eed()
+
+        self.qm_atoms.qm_energy = self.qm_energy * units.E_AU
+        self.qm_atoms.qm_charge = self.qm_charge
+        self.qm_atoms.force = self.qm_force * units.F_AU
+        self.mm_atoms_near.force = self.mm_force * units.F_AU
+        self.mm_atoms_near.esp_eed = self.mm_esp_eed * units.E_AU
 
     def get_qm_params(self, method=None, basis=None, **kwargs):
         """Get the parameters for QM calculation."""
@@ -45,11 +77,11 @@ class PSI4(QMBase):
             psi4.set_options(addparam)
 
         geom = []
-        for i in range(self.n_qm_atoms):
-            geom.append("".join(["%3s" % self.qm_element[i],
-                                 "%22.14e" % self.qm_position[i, 0],
-                                 "%22.14e" % self.qm_position[i, 1],
-                                 "%22.14e" % self.qm_position[i, 2], "\n"]))
+        for i in range(self._n_qm_atoms):
+            geom.append("".join(["%3s" % self._qm_element[i],
+                                 "%22.14e" % self._qm_position[i, 0],
+                                 "%22.14e" % self._qm_position[i, 1],
+                                 "%22.14e" % self._qm_position[i, 2], "\n"]))
         geom.append("symmetry c1\n")
         geom = "".join(geom)
 
@@ -61,19 +93,19 @@ class PSI4(QMBase):
 
         mm_charge = psi4.QMMM()
 
-        for i in range(self.n_mm_atoms):
-            mm_charge.addChargeAngstrom(self.mm_charge_qm[i],
-                                       self.mm_position[i, 0],
-                                       self.mm_position[i, 1],
-                                       self.mm_position[i, 2])
+        for i in range(self._n_mm_atoms):
+            mm_charge.addChargeAngstrom(self._mm_charge[i],
+                                        self._mm_position[i, 0],
+                                        self._mm_position[i, 1],
+                                        self._mm_position[i, 2])
         mm_charge.populateExtern()
         psi4.core.set_global_option_python('EXTERN', mm_charge.extern)
 
         with open(self.basedir + "grid.dat", 'w') as f:
-            for i in range(self.n_mm_atoms):
-                f.write("".join(["%22.14e" % self.mm_position[i, 0],
-                                 "%22.14e" % self.mm_position[i, 1],
-                                 "%22.14e" % self.mm_position[i, 2], "\n"]))
+            for i in range(self._n_mm_atoms):
+                f.write("".join(["%22.14e" % self._mm_position[i, 0],
+                                 "%22.14e" % self._mm_position[i, 1],
+                                 "%22.14e" % self._mm_position[i, 2], "\n"]))
 
     def run(self):
         """Run QM calculation."""
@@ -137,7 +169,7 @@ class PSI4(QMBase):
         self.mm_force = (np.column_stack([self.oeprop.Exvals(),
                                           self.oeprop.Eyvals(),
                                           self.oeprop.Ezvals()])
-                         * self.mm_charge_qm[:, np.newaxis])
+                         * self._mm_charge[:, np.newaxis])
 
         return self.mm_force
 
@@ -147,10 +179,10 @@ class PSI4(QMBase):
 
         return self.qm_charge
 
-    def get_mm_esp(self):
+    def get_mm_esp_eed(self):
         """Get ESP at external point charges in the near field from QM density."""
 
-        self.mm_esp = np.array(self.oeprop.Vvals())
+        self.mm_esp_eed = np.array(self.oeprop.Vvals())
 
-        return self.mm_esp
+        return self.mm_esp_eed
 

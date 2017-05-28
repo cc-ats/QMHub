@@ -1,3 +1,4 @@
+import os
 import sys
 import numpy as np
 
@@ -96,7 +97,8 @@ class QMMM(object):
                 self.system.mm_charge_qm = np.zeros(self.system.n_mm_atoms)
 
         # Initialize the QM system
-        self.qm = qmtools.choose_qmtool(self.qmSoftware)(self.system, self.qmCharge, self.qmMult, self.qmPBC)
+        basedir = os.path.dirname(fin) + "/"
+        self.qm = qmtools.choose_qmtool(self.qmSoftware)(basedir, self.system, self.embed, self.qmCharge, self.qmMult)
 
         if self.qmReadGuess and not self.system.step == 0:
             self.qm.read_guess = True
@@ -157,14 +159,13 @@ class QMMM(object):
         system_dij_min = np.zeros(self.system.n_atoms)
         system_charge = np.zeros(self.system.n_atoms)
 
-        if hasattr(self.system, 'charge_scale'):
-            system_scale[self.system.mm_index[0:self.system.n_real_mm_atoms]] = self.system.charge_scale
+        system_scale[self.system.mm_atoms.real_atoms.index] = self.embed.charge_scale
 
         system_dij_min[self.system.mm_atoms.real_atoms.index] = self.system.mm_atoms.real_atoms.dij_min
 
         system_charge[self.system.mm_atoms.real_atoms.index] = self.system.mm_atoms.real_atoms.charge
-        system_charge[self.system.mm_index[0:self.system.n_real_mm_atoms]] = self.system.mm_charge_qm[0:self.system.n_real_mm_atoms]
-        system_charge[self.system.qm_index[0:self.system.n_real_qm_atoms]] = self.system.qm_charge_me[0:self.system.n_real_qm_atoms]
+        system_charge[self.embed.mm_atoms_near.real_atoms.index] = self.embed.mm_atoms_near.real_atoms.charge_near
+        system_charge[self.system.qm_atoms.real_atoms.index] = self.system.qm_atoms.real_atoms.charge
 
         np.save(self.qm.basedir + "system_scale", system_scale)
         np.save(self.qm.basedir + "system_dij_min", system_dij_min)

@@ -2,6 +2,8 @@ import os
 import shutil
 import numpy as np
 
+from .. import units
+
 from .qmbase import QMBase
 from ..qmtmpl import QMTmpl
 
@@ -9,6 +11,20 @@ from ..qmtmpl import QMTmpl
 class QChem(QMBase):
 
     QMTOOL = 'Q-Chem'
+
+    def get_mm_system(self, embed):
+        """Load MM information."""
+
+        super(QChem, self).get_mm_system(embed)
+
+        self._n_mm_atoms = self.mm_atoms_near.n_atoms
+        self._mm_position = self.mm_atoms_near.position
+        self._mm_charge = self.mm_atoms_near.charge_eed
+
+        if self.mm_atoms_far.charge_eeq is not None:
+            self._qm_esp_near = embed.qm_esp_near
+            self._qm_efield_near = embed.qm_efield_near
+            raise NotImplementedError()
 
     def get_qm_params(self, method=None, basis=None, **kwargs):
         """Get the parameters for QM calculation."""
@@ -55,19 +71,19 @@ class QChem(QMBase):
             f.write("$molecule\n")
             f.write("%d %d\n" % (self.charge, self.mult))
 
-            for i in range(self.n_qm_atoms):
-                f.write("".join(["%3s" % self.qm_element[i],
-                                 "%22.14e" % self.qm_position[i, 0],
-                                 "%22.14e" % self.qm_position[i, 1],
-                                 "%22.14e" % self.qm_position[i, 2], "\n"]))
+            for i in range(self._n_qm_atoms):
+                f.write("".join(["%3s" % self._qm_element[i],
+                                 "%22.14e" % self._qm_position[i, 0],
+                                 "%22.14e" % self._qm_position[i, 1],
+                                 "%22.14e" % self._qm_position[i, 2], "\n"]))
             f.write("$end" + "\n\n")
 
             f.write("$external_charges\n")
-            for i in range(self.n_mm_atoms):
-                f.write("".join(["%22.14e" % self.mm_position[i, 0],
-                                 "%22.14e" % self.mm_position[i, 1],
-                                 "%22.14e" % self.mm_position[i, 2],
-                                 " %22.14e" % self.mm_charge_qm[i], "\n"]))
+            for i in range(self._n_mm_atoms):
+                f.write("".join(["%22.14e" % self._mm_position[i, 0],
+                                 "%22.14e" % self._mm_position[i, 1],
+                                 "%22.14e" % self._mm_position[i, 2],
+                                 " %22.14e" % self._mm_charge[i], "\n"]))
             f.write("$end" + "\n")
 
     def gen_cmdline(self):
@@ -86,6 +102,26 @@ class QChem(QMBase):
             qmsave = os.environ['QCSCRATCH'] + "/save"
             if os.path.isdir(qmsave):
                 shutil.rmtree(qmsave)
+
+    def parse_output(self):
+        """Parse the output of QM calculation."""
+
+        output = self.load_output(self.basedir + "qchem.out")
+
+        self.get_qm_energy(output)
+        self.get_qm_charge(output)
+
+        output = self.load_output(self.basedir + "efield.dat")
+        self.get_qm_force(output)
+        self.get_mm_force(output)
+
+        self.get_mm_esp_eed()
+
+        self.qm_atoms.qm_energy = self.qm_energy * units.E_AU
+        self.qm_atoms.qm_charge = self.qm_charge
+        self.qm_atoms.force = self.qm_force * units.F_AU
+        self.mm_atoms_near.force = self.mm_force * units.F_AU
+        self.mm_atoms_near.esp_eed = self.mm_esp_eed * units.E_AU
 
     def get_qm_energy(self, output=None):
         """Get QM energy from output of QM calculation."""
@@ -115,8 +151,8 @@ class QChem(QMBase):
 
         for i in range(len(output)):
             if "Ground-State Mulliken Net Atomic Charges" in output[i]:
-                self.qm_charge = np.empty(self.n_qm_atoms, dtype=float)
-                for j in range(self.n_qm_atoms):
+                self.qm_charge = np.empty(self._n_qm_atoms, dtype=float)
+                for j in range(self._n_qm_atoms):
                     line = output[i + 4 + j]
                     self.qm_charge[j] = float(line.split()[2])
                 break
@@ -129,7 +165,7 @@ class QChem(QMBase):
         if output is None:
             output = self.load_output(self.basedir + "efield.dat")
 
-        self.qm_force = -1 * np.loadtxt(output[self.n_mm_atoms:(self.n_mm_atoms + self.n_qm_atoms)], dtype=float)
+        self.qm_force = -1 * np.loadtxt(output[self._n_mm_atoms:(self._n_mm_atoms + self._n_qm_atoms)], dtype=float)
 
         return self.qm_force
 
@@ -139,17 +175,17 @@ class QChem(QMBase):
         if output is None:
             output = self.load_output(self.basedir + "efield.dat")
 
-        self.mm_force = (np.loadtxt(output[:self.n_mm_atoms], dtype=float)
-                         * self.mm_charge_qm[:, np.newaxis])
+        self.mm_force = (np.loadtxt(output[:self._n_mm_atoms], dtype=float)
+                         * self._mm_charge[:, np.newaxis])
 
         return self.mm_force
 
-    def get_mm_esp(self, output=None):
+    def get_mm_esp_eed(self, output=None):
         """Get ESP at MM atoms in the near field from QM density."""
 
         if output is None:
             output = self.load_output(self.basedir + "esp.dat")
 
-        self.mm_esp = np.loadtxt(output)
+        self.mm_esp_eed = np.loadtxt(output)
 
-        return self.mm_esp
+        return self.mm_esp_eed

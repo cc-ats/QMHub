@@ -9,12 +9,12 @@ class QMBase(object):
 
     QMTOOL = None
 
-    def __init__(self, system, charge=None, mult=None, pbc=None):
+    def __init__(self, basedir, system, embed, charge=None, mult=None):
         """
         Creat a QM object.
         """
 
-        self.basedir = os.path.dirname(system.fin) + "/"
+        self.basedir = basedir
 
         if charge is not None:
             self.charge = charge
@@ -24,17 +24,10 @@ class QMBase(object):
             self.mult = mult
         else:
             self.mult = 1
-        if pbc is not None:
-            self.pbc = pbc
-        else:
-            raise ValueError("Please set 'pbc' for QM calculation.")
 
-        self.n_qm_atoms = system.n_qm_atoms
-        self.n_mm_atoms = system.n_mm_atoms
-        self.qm_element = system.qm_element
-        self.qm_position = system.qm_position
-        self.mm_position = system.mm_position
-        self.mm_charge_qm = system.mm_charge_qm
+        # Load the system
+        self.get_qm_system(embed)
+        self.get_mm_system(embed)
 
         self.rij = system.rij / units.L_AU
         self.dij = system.dij / units.L_AU
@@ -66,14 +59,20 @@ class QMBase(object):
 
         return output
 
-    def get_qm_esp(self):
-        """Get electrostatic potential due to external point charges."""
-        if self.pbc:
-            raise NotImplementedError()
-        else:
-            self.qm_esp = np.sum(self.mm_charge_qm[:, np.newaxis] / self.dij, axis=0)
+    def get_qm_system(self, embed):
+        """Load MM information."""
 
-            return self.qm_esp
+        self.qm_atoms = embed.qm_atoms
+
+        self._n_qm_atoms = self.qm_atoms.n_atoms
+        self._qm_element = self.qm_atoms.element
+        self._qm_position = self.qm_atoms.position
+
+    def get_mm_system(self, embed):
+        """Load MM information."""
+
+        self.mm_atoms_near = embed.mm_atoms_near
+        self.mm_atoms_far = embed.mm_atoms_far
 
     def get_qm_params(self, calc_forces=None, read_guess=None, addparam=None):
         if calc_forces is not None:
@@ -100,3 +99,4 @@ class QMBase(object):
         proc.wait()
         self.exitcode = proc.returncode
         return self.exitcode
+

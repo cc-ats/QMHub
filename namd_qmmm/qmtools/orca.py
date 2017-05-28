@@ -11,6 +11,20 @@ class ORCA(QMBase):
 
     QMTOOL = 'ORCA'
 
+    def get_mm_system(self, embed):
+        """Load MM information."""
+
+        super(ORCA, self).get_mm_system(embed)
+
+        self._n_mm_atoms = self.mm_atoms_near.n_atoms
+        self._mm_position = self.mm_atoms_near.position
+        self._mm_charge = self.mm_atoms_near.charge_eed
+
+        if self.mm_atoms_far.charge_eeq is not None:
+            self._qm_esp_near = embed.qm_esp_near
+            self._qm_efield_near = embed.qm_efield_near
+            raise NotImplementedError()
+
     def get_qm_params(self, method=None, basis=None, **kwargs):
         """Get the parameters for QM calculation."""
 
@@ -64,28 +78,28 @@ class ORCA(QMBase):
             f.write("  Units Angs\n")
             f.write("  coords\n")
 
-            for i in range(self.n_qm_atoms):
-                f.write(" ".join(["%6s" % self.qm_element[i],
-                                  "%22.14e" % self.qm_position[i, 0],
-                                  "%22.14e" % self.qm_position[i, 1],
-                                  "%22.14e" % self.qm_position[i, 2], "\n"]))
+            for i in range(self._n_qm_atoms):
+                f.write(" ".join(["%6s" % self._qm_element[i],
+                                  "%22.14e" % self._qm_position[i, 0],
+                                  "%22.14e" % self._qm_position[i, 1],
+                                  "%22.14e" % self._qm_position[i, 2], "\n"]))
             f.write("  end\n")
             f.write("end\n")
 
         with open(self.basedir + "orca.pntchrg", 'w') as f:
-            f.write("%d\n" % self.n_mm_atoms)
-            for i in range(self.n_mm_atoms):
-                f.write("".join(["%22.14e " % self.mm_charge_qm[i],
-                                 "%22.14e" % self.mm_position[i, 0],
-                                 "%22.14e" % self.mm_position[i, 1],
-                                 "%22.14e" % self.mm_position[i, 2], "\n"]))
+            f.write("%d\n" % self._n_mm_atoms)
+            for i in range(self._n_mm_atoms):
+                f.write("".join(["%22.14e " % self._mm_charge[i],
+                                 "%22.14e" % self._mm_position[i, 0],
+                                 "%22.14e" % self._mm_position[i, 1],
+                                 "%22.14e" % self._mm_position[i, 2], "\n"]))
 
         with open(self.basedir + "orca.pntvpot.xyz", 'w') as f:
-            f.write("%d\n" % self.n_mm_atoms)
-            for i in range(self.n_mm_atoms):
-                f.write("".join(["%22.14e" % (self.mm_position[i, 0] / units.L_AU),
-                                 "%22.14e" % (self.mm_position[i, 1] / units.L_AU),
-                                 "%22.14e" % (self.mm_position[i, 2] / units.L_AU), "\n"]))
+            f.write("%d\n" % self._n_mm_atoms)
+            for i in range(self._n_mm_atoms):
+                f.write("".join(["%22.14e" % (self._mm_position[i, 0] / units.L_AU),
+                                 "%22.14e" % (self._mm_position[i, 1] / units.L_AU),
+                                 "%22.14e" % (self._mm_position[i, 2] / units.L_AU), "\n"]))
 
     def gen_cmdline(self):
         """Generate commandline for QM calculation."""
@@ -102,6 +116,24 @@ class ORCA(QMBase):
         qmsave = self.basedir + "orca.gbw"
         if os.path.isfile(qmsave):
             os.remove(qmsave)
+
+    def parse_output(self):
+        """Parse the output of QM calculation."""
+
+        output = self.load_output(self.basedir + "orca.out")
+
+        self.get_qm_energy(output)
+        self.get_qm_charge(output)
+        self.get_qm_force()
+        self.get_mm_force()
+
+        self.get_mm_esp_eed()
+
+        self.qm_atoms.qm_energy = self.qm_energy * units.E_AU
+        self.qm_atoms.qm_charge = self.qm_charge
+        self.qm_atoms.force = self.qm_force * units.F_AU
+        self.mm_atoms_near.force = self.mm_force * units.F_AU
+        self.mm_atoms_near.esp_eed = self.mm_esp_eed * units.E_AU
 
     def get_qm_energy(self, output=None):
         """Get QM energy from output of QM calculation."""
@@ -127,7 +159,7 @@ class ORCA(QMBase):
         for i in range(len(output)):
             if "MULLIKEN ATOMIC CHARGES" in output[i]:
                 charges = []
-                for line in output[(i + 2):(i + 2 + self.n_qm_atoms)]:
+                for line in output[(i + 2):(i + 2 + self._n_qm_atoms)]:
                     charges.append(float(line.split()[3]))
                 break
 
@@ -142,8 +174,8 @@ class ORCA(QMBase):
             output = self.load_output(self.basedir + "orca.engrad")
 
         start = 11
-        stop = start + self.n_qm_atoms * 3
-        self.qm_force = -1 * np.loadtxt(output[start:stop]).reshape((self.n_qm_atoms, 3))
+        stop = start + self._n_qm_atoms * 3
+        self.qm_force = -1 * np.loadtxt(output[start:stop]).reshape((self._n_qm_atoms, 3))
 
         return self.qm_force
 
@@ -153,16 +185,16 @@ class ORCA(QMBase):
         if output is None:
             output = self.load_output(self.basedir + "orca.pcgrad")
 
-        self.mm_force = -1 * np.loadtxt(output[1:(self.n_mm_atoms + 1)])
+        self.mm_force = -1 * np.loadtxt(output[1:(self._n_mm_atoms + 1)])
 
         return self.mm_force
 
-    def get_mm_esp(self, output=None):
+    def get_mm_esp_eed(self, output=None):
         """Get ESP at MM atoms in the near field from QM density."""
 
         if output is None:
             output = self.load_output(self.basedir + "orca.pntvpot.out")
 
-        self.mm_esp = np.loadtxt(output[1:(self.n_mm_atoms + 1)], usecols=3)
+        self.mm_esp_eed = np.loadtxt(output[1:(self._n_mm_atoms + 1)], usecols=3)
 
-        return self.mm_esp
+        return self.mm_esp_eed

@@ -13,6 +13,29 @@ class MOPAC(QMBase):
 
     QMTOOL = 'MOPAC'
 
+    def get_qm_system(self, embed):
+        """Load QM information."""
+
+        super(MOPAC, self).get_qm_system(embed)
+
+        self._n_real_qm_atoms = self.qm_atoms.n_real_atoms
+        self._n_virt_qm_atoms = self.qm_atoms.n_virt_atoms
+
+    def get_mm_system(self, embed):
+        """Load MM information."""
+
+        super(MOPAC, self).get_mm_system(embed)
+
+        self._n_mm_atoms = self.mm_atoms_near.n_atoms
+        self._mm_position = self.mm_atoms_near.position
+        self._qm_esp = embed.qm_esp_near
+        self._qm_efield_near = embed.qm_efield_near
+
+        if self.mm_atoms_far.charge_eeq is not None:
+            raise NotImplementedError()
+            self._qm_esp_far = embed.qm_esp_far
+            self._qm_efield_far = embed.qm_efield_far
+
     def get_qm_params(self, method=None, **kwargs):
         """Get the parameters for QM calculation."""
 
@@ -25,9 +48,6 @@ class MOPAC(QMBase):
 
     def gen_input(self):
         """Generate input file for QM software."""
-
-        if not hasattr(self, 'qm_esp'):
-            self.get_qm_esp()
 
         qmtmpl = QMTmpl(self.QMTOOL)
 
@@ -51,22 +71,22 @@ class MOPAC(QMBase):
                     charge=self.charge, calc_forces=calc_forces,
                     addparam=addparam, nproc=nproc))
             f.write("NAMD QM/MM\n\n")
-            for i in range(self.n_qm_atoms):
-                f.write(" ".join(["%6s" % self.qm_element[i],
-                                  "%22.14e 1" % self.qm_position[i, 0],
-                                  "%22.14e 1" % self.qm_position[i, 1],
-                                  "%22.14e 1" % self.qm_position[i, 2], "\n"]))
+            for i in range(self._n_qm_atoms):
+                f.write(" ".join(["%6s" % self._qm_element[i],
+                                  "%22.14e 1" % self._qm_position[i, 0],
+                                  "%22.14e 1" % self._qm_position[i, 1],
+                                  "%22.14e 1" % self._qm_position[i, 2], "\n"]))
 
         with open(self.basedir + "mol.in", 'w') as f:
             f.write("\n")
-            f.write("%d %d\n" % (self.n_qm_atoms, 0))
+            f.write("%d %d\n" % (self._n_real_qm_atoms, self._n_virt_qm_atoms))
 
-            for i in range(self.n_qm_atoms):
-                f.write(" ".join(["%6s" % self.qm_element[i],
-                                    "%22.14e" % self.qm_position[i, 0],
-                                    "%22.14e" % self.qm_position[i, 1],
-                                    "%22.14e" % self.qm_position[i, 2],
-                                    " %22.14e" % (self.qm_esp[i] * units.E_AU), "\n"]))
+            for i in range(self._n_qm_atoms):
+                f.write(" ".join(["%6s" % self._qm_element[i],
+                                    "%22.14e" % self._qm_position[i, 0],
+                                    "%22.14e" % self._qm_position[i, 1],
+                                    "%22.14e" % self._qm_position[i, 2],
+                                    " %22.14e" % (self._qm_esp[i]), "\n"]))
 
     def gen_cmdline(self):
         """Generate commandline for QM calculation."""
@@ -81,6 +101,21 @@ class MOPAC(QMBase):
 
         pass
 
+    def parse_output(self):
+        """Parse the output of QM calculation."""
+
+        output = self.load_output(self.basedir + "mopac.aux")
+
+        self.get_qm_energy(output)
+        self.get_qm_charge(output)
+        self.get_qm_force(output)
+        self.get_mm_force()
+
+        self.qm_atoms.qm_energy = self.qm_energy * units.E_AU
+        self.qm_atoms.qm_charge = self.qm_charge
+        self.qm_atoms.force = self.qm_force * units.F_AU
+        self.mm_atoms_near.force = self.mm_force * units.F_AU
+
     def get_qm_energy(self, output=None):
         """Get QM energy from output of QM calculation."""
 
@@ -94,17 +129,15 @@ class MOPAC(QMBase):
 
         return self.qm_energy
 
-    def get_fij(self):
+    def get_fij_near(self):
         """Get pair-wise forces between QM atomic charges and external point charges."""
 
         if not hasattr(self, 'qm_charge'):
             self.get_qm_charge()
 
-        self.fij = (-1 * self.mm_charge_qm[:, np.newaxis] * self.qm_charge[np.newaxis, :]
-                  / self.dij**3)
-        self.fij = self.fij[:, :, np.newaxis] * self.rij
+        self.fij_near = -1 * self._qm_efield_near * self.qm_charge[np.newaxis, :, np.newaxis]
 
-        return self.fij
+        return self.fij_near
 
     def get_qm_force(self, output=None):
         """Get QM forces from output of QM calculation."""
@@ -112,7 +145,7 @@ class MOPAC(QMBase):
         if output is None:
             output = self.load_output(self.basedir + "mopac.aux")
 
-        n_lines = int(np.ceil(self.n_qm_atoms * 3 / 10))
+        n_lines = int(np.ceil(self._n_qm_atoms * 3 / 10))
 
         for i in range(len(output)):
             if "GRADIENTS" in output[i]:
@@ -121,24 +154,24 @@ class MOPAC(QMBase):
                     gradients = np.append(gradients, np.fromstring(line, sep=' '))
                 break
 
-        self.qm_force = -1 * gradients.reshape(self.n_qm_atoms, 3)
+        self.qm_force = -1 * gradients.reshape(self._n_qm_atoms, 3)
 
-        if not hasattr(self, 'fij'):
-            self.get_fij()
+        if not hasattr(self, 'fij_near'):
+            self.get_fij_near()
+
+        self.qm_force -= self.fij_near.sum(axis=0)
 
         self.qm_force /= units.F_AU
-
-        self.qm_force -= self.fij.sum(axis=0)
 
         return self.qm_force
 
     def get_mm_force(self):
         """Get external point charge forces from output of QM calculation."""
 
-        if not hasattr(self, 'fij'):
-            self.get_fij()
+        if not hasattr(self, 'fij_near'):
+            self.get_fij_near()
 
-        self.mm_force = self.fij.sum(axis=1)
+        self.mm_force = self.fij_near.sum(axis=1) / units.F_AU
 
         return self.mm_force
 
@@ -148,7 +181,7 @@ class MOPAC(QMBase):
         if output is None:
             output = self.load_output(self.basedir + "mopac.aux")
 
-        n_lines = int(np.ceil(self.n_qm_atoms / 10))
+        n_lines = int(np.ceil(self._n_qm_atoms / 10))
 
         for i in range(len(output)):
             if "ATOM_CHARGES" in output[i]:

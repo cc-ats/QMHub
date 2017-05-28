@@ -66,9 +66,9 @@ class ORCA(QMBase):
 
             for i in range(self.n_qm_atoms):
                 f.write(" ".join(["%6s" % self.qm_element[i],
-                                    "%22.14e" % self.qm_position[i, 0],
-                                    "%22.14e" % self.qm_position[i, 1],
-                                    "%22.14e" % self.qm_position[i, 2], "\n"]))
+                                  "%22.14e" % self.qm_position[i, 0],
+                                  "%22.14e" % self.qm_position[i, 1],
+                                  "%22.14e" % self.qm_position[i, 2], "\n"]))
             f.write("  end\n")
             f.write("end\n")
 
@@ -76,16 +76,16 @@ class ORCA(QMBase):
             f.write("%d\n" % self.n_mm_atoms)
             for i in range(self.n_mm_atoms):
                 f.write("".join(["%22.14e " % self.mm_charge_qm[i],
-                                    "%22.14e" % self.mm_position[i, 0],
-                                    "%22.14e" % self.mm_position[i, 1],
-                                    "%22.14e" % self.mm_position[i, 2], "\n"]))
+                                 "%22.14e" % self.mm_position[i, 0],
+                                 "%22.14e" % self.mm_position[i, 1],
+                                 "%22.14e" % self.mm_position[i, 2], "\n"]))
 
         with open(self.basedir + "orca.pntvpot.xyz", 'w') as f:
             f.write("%d\n" % self.n_mm_atoms)
             for i in range(self.n_mm_atoms):
                 f.write("".join(["%22.14e" % (self.mm_position[i, 0] / units.L_AU),
-                                    "%22.14e" % (self.mm_position[i, 1] / units.L_AU),
-                                    "%22.14e" % (self.mm_position[i, 2] / units.L_AU), "\n"]))
+                                 "%22.14e" % (self.mm_position[i, 1] / units.L_AU),
+                                 "%22.14e" % (self.mm_position[i, 2] / units.L_AU), "\n"]))
 
     def gen_cmdline(self):
         """Generate commandline for QM calculation."""
@@ -103,61 +103,66 @@ class ORCA(QMBase):
         if os.path.isfile(qmsave):
             os.remove(qmsave)
 
-    def get_qm_energy(self):
+    def get_qm_energy(self, output=None):
         """Get QM energy from output of QM calculation."""
 
-        with open(self.basedir + "orca.out", 'r') as f:
-            for line in f:
-                line = line.strip().expandtabs()
+        if output is None:
+            output = self.load_output(self.basedir + "orca.out")
 
-                if "FINAL SINGLE POINT ENERGY" in line:
-                    self.qm_energy = float(line.split()[-1])
-                    break
+        for line in output:
+            line = line.strip().expandtabs()
+
+            if "FINAL SINGLE POINT ENERGY" in line:
+                self.qm_energy = float(line.split()[-1])
+                break
 
         return self.qm_energy
 
-    def get_qm_force(self):
-        """Get QM forces from output of QM calculation."""
-
-        self.qm_force = -1 * np.genfromtxt(self.basedir + "orca.engrad",
-                                    dtype=float, skip_header=11,
-                                    max_rows=self.n_qm_atoms*3).reshape((self.n_qm_atoms, 3))
-
-        return self.qm_force
-
-    def get_mm_force(self):
-        """Get external point charge forces from output of QM calculation."""
-
-        self.mm_force = -1 * np.genfromtxt(self.basedir + "orca.pcgrad",
-                                                dtype=float,
-                                                skip_header=1,
-                                                max_rows=self.n_mm_atoms)
-
-        return self.mm_force
-
-    def get_qm_charge(self):
+    def get_qm_charge(self, output=None):
         """Get Mulliken charges from output of QM calculation."""
 
-        with open(self.basedir + "orca.out", 'r') as f:
-            for line in f:
-                if "MULLIKEN ATOMIC CHARGES" in line:
-                    charges = []
-                    line = next(f)
-                    for i in range(self.n_qm_atoms):
-                        line = next(f)
-                        charges.append(float(line.split()[3]))
-                    break
+        if output is None:
+            output = self.load_output(self.basedir + "orca.out")
+
+        for i in range(len(output)):
+            if "MULLIKEN ATOMIC CHARGES" in output[i]:
+                charges = []
+                for line in output[(i + 2):(i + 2 + self.n_qm_atoms)]:
+                    charges.append(float(line.split()[3]))
+                break
+
         self.qm_charge = np.array(charges)
 
         return self.qm_charge
 
-    def get_mm_esp(self):
-        """Get ESP at external point charges from output of QM calculation."""
+    def get_qm_force(self, output=None):
+        """Get QM forces from output of QM calculation."""
 
-        self.mm_esp = np.genfromtxt(self.basedir + "orca.pntvpot.out",
-                                    dtype=float,
-                                    skip_header=1,
-                                    usecols=3,
-                                    max_rows=self.n_mm_atoms)
+        if output is None:
+            output = self.load_output(self.basedir + "orca.engrad")
+
+        start = 11
+        stop = start + self.n_qm_atoms * 3
+        self.qm_force = -1 * np.loadtxt(output[start:stop]).reshape((self.n_qm_atoms, 3))
+
+        return self.qm_force
+
+    def get_mm_force(self, output=None):
+        """Get external point charge forces from output of QM calculation."""
+
+        if output is None:
+            output = self.load_output(self.basedir + "orca.pcgrad")
+
+        self.mm_force = -1 * np.loadtxt(output[1:(self.n_mm_atoms + 1)])
+
+        return self.mm_force
+
+    def get_mm_esp(self, output=None):
+        """Get ESP at MM atoms in the near field from QM density."""
+
+        if output is None:
+            output = self.load_output(self.basedir + "orca.pntvpot.out")
+
+        self.mm_esp = np.loadtxt(output[1:(self.n_mm_atoms + 1)], usecols=3)
 
         return self.mm_esp

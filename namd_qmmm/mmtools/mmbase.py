@@ -39,12 +39,6 @@ class MMBase(object):
 
         return self.dij_min
 
-    def sort_qmatoms(self):
-        """Sort QM atoms."""
-        self.map2sorted = np.concatenate((np.argsort(self.qm_index[0:self.n_real_qm_atoms]),
-                                     np.arange(self.n_real_qm_atoms, self.n_qm_atoms)))
-        self.map2unsorted = np.argsort(self.map2sorted)
-
     def absorb_vpntchrgs_mm1(self):
         """Absorb the virtual point charges to MM1."""
 
@@ -136,8 +130,8 @@ class MMBase(object):
         """Parse the output of QM calculation."""
         if qm.calc_forces:
             self.qm_energy = qm.get_qm_energy() * units.E_AU
-            self.qm_force = qm.get_qm_force()[self.map2unsorted] * units.F_AU
-            self.qm_charge = qm.get_qm_charge()[self.map2unsorted]
+            self.qm_force = qm.get_qm_force() * units.F_AU
+            self.qm_charge = qm.get_qm_charge()
             self.mm_force = qm.get_mm_force() * units.F_AU
             self.mm_esp = qm.get_mm_esp() * units.E_AU
         else:

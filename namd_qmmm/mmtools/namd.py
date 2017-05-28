@@ -28,6 +28,13 @@ class NAMD(MMBase):
         self.n_virt_qm_atoms = np.count_nonzero(qm_atoms.index == -1)
         self.n_real_qm_atoms = self.n_qm_atoms - self.n_virt_qm_atoms
 
+        # Sort QM atoms
+        self._map2sorted = np.concatenate((np.argsort(qm_atoms.index[0:self.n_real_qm_atoms]),
+                                          np.arange(self.n_real_qm_atoms, self.n_qm_atoms)))
+        self._map2unsorted = np.argsort(self._map2sorted)
+
+        qm_atoms = qm_atoms[self._map2sorted]
+
         # Positions of QM atoms
         self.qm_position = qm_atoms.position.view((float, 3))
         # Elements of QM atoms
@@ -72,6 +79,7 @@ class NAMD(MMBase):
         if self.n_virt_qm_atoms > 0:
             self.mm1_local_idx = np.where(self.mm_bonded_to_idx != -1)[0]
             self.qm_host_local_idx = self.mm_bonded_to_idx[self.mm1_local_idx]
+            self.qm_host_local_idx = self._map2unsorted[qm_host_local_idx]
 
         # Numbers of MM2 atoms and virtual external point charges per MM2 atom
         if self.n_virt_mm_atoms > 0:
@@ -118,11 +126,14 @@ class NAMD(MMBase):
         if os.path.isfile(self.fin + ".result"):
             os.remove(self.fin + ".result")
 
+        qm_force = self.qm_force[self._map2unsorted]
+        qm_charge_me = self.qm_charge_me[self._map2unsorted]
+
         with open(self.fin + ".result", 'w') as f:
             f.write("%22.14e\n" % self.qm_energy)
             for i in range(self.n_qm_atoms):
-                f.write(" ".join(format(j, "22.14e") for j in self.qm_force[i])
-                        + "  " + format(self.qm_charge_me[i], "22.14e") + "\n")
+                f.write(" ".join(format(j, "22.14e") for j in qm_force[i])
+                        + "  " + format(qm_charge_me[i], "22.14e") + "\n")
             for i in range(self.n_real_mm_atoms):
                 f.write(" ".join(format(j, "22.14e") for j in self.mm_force[i]) + "\n")
 

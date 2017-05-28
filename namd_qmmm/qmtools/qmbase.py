@@ -30,13 +30,13 @@ class QMBase(object):
 
         self.n_qm_atoms = system.n_qm_atoms
         self.n_mm_atoms = system.n_mm_atoms
-        self.qm_element = system.qm_element[system.map2sorted]
-        self.qm_position = system.qm_position[system.map2sorted]
+        self.qm_element = system.qm_element
+        self.qm_position = system.qm_position
         self.mm_position = system.mm_position
         self.mm_charge_qm = system.mm_charge_qm
 
-        self.rij = system.rij[:, system.map2sorted] / units.L_AU
-        self.dij = system.dij[:, system.map2sorted] / units.L_AU
+        self.rij = system.rij / units.L_AU
+        self.dij = system.dij / units.L_AU
         self.cell_origin = system.cell_origin
         self.cell_basis = system.cell_basis
 

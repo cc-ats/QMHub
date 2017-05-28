@@ -3,7 +3,7 @@ import numpy as np
 
 from .. import units
 from ..qmbase import QMBase
-from ..qmtmplt import QMTmplt
+from ..qmtmpl import QMTmpl
 
 class ORCA(QMBase):
 
@@ -27,7 +27,7 @@ class ORCA(QMBase):
     def gen_input(self):
         """Generate input file for QM software."""
 
-        qmtmplt = QMTmplt(self.QMTOOL)
+        qmtmpl = QMTmpl(self.QMTOOL)
 
         if self.calc_forces:
             calcforces = 'EnGrad '
@@ -50,7 +50,7 @@ class ORCA(QMBase):
         nproc = self.get_nproc()
 
         with open(self.baseDir + "orca.inp", 'w') as f:
-            f.write(qmtmplt.gen_qmtmplt().substitute(
+            f.write(qmtmpl.gen_qmtmpl().substitute(
                     method=self.method, basis=self.basis,
                     calcforces=calcforces, read_guess=read_guess,
                     addparam=addparam, nproc=nproc,

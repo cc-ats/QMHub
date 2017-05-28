@@ -3,7 +3,7 @@ import shutil
 import numpy as np
 
 from ..qmbase import QMBase
-from ..qmtmplt import QMTmplt
+from ..qmtmpl import QMTmpl
 
 
 class QChem(QMBase):
@@ -28,7 +28,7 @@ class QChem(QMBase):
     def gen_input(self):
         """Generate input file for QM software."""
 
-        qmtmplt = QMTmplt(self.QMTOOL)
+        qmtmpl = QMTmpl(self.QMTOOL)
 
         if self.calc_forces:
             jobtype = 'force'
@@ -49,7 +49,7 @@ class QChem(QMBase):
             addparam = ''
 
         with open(self.baseDir+"qchem.inp", "w") as f:
-            f.write(qmtmplt.gen_qmtmplt().substitute(jobtype=jobtype,
+            f.write(qmtmpl.gen_qmtmpl().substitute(jobtype=jobtype,
                     method=self.method, basis=self.basis,
                     read_guess=read_guess, addparam=addparam))
             f.write("$molecule\n")
@@ -110,7 +110,8 @@ class QChem(QMBase):
 
         self.qmForces = -1 * np.genfromtxt(self.baseDir + "efield.dat",
                                             dtype=float,
-                                            skip_header=self.numPntChrgs)
+                                            skip_header=self.numPntChrgs,
+                                            max_rows=self.numQMAtoms)
 
         return self.qmForces
 

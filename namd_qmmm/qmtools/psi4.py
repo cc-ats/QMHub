@@ -4,7 +4,6 @@ import os
 import numpy as np
 
 from ..qmbase import QMBase
-from ..qmtmplt import QMTmplt
 
 import psi4
 

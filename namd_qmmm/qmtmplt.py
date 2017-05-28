@@ -1,6 +1,6 @@
 from string import Template
 
-qc_tmplt = """\
+qc_tmpl = """\
 $$rem
 jobtype ${jobtype}
 scf_convergence 8
@@ -16,7 +16,7 @@ $$end
 
 """
 
-dftb_tmplt = """\
+dftb_tmpl = """\
 Geometry = GenFormat {
   <<< "input_geometry.gen"
 }
@@ -85,7 +85,7 @@ MaxAngularMomentum = dict([('Br', 'd'), ('C', 'p'), ('Ca', 'p'),
                            ('N', 'p'), ('Na', 'p'), ('O', 'p'),
                            ('P', 'd'), ('S', 'd'), ('Zn', 'd')])
 
-orca_tmplt = """\
+orca_tmpl = """\
 ! ${method} ${basis} Grid4 TightSCF NOFINALGRID ${calcforces}${read_guess}${addparam}KeepDens
 %output PrintLevel Mini Print[ P_Mulliken ] 1 Print[P_AtCharges_M] 1 end
 %pal nprocs ${nproc} end
@@ -93,11 +93,11 @@ orca_tmplt = """\
 
 """
 
-mopac_tmplt = """\
+mopac_tmpl = """\
 ${method} XYZ T=2M 1SCF SCFCRT=1.D-7 AUX(PRECISION=9) ${calcforces}QMMM NOMM CHARGE=${charge}${addparam} THREADS=${nproc}
 """
 
-class QMTmplt(object):
+class QMTmpl(object):
     """Input templates for QM softwares."""
 
     def __init__(self, qmSoftware=None):
@@ -128,35 +128,35 @@ class QMTmplt(object):
         else:
             raise ValueError("Only 'q-chem', 'dftb+', 'orca', and 'mopac' are supported at the moment.")
 
-    def gen_qmtmplt(self):
+    def gen_qmtmpl(self):
         """Generare input templates for QM softwares."""
         if self.qmSoftware.lower() == 'q-chem':
-            return Template(qc_tmplt)
+            return Template(qc_tmpl)
         elif self.qmSoftware.lower() == 'dftb+':
-            return Template(dftb_tmplt)
+            return Template(dftb_tmpl)
         elif self.qmSoftware.lower() == 'orca':
-            return Template(orca_tmplt)
+            return Template(orca_tmpl)
         elif self.qmSoftware.lower() == 'mopac':
-            return Template(mopac_tmplt)
+            return Template(mopac_tmpl)
 
 
 if __name__ == "__main__":
-    qmtmplt = QMTmplt('q-chem')
-    print(qmtmplt.gen_qmtmplt().safe_substitute(
+    qmtmpl = QMTmpl('q-chem')
+    print(qmtmpl.gen_qmtmpl().safe_substitute(
               jobtype='force', method='hf', basis='6-31g',
               read_guess='scf_guess read\n',
               addparam='chelpg true\n'))
-    qmtmplt = QMTmplt('dftb+')
-    print(qmtmplt.gen_qmtmplt().safe_substitute(
+    qmtmpl = QMTmpl('dftb+')
+    print(qmtmpl.gen_qmtmpl().safe_substitute(
               charge=0, numPntChrgs=1000, read_guess='No',
-              KPointsAndWeights=qmtmplt.KPointsAndWeights,
+              KPointsAndWeights=qmtmpl.KPointsAndWeights,
               calcforces='Yes', addparam=''))
-    qmtmplt = QMTmplt('orca')
-    print(qmtmplt.gen_qmtmplt().safe_substitute(
+    qmtmpl = QMTmpl('orca')
+    print(qmtmpl.gen_qmtmpl().safe_substitute(
               method='HF', basis='6-31G', calcforces='EnGrad ',
               read_guess='NoAutoStart ',
               addparam='CHELPG ', nproc='8'))
-    qmtmplt = QMTmplt('mopac')
-    print(qmtmplt.gen_qmtmplt().safe_substitute(
+    qmtmpl = QMTmpl('mopac')
+    print(qmtmpl.gen_qmtmpl().safe_substitute(
               method='PM7', calcforces='GRAD ',
               charge=0, addparam=' ESP', nproc='8'))

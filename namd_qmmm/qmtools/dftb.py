@@ -2,7 +2,7 @@ import os
 import numpy as np
 
 from ..qmbase import QMBase
-from ..qmtmplt import QMTmplt
+from ..qmtmpl import QMTmpl
 
 
 class DFTB(QMBase):
@@ -22,14 +22,14 @@ class DFTB(QMBase):
     def gen_input(self):
         """Generate input file for QM software."""
 
-        qmtmplt = QMTmplt(self.QMTOOL)
+        qmtmpl = QMTmpl(self.QMTOOL)
 
         listElmnts = np.unique(self.qmElmnts).tolist()
-        MaxAngularMomentum = "\n    ".join([i+" = "+qmtmplt.MaxAngularMomentum[i] for i in listElmnts])
-        HubbardDerivs = "\n    ".join([i+" = "+qmtmplt.HubbardDerivs[i] for i in listElmnts])
+        MaxAngularMomentum = "\n    ".join([i+" = "+qmtmpl.MaxAngularMomentum[i] for i in listElmnts])
+        HubbardDerivs = "\n    ".join([i+" = "+qmtmpl.HubbardDerivs[i] for i in listElmnts])
 
         if self.pbc:
-            KPointsAndWeights = qmtmplt.KPointsAndWeights
+            KPointsAndWeights = qmtmpl.KPointsAndWeights
         else:
             KPointsAndWeights = ""
 
@@ -49,7 +49,7 @@ class DFTB(QMBase):
             addparam = ''
 
         with open(self.baseDir+"dftb_in.hsd", 'w') as f:
-            f.write(qmtmplt.gen_qmtmplt().substitute(charge=self.charge,
+            f.write(qmtmpl.gen_qmtmpl().substitute(charge=self.charge,
                     numPntChrgs=self.numPntChrgs, read_guess=read_guess,
                     calcforces=calcforces, skfpath=self.skfpath,
                     MaxAngularMomentum=MaxAngularMomentum,

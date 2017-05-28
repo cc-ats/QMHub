@@ -5,7 +5,7 @@ import numpy as np
 
 from .. import units
 from ..qmbase import QMBase
-from ..qmtmplt import QMTmplt
+from ..qmtmpl import QMTmpl
 
 class MOPAC(QMBase):
 
@@ -27,7 +27,7 @@ class MOPAC(QMBase):
         if not hasattr(self, 'qmESP'):
             self.get_qmesp()
 
-        qmtmplt = QMTmplt(self.QMTOOL)
+        qmtmpl = QMTmpl(self.QMTOOL)
 
         if self.calc_forces:
             calcforces = 'GRAD '
@@ -45,7 +45,7 @@ class MOPAC(QMBase):
         nproc = self.get_nproc()
 
         with open(self.baseDir+"mopac.mop", 'w') as f:
-            f.write(qmtmplt.gen_qmtmplt().substitute(method=self.method,
+            f.write(qmtmpl.gen_qmtmpl().substitute(method=self.method,
                     charge=self.charge, calcforces=calcforces,
                     addparam=addparam, nproc=nproc))
             f.write("NAMD QM/MM\n\n")

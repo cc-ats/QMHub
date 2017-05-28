@@ -150,12 +150,11 @@ class QMMM(object):
 
         if hasattr(self.system, 'charge_scale'):
             system_scale[self.system.mm_index[0:self.system.n_real_mm_atoms]] = self.system.charge_scale
-            system_dij_min[self.system.mm_index[0:self.system.n_real_mm_atoms]] = self.system.dij_min
-        else:
-            system_scale[self.system.mm_index[0:self.system.n_real_mm_atoms]] += 1
-        system_charge[self.system.mm_index[0:self.system.n_real_mm_atoms]] = self.system.mm_charge_qm[0:self.system.n_real_mm_atoms]
 
-        system_scale[self.system.qm_index[0:self.system.n_real_qm_atoms]] = np.ones(self.system.n_real_qm_atoms)
+        system_dij_min[self.system.mm_atoms.real_atoms.index] = self.system.mm_atoms.real_atoms.dij_min
+
+        system_charge[self.system.mm_atoms.real_atoms.index] = self.system.mm_atoms.real_atoms.charge
+        system_charge[self.system.mm_index[0:self.system.n_real_mm_atoms]] = self.system.mm_charge_qm[0:self.system.n_real_mm_atoms]
         system_charge[self.system.qm_index[0:self.system.n_real_qm_atoms]] = self.system.qm_charge_me[0:self.system.n_real_qm_atoms]
 
         np.save(self.qm.basedir + "system_scale", system_scale)

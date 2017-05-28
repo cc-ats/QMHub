@@ -53,9 +53,9 @@ class MOPAC(QMBase):
             f.write("NAMD QM/MM\n\n")
             for i in range(self.n_qm_atoms):
                 f.write(" ".join(["%6s" % self.qm_element[i],
-                                    "%22.14e 1" % self.qm_position[i, 0],
-                                    "%22.14e 1" % self.qm_position[i, 1],
-                                    "%22.14e 1" % self.qm_position[i, 2], "\n"]))
+                                  "%22.14e 1" % self.qm_position[i, 0],
+                                  "%22.14e 1" % self.qm_position[i, 1],
+                                  "%22.14e 1" % self.qm_position[i, 2], "\n"]))
 
         with open(self.basedir + "mol.in", 'w') as f:
             f.write("\n")
@@ -81,14 +81,16 @@ class MOPAC(QMBase):
 
         pass
 
-    def get_qm_energy(self):
+    def get_qm_energy(self, output=None):
         """Get QM energy from output of QM calculation."""
 
-        with open(self.basedir + "mopac.aux", 'r') as f:
-            for line in f:
-                if "TOTAL_ENERGY" in line:
-                    self.qm_energy = float(line[17:].replace("D", "E")) / units.EH_TO_EV
-                    break
+        if output is None:
+            output = self.load_output(self.basedir + "mopac.aux")
+
+        for line in output:
+            if "TOTAL_ENERGY" in line:
+                self.qm_energy = float(line[17:].replace("D", "E")) / units.EH_TO_EV
+                break
 
         return self.qm_energy
 
@@ -104,23 +106,28 @@ class MOPAC(QMBase):
 
         return self.fij
 
-    def get_qm_force(self):
+    def get_qm_force(self, output=None):
         """Get QM forces from output of QM calculation."""
+
+        if output is None:
+            output = self.load_output(self.basedir + "mopac.aux")
+
+        n_lines = int(np.ceil(self._n_qm_atoms * 3 / 10))
+
+        for i in range(len(output)):
+            if "GRADIENTS" in output[i]:
+                gradients = np.array([])
+                for line in output[(i + 1):(i + 1 + n_lines)]:
+                    gradients = np.append(gradients, np.fromstring(line, sep=' '))
+                break
+
+        self.qm_force = -1 * gradients.reshape(self._n_qm_atoms, 3)
 
         if not hasattr(self, 'fij'):
             self.get_fij()
 
-        n_lines = int(np.ceil(self.n_qm_atoms * 3 / 10))
-        with open(self.basedir + "mopac.aux", 'r') as f:
-            for line in f:
-                if "GRADIENTS" in line:
-                    gradients = np.array([])
-                    for i in range(n_lines):
-                        line = next(f)
-                        gradients = np.append(gradients, np.fromstring(line, sep=' '))
-                    break
-        self.qm_force = -1 * gradients.reshape(self.n_qm_atoms, 3)
         self.qm_force /= units.F_AU
+
         self.qm_force -= self.fij.sum(axis=0)
 
         return self.qm_force
@@ -135,18 +142,21 @@ class MOPAC(QMBase):
 
         return self.mm_force
 
-    def get_qm_charge(self):
+    def get_qm_charge(self, output=None):
         """Get Mulliken charges from output of QM calculation."""
 
-        n_lines = int(np.ceil(self.n_qm_atoms / 10))
-        with open(self.basedir + "mopac.aux", 'r') as f:
-            for line in f:
-                if "ATOM_CHARGES" in line:
-                    charges = np.array([])
-                    for i in range(n_lines):
-                        line = next(f)
-                        charges = np.append(charges, np.fromstring(line, sep=' '))
-                    break
+        if output is None:
+            output = self.load_output(self.basedir + "mopac.aux")
+
+        n_lines = int(np.ceil(self._n_qm_atoms / 10))
+
+        for i in range(len(output)):
+            if "ATOM_CHARGES" in output[i]:
+                charges = np.array([])
+                for line in output[(i + 1):(i + 1 + n_lines)]:
+                    charges = np.append(charges, np.fromstring(line, sep=' '))
+                break
+
         self.qm_charge = charges
 
         return self.qm_charge

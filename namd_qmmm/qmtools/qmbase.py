@@ -15,6 +15,7 @@ class QMBase(object):
         """
 
         self.basedir = os.path.dirname(system.fin) + "/"
+
         if charge is not None:
             self.charge = charge
         else:
@@ -54,6 +55,16 @@ class QMBase(object):
         else:
             nproc = 1
         return nproc
+
+    @staticmethod
+    def load_output(output_file):
+        """Load output file."""
+
+        f = open(output_file, 'r')
+        output = f.readlines()
+        f.close()
+
+        return output
 
     def get_qm_esp(self):
         """Get electrostatic potential due to external point charges."""

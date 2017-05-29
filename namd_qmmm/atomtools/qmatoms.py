@@ -19,7 +19,7 @@ class QMAtoms(AtomBase):
 
     @property
     def element(self):
-        return np.char.capitalize(self.atoms.element)
+        return self.atoms.element
 
     @property
     def qm_energy(self):

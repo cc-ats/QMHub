@@ -25,7 +25,7 @@ class NAMD(MMBase):
         # Load QM information
         qm_atoms = np.loadtxt(lines[1:(self.n_qm_atoms + 1)],
                               dtype=[('position', [('x', 'f8'), ('y', 'f8'), ('z', 'f8')]),
-                                     ('element', 'U2'), ('charge', 'f8'), ('index', 'i8')])
+                                     ('element', 'S2'), ('charge', 'f8'), ('index', 'i8')])
         qm_atoms = qm_atoms.view(np.recarray)
 
         self.n_virt_qm_atoms = np.count_nonzero(qm_atoms.index == -1)
@@ -37,10 +37,11 @@ class NAMD(MMBase):
         self._map2unsorted = np.argsort(self._map2sorted)
 
         qm_atoms = qm_atoms[self._map2sorted]
+        qm_element = np.core.defchararray.decode(np.char.capitalize(qm_atoms.element))
 
         # Initialize the QMAtoms object
         self.qm_atoms = QMAtoms(qm_atoms.position.x, qm_atoms.position.y, qm_atoms.position.z,
-                                qm_atoms.element, qm_atoms.charge, qm_atoms.index)
+                                qm_element, qm_atoms.charge, qm_atoms.index)
 
         # Load unit cell information
         start = 1 + self.n_qm_atoms + self.n_mm_atoms

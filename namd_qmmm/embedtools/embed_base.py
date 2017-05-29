@@ -49,11 +49,6 @@ class EmbedBase(object):
         # Get MM charges
         self.get_mm_charge()
 
-    @classmethod
-    def check_embed(cls, embed_near, embed_far):
-        return (embed_near.lower() == cls.EMBEDNEAR.lower() and
-                embed_far.lower() == cls.EMBEDFAR.lower())
-
     @staticmethod
     def check_unitcell(system):
         pass

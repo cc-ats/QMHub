@@ -1,25 +1,36 @@
-from .embed_eed_eeq import EmbedEEdEEq
-from .embed_eeq_eeq import EmbedEEqEEq
-from .embed_eed_me import EmbedEEdME
-from .embed_eeq_me import EmbedEEqME
-from .embed_eed_none import EmbedEEdNone
-from .embed_eeq_none import EmbedEEqNone
-from .embed_none_none import EmbedNoneNone
+import importlib
 
-__all__ = ['choose_embedtool']
+EMBEDNEAR = {'eed': 'EEd', 'eeq': 'EEq', 'none': 'None'}
+EMBEDFAR = {'eeq': 'EEq', 'me': 'ME', 'none': 'None'}
+EMBEDMODULE = {'EmbedEEdEEq': '.embed_eed_eeq', 'EmbedEEqEEq': '.embed_eeq_eeq',
+               'EmbedEEdME': '.embed_eed_me', 'EmbedEEqME': '.embed_eeq_me',
+               'EmbedEEdNone': '.embed_eed_none', 'EmbedEEqNone': '.embed_eeq_none',
+               'EmbedNoneNone': '.embed_none_none'}
 
-EMBEDTOOLS = ['EmbedEEdEEq', 'EmbedEEqEEq', 'EmbedEEdME', 'EmbedEEqME',
-              'EmbedEEdNone', 'EmbedEEqNone', 'EmbedNoneNone']
 
 def choose_embedtool(qmEmbedNear, qmEmbedFar):
     if qmEmbedNear is None:
         qmEmbedNear = 'None'
+    try:
+        embed_near = EMBEDNEAR[qmEmbedNear.lower()]
+    except:
+        raise ValueError("Please choose 'eed', 'eeq', or None for qmEmbedNear.")
+
 
     if qmEmbedFar is None:
         qmEmbedFar = 'None'
+    try:
+        embed_far = EMBEDFAR[qmEmbedFar.lower()]
+    except:
+        raise ValueError("Please choose 'eeq', 'me', or None for qmEmbedFar.")
 
-    for embedtool in EMBEDTOOLS:
-        embedtool = globals()[embedtool]
-        if embedtool.check_embed(qmEmbedNear, qmEmbedFar):
-            return embedtool
-    raise ValueError("Cannot use '{}' for far field while using '{}' for near field.".format(qmEmbedNear, qmEmbedFar))
+    embed_class = "".join(['Embed', embed_near, embed_far])
+
+    try:
+        embed_module = EMBEDMODULE[embed_class]
+    except:
+        raise ValueError("Cannot use '{}' for far field while using '{}' for near field.".format(embed_far, embed_near))
+
+    embedtool = importlib.import_module(embed_module, package='namd_qmmm.embedtools').__getattribute__(embed_class)
+
+    return embedtool

@@ -8,4 +8,5 @@ setup(name='namd_qmmm',
       author_email='panxl@ou.edu',
       license='MIT',
       packages=find_packages(),
+      requires=['numpy (>=1.10.4)'],
       zip_safe=False)

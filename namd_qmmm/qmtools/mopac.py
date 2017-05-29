@@ -1,6 +1,5 @@
 from __future__ import division
 
-import os
 import numpy as np
 
 from .. import units
@@ -67,9 +66,9 @@ class MOPAC(QMBase):
         nproc = self.get_nproc()
 
         with open(self.basedir + "mopac.mop", 'w') as f:
-            f.write(qmtmpl.gen_qmtmpl().substitute(method=self.method,
-                    charge=self.charge, calc_forces=calc_forces,
-                    addparam=addparam, nproc=nproc))
+            f.write(qmtmpl.gen_qmtmpl().substitute(
+                method=self.method, charge=self.charge,
+                calc_forces=calc_forces, addparam=addparam, nproc=nproc))
             f.write("NAMD QM/MM\n\n")
             for i in range(self._n_qm_atoms):
                 f.write(" ".join(["%6s" % self._qm_element[i],
@@ -83,10 +82,10 @@ class MOPAC(QMBase):
 
             for i in range(self._n_qm_atoms):
                 f.write(" ".join(["%6s" % self._qm_element[i],
-                                    "%22.14e" % self._qm_position[i, 0],
-                                    "%22.14e" % self._qm_position[i, 1],
-                                    "%22.14e" % self._qm_position[i, 2],
-                                    " %22.14e" % (self._qm_esp[i]), "\n"]))
+                                  "%22.14e" % self._qm_position[i, 0],
+                                  "%22.14e" % self._qm_position[i, 1],
+                                  "%22.14e" % self._qm_position[i, 2],
+                                  " %22.14e" % (self._qm_esp[i]), "\n"]))
 
     def gen_cmdline(self):
         """Generate commandline for QM calculation."""
@@ -130,7 +129,7 @@ class MOPAC(QMBase):
         return self.qm_energy
 
     def get_fij_near(self):
-        """Get pair-wise forces between QM atomic charges and external point charges."""
+        """Get pair-wise forces between QM charges and MM charges."""
 
         if not hasattr(self, 'qm_charge'):
             self.get_qm_charge()
@@ -185,11 +184,9 @@ class MOPAC(QMBase):
 
         for i in range(len(output)):
             if "ATOM_CHARGES" in output[i]:
-                charges = np.array([])
+                self.qm_charge = np.array([])
                 for line in output[(i + 1):(i + 1 + n_lines)]:
-                    charges = np.append(charges, np.fromstring(line, sep=' '))
+                    self.qm_charge = np.append(self.qm_charge, np.fromstring(line, sep=' '))
                 break
-
-        self.qm_charge = charges
 
         return self.qm_charge

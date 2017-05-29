@@ -1,5 +1,3 @@
-import numpy as np
-
 from .embed_base import EmbedBase
 
 
@@ -17,4 +15,3 @@ class EmbedEEqNone(EmbedBase):
     def get_mm_esp(self):
 
         return self.get_mm_esp_eeq().sum(axis=1)
-

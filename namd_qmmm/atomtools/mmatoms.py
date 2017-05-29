@@ -2,6 +2,7 @@ import numpy as np
 
 from .atombase import AtomBase
 
+
 class MMAtoms(AtomBase):
     """Class to hold MM atoms."""
 

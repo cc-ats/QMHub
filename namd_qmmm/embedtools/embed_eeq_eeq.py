@@ -33,4 +33,3 @@ class EmbedEEqEEq(EmbedBase):
     def get_mm_esp(self):
 
         return self.get_mm_esp_eeq().sum(axis=1)
-

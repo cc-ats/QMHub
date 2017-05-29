@@ -1,6 +1,7 @@
 import copy
 import numpy as np
 
+
 class AtomBase(object):
     """Base class to hold atoms."""
 
@@ -116,4 +117,3 @@ class AtomBase(object):
             atoms._atom_mask = atoms._atom_mask * mask
 
         return atoms
-

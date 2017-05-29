@@ -97,6 +97,7 @@ mopac_tmpl = """\
 ${method} XYZ T=2M 1SCF SCFCRT=1.D-7 AUX(PRECISION=9) ${calc_forces}QMMM NOMM CHARGE=${charge}${addparam} THREADS=${nproc}
 """
 
+
 class QMTmpl(object):
     """Input templates for QM softwares."""
 
@@ -143,20 +144,20 @@ class QMTmpl(object):
 if __name__ == "__main__":
     qmtmpl = QMTmpl('q-chem')
     print(qmtmpl.gen_qmtmpl().safe_substitute(
-              jobtype='force', method='hf', basis='6-31g',
-              read_guess='scf_guess read\n',
-              addparam='chelpg true\n'))
+        jobtype='force', method='hf', basis='6-31g',
+        read_guess='scf_guess read\n',
+        addparam='chelpg true\n'))
     qmtmpl = QMTmpl('dftb+')
     print(qmtmpl.gen_qmtmpl().safe_substitute(
-              charge=0, n_mm_atoms=1000, read_guess='No',
-              KPointsAndWeights=qmtmpl.KPointsAndWeights,
-              calc_forces='Yes', addparam=''))
+        charge=0, n_mm_atoms=1000, read_guess='No',
+        KPointsAndWeights=qmtmpl.KPointsAndWeights,
+        calc_forces='Yes', addparam=''))
     qmtmpl = QMTmpl('orca')
     print(qmtmpl.gen_qmtmpl().safe_substitute(
-              method='HF', basis='6-31G', calc_forces='EnGrad ',
-              read_guess='NoAutoStart ',
-              addparam='CHELPG ', nproc='8'))
+        method='HF', basis='6-31G', calc_forces='EnGrad ',
+        read_guess='NoAutoStart ',
+        addparam='CHELPG ', nproc='8'))
     qmtmpl = QMTmpl('mopac')
     print(qmtmpl.gen_qmtmpl().safe_substitute(
-              method='PM7', calc_forces='GRAD ',
-              charge=0, addparam=' ESP', nproc='8'))
+        method='PM7', calc_forces='GRAD ',
+        charge=0, addparam=' ESP', nproc='8'))

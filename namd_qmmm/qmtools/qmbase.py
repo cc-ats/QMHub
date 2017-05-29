@@ -1,8 +1,5 @@
 import os
 import subprocess as sp
-import numpy as np
-
-from .. import units
 
 
 class QMBase(object):
@@ -94,4 +91,3 @@ class QMBase(object):
         proc.wait()
         self.exitcode = proc.returncode
         return self.exitcode
-

@@ -3,6 +3,7 @@ import numpy as np
 
 from .. import units
 
+
 class EmbedBase(object):
 
     def __init__(self, system, qmRefCharge, qmSwitchingType, qmCutoff, qmSwdist):
@@ -88,7 +89,7 @@ class EmbedBase(object):
 
             cutoff = self.qmCutoff
             cutoff2 = cutoff**2
-            swdist= self.qmSwdist
+            swdist = self.qmSwdist
 
             rij = self.mm_atoms_near.rij
             dij_min = self.mm_atoms_near.dij_min
@@ -187,4 +188,3 @@ class EmbedBase(object):
         if self._qm_efield_near is None:
             self._qm_efield_near = self.coulomb_field * self.mm_atoms_near.charge_eeq[:, np.newaxis, np.newaxis]
         return self._qm_efield_near
-

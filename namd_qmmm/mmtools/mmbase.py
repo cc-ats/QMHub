@@ -1,16 +1,9 @@
-import copy
 import numpy as np
 
-from .. import units
 
 class MMBase(object):
 
     MMTOOL = None
-
-    def __init__(self, fin=None):
-
-        self.fin = fin
-        self.load_system()
 
     @property
     def qm_energy(self):
@@ -36,7 +29,8 @@ class MMBase(object):
     def mm_esp_eed(self):
         return self.mm_atoms.esp_eed
 
-    def parse_output(self, qm):
+    @staticmethod
+    def parse_output(qm):
         """Parse the output of QM calculation."""
 
         if qm.calc_forces:
@@ -99,4 +93,3 @@ class MMBase(object):
             np.add.at(self.mm_atoms.force, self._virt_atom_mm2_idx, mm2_corr_force)
 
             self.mm_atoms.virt_atoms.force[:] = 0.
-

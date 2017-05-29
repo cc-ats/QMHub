@@ -67,10 +67,10 @@ class ORCA(QMBase):
 
         with open(self.basedir + "orca.inp", 'w') as f:
             f.write(qmtmpl.gen_qmtmpl().substitute(
-                    method=self.method, basis=self.basis,
-                    calc_forces=calc_forces, read_guess=read_guess,
-                    addparam=addparam, nproc=nproc,
-                    pntchrgspath="\"orca.pntchrg\""))
+                method=self.method, basis=self.basis,
+                calc_forces=calc_forces, read_guess=read_guess,
+                addparam=addparam, nproc=nproc,
+                pntchrgspath="\"orca.pntchrg\""))
             f.write("%coords\n")
             f.write("  CTyp xyz\n")
             f.write("  Charge %d\n" % self.charge)

@@ -65,9 +65,9 @@ class QChem(QMBase):
             addparam = ''
 
         with open(self.basedir + "qchem.inp", 'w') as f:
-            f.write(qmtmpl.gen_qmtmpl().substitute(jobtype=jobtype,
-                    method=self.method, basis=self.basis,
-                    read_guess=read_guess, addparam=addparam))
+            f.write(qmtmpl.gen_qmtmpl().substitute(
+                jobtype=jobtype, method=self.method, basis=self.basis,
+                read_guess=read_guess, addparam=addparam))
             f.write("$molecule\n")
             f.write("%d %d\n" % (self.charge, self.mult))
 

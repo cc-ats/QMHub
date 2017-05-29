@@ -9,7 +9,9 @@ class NAMD(MMBase):
 
     MMTOOL = 'NAMD'
 
-    def load_system(self):
+    def __init__(self, fin):
+
+        self.fin = fin
 
         # Read fin file
         f = open(self.fin, 'r')
@@ -72,10 +74,10 @@ class NAMD(MMBase):
                 mm_charge = mm_atoms.charge
                 if mm_charge[-1] + mm_charge[-2] < 0.00001:
                     self._mm1_coeff = np.array([0, 0.06, -0.06])
-                    self._mm2_coeff  = np.array([1, 0.94, 1.06])
+                    self._mm2_coeff = np.array([1, 0.94, 1.06])
                 elif mm_charge[-1] + mm_charge[-2] * 2 < 0.00001:
                     self._mm1_coeff = np.array([0, 0.5])
-                    self._mm2_coeff  = np.array([1, 0.5])
+                    self._mm2_coeff = np.array([1, 0.5])
                 else:
                     raise ValueError('Something is wrong with point charge alterations.')
 

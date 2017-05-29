@@ -2,12 +2,11 @@ from __future__ import absolute_import
 
 import os
 import numpy as np
+import psi4
 
 from .. import units
 
 from .qmbase import QMBase
-
-import psi4
 
 
 class PSI4(QMBase):
@@ -85,11 +84,11 @@ class PSI4(QMBase):
         geom.append("symmetry c1\n")
         geom = "".join(geom)
 
-        self.molecule = psi4.geometry(geom)
-        self.molecule.set_molecular_charge(self.charge)
-        self.molecule.set_multiplicity(self.mult)
-        self.molecule.fix_com(True)
-        self.molecule.fix_orientation(True)
+        molecule = psi4.geometry(geom)
+        molecule.set_molecular_charge(self.charge)
+        molecule.set_multiplicity(self.mult)
+        molecule.fix_com(True)
+        molecule.fix_orientation(True)
 
         mm_charge = psi4.QMMM()
 
@@ -124,9 +123,8 @@ class PSI4(QMBase):
         scf_e, self.scf_wfn = psi4.energy('scf', return_wfn=True)
 
         if self.calc_forces:
-            scf_g = psi4.gradient('scf', ref_wfn=self.scf_wfn)
+            psi4.gradient('scf', ref_wfn=self.scf_wfn)
 
-        # psi4.oeprop(self.scf_wfn, 'MULLIKEN_CHARGES', title='SCF')
         self.oeprop = psi4.core.OEProp(self.scf_wfn)
         self.oeprop.add("MULLIKEN_CHARGES")
         self.oeprop.add("GRID_ESP")
@@ -142,7 +140,6 @@ class PSI4(QMBase):
         """Generate commandline for QM calculation."""
 
         raise NotImplementedError()
-
 
     def rm_guess(self):
         """Remove save from previous QM calculation."""
@@ -185,4 +182,3 @@ class PSI4(QMBase):
         self.mm_esp_eed = np.array(self.oeprop.Vvals())
 
         return self.mm_esp_eed
-

@@ -74,13 +74,14 @@ class DFTB(QMBase):
             addparam = ''
 
         with open(self.basedir + "dftb_in.hsd", 'w') as f:
-            f.write(qmtmpl.gen_qmtmpl().substitute(charge=self.charge,
-                    n_mm_atoms=self._n_mm_atoms, read_guess=read_guess,
-                    calc_forces=calc_forces, skfpath=self.skfpath,
-                    MaxAngularMomentum=MaxAngularMomentum,
-                    HubbardDerivs=HubbardDerivs,
-                    KPointsAndWeights=KPointsAndWeights,
-                    addparam=addparam))
+            f.write(qmtmpl.gen_qmtmpl().substitute(
+                charge=self.charge, n_mm_atoms=self._n_mm_atoms,
+                read_guess=read_guess, calc_forces=calc_forces,
+                skfpath=self.skfpath, addparam=addparam,
+                MaxAngularMomentum=MaxAngularMomentum,
+                HubbardDerivs=HubbardDerivs,
+                KPointsAndWeights=KPointsAndWeights))
+
         with open(self.basedir + "input_geometry.gen", 'w') as f:
             if self._pbc:
                 f.write(str(self._n_qm_atoms) + " S" + "\n")

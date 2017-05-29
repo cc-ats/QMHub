@@ -2,6 +2,7 @@ import numpy as np
 
 from .atombase import AtomBase
 
+
 class QMAtoms(AtomBase):
     """Class to hold QM atoms."""
 
@@ -43,4 +44,3 @@ class QMAtoms(AtomBase):
     @charge_me.setter
     def charge_me(self, charge):
         self._set_property(self._charge_me, charge)
-

@@ -1,16 +1,18 @@
-from .qchem import QChem
-from .dftb import DFTB
-from .orca import ORCA
-from .mopac import MOPAC
-from .psi4 import PSI4
+import importlib
 
-__all__ = ['choose_qmtool']
+QMCLASS = {'q-chem': "QChem", 'dftb+': "DFTB", 'orca': "ORCA",
+           'mopac': "MOPAC", 'psi4': "PSI4"}
 
-QMTOOLS = ['QChem', 'DFTB', 'ORCA', 'MOPAC', 'PSI4']
+QMMODULE = {'q-chem': ".qchem", 'dftb+': ".dftb", 'orca': ".orca",
+            'mopac': ".mopac", 'psi4': ".psi4"}
+
 
 def choose_qmtool(qmSoftware):
-    for qmtool in QMTOOLS:
-        qmtool = globals()[qmtool]
-        if qmtool.check_software(qmSoftware):
-            return qmtool
-    raise ValueError("Please choose 'q-chem', 'dftb+', 'orca', 'mopac', or 'psi4' for qmSoftware.")
+    try:
+        qm_class = QMCLASS[qmSoftware.lower()]
+        qm_module = QMMODULE[qmSoftware.lower()]
+    except:
+        raise ValueError("Please choose 'q-chem', 'dftb+', 'orca', 'mopac', or 'psi4' for qmSoftware.")
+
+    qmtool = importlib.import_module(qm_module, package='namd_qmmm.qmtools').__getattribute__(qm_class)
+    return qmtool

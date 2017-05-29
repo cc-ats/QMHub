@@ -26,10 +26,6 @@ class QMBase(object):
         self.get_qm_system(embed)
         self.get_mm_system(embed)
 
-    @classmethod
-    def check_software(cls, software):
-        return software.lower() == cls.QMTOOL.lower()
-
     @staticmethod
     def get_nproc():
         """Get the number of processes for QM calculation."""

@@ -9,10 +9,9 @@ from . import qmtools
 
 class QMMM(object):
     def __init__(self, fin, qmSoftware, qmCharge, qmMult,
-                 elecMode, qmElecEmbed=True,
                  qmEmbedNear=None, qmEmbedFar=None,
-                 qmRefCharge='ff', qmSwitchingType=None,
-                 qmCutoff=None, qmSwdist=None, 
+                 qmRefCharge='ff', qmSwitchingType='shift',
+                 qmCutoff=None, qmSwdist=None,
                  qmReadGuess=False, postProc=False):
         """
         Creat a QMMM object.
@@ -20,8 +19,6 @@ class QMMM(object):
         self.qmSoftware = qmSoftware
         self.qmCharge = qmCharge
         self.qmMult = qmMult
-        self.elecMode = elecMode
-        self.qmElecEmbed = qmElecEmbed
         self.qmEmbedNear = qmEmbedNear
         self.qmEmbedFar = qmEmbedFar
         self.qmRefCharge = qmRefCharge
@@ -45,60 +42,9 @@ class QMMM(object):
         self.embed = embedtools.choose_embedtool(self.qmEmbedNear, self.qmEmbedFar)(self.system,
                 self.qmRefCharge, self.qmSwitchingType, self.qmCutoff, self.qmSwdist)
 
-        # Prepare for the electrostatic model
-        if self.elecMode.lower() in {'truncation', 'mmewald'}:
-            self.qmPBC = False
-            self.system.qm_charge_me = self.qmRefCharge
-        elif self.elecMode.lower() == 'qmewald':
-            self.qmPBC = True
-            self.system.qm_charge_me = np.zeros(self.system.n_qm_atoms)
-        else:
-            raise ValueError("Only 'truncation', 'mmewald', and 'qmewald' are supported at the moment.")
-
-        # Prepare for QM with PBC
-        if self.qmPBC:
-            if self.system.n_atoms != self.system.n_real_qm_atoms + self.system.n_real_mm_atoms:
-                raise ValueError("Unit cell is not complete.")
-
-            self.split_mm_atoms(qmCutoff=self.qmCutoff)
-
-        # Set switching function for external point charges
-        if qmSwitchingType is not None:
-            self.qmSwitchingType = qmSwitchingType
-        else:
-            self.qmSwitchingType = 'shift'
-
-        if self.elecMode.lower() == 'mmewald':
-            if not self.qmElecEmbed:
-                self.qmSwitchingType = None
-        elif self.elecMode.lower() == 'qmewald':
-            self.qmSwitchingType = None
-
-        # Scale the external point charges
-        if self.qmSwitchingType is not None:
-            self.system.get_min_distances()
-            self.system.scale_charges(self.qmSwitchingType, self.qmCutoff, self.qmSwdist)
-
-        if self.elecMode.lower() == 'qmewald':
-            if not self.qmElecEmbed:
-                raise ValueError("Can not use elecMode='qmewald' with qmElecEmbed=False.")
-            self.system.mm_charge_qm = self.system.mm_charge
-        elif self.elecMode.lower() == 'mmewald':
-            self.system.mm_charge_mm = self.system.mm_charge
-            if self.qmElecEmbed:
-                self.system.mm_charge_qm = self.system.mm_charge_scaled
-            else:
-                self.system.mm_charge_qm = np.zeros(self.system.n_mm_atoms)
-        elif self.elecMode.lower() == 'truncation':
-            if self.qmElecEmbed:
-                self.system.mm_charge_qm = self.system.mm_charge_scaled
-            else:
-                self.system.mm_charge_mm = self.system.mm_charge_scaled
-                self.system.mm_charge_qm = np.zeros(self.system.n_mm_atoms)
-
         # Initialize the QM system
         basedir = os.path.dirname(fin) + "/"
-        self.qm = qmtools.choose_qmtool(self.qmSoftware)(basedir, self.system, self.embed, self.qmCharge, self.qmMult)
+        self.qm = qmtools.choose_qmtool(self.qmSoftware)(basedir, self.embed, self.qmCharge, self.qmMult)
 
         if self.qmReadGuess and not self.system.step == 0:
             self.qm.read_guess = True
@@ -129,18 +75,11 @@ class QMMM(object):
     def parse_output(self):
         """Parse the output of QM calculation."""
         if self.postProc:
-            self.system.parse_output(self.qm)
+            pass
         elif hasattr(self.qm, 'exitcode'):
             if self.qm.exitcode == 0:
                 self.system.parse_output(self.qm)
-
-                if self.qmElecEmbed and not self.qmPBC:
-                    self.system.corr_elecembed()
-
-                if not self.qmElecEmbed or self.elecMode.lower() == 'mmewald':
-                    self.system.corr_mechembed()
-
-                self.system.corr_virt_mm_atoms()
+                self.system.apply_corrections(self.embed)
             else:
                 raise ValueError("QM calculation did not finish normally.")
         else:

@@ -9,19 +9,12 @@ class MMAtoms(AtomBase):
 
         super(MMAtoms, self).__init__(x, y, z, charge, index)
 
-        # # Get cell basis
-        # self._cell_basis = cell_basis
-
         # Embed QM atoms
         self._qm_atoms = qm_atoms
 
         # Get pair-wise vectors
         self._rij = (self._qm_atoms.position[np.newaxis, :, :]
                      - self.position[:, np.newaxis, :])
-
-        # # Apply minimum image convention
-        # if self._cell_basis.sum() == 0:
-        #     _rij -= np.diagonal(self._cell_basis) * np.rint(_rij / np.diagonal(self._cell_basis))
 
         # Get pair-wise distances
         self._dij2 = np.sum(self._rij**2, axis=2)
@@ -68,8 +61,8 @@ class MMAtoms(AtomBase):
         return self._get_property(self._dij_min_j)
 
     @property
-    def orig_charges(self):
-        return self._get_property(self._orig_charges, self._real_indices)
+    def orig_charge(self):
+        return self._get_property(self._orig_charge, self._real_indices)
 
     @property
     def coulomb_mask(self):

@@ -40,13 +40,6 @@ class NAMD(MMBase):
         self.qm_atoms = QMAtoms(qm_atoms.position.x, qm_atoms.position.y, qm_atoms.position.z,
                                 qm_atoms.element, qm_atoms.charge, qm_atoms.index)
 
-        # Positions of QM atoms
-        self.qm_position = qm_atoms.position.view((float, 3))
-        # Elements of QM atoms
-        self.qm_element = np.char.capitalize(qm_atoms.element)
-        # Indexes of QM atoms
-        self.qm_index = qm_atoms.index
-
         # Load unit cell information
         start = 1 + self.n_qm_atoms + self.n_mm_atoms
         stop = start + 4
@@ -67,20 +60,13 @@ class NAMD(MMBase):
             self.n_virt_mm_atoms = np.count_nonzero(virt_mm_mask)
             self.n_real_mm_atoms = self.n_mm_atoms - self.n_virt_mm_atoms
 
-            # Positions of external point charges
-            self.mm_position = mm_atoms.position.view((float, 3))
-            # Charges of external point charges
-            self.mm_charge = mm_atoms.charge
-            # Indexes of external point charges
-            self.mm_index = mm_atoms.index
-
             # Prepare for link atoms
             if self.n_virt_mm_atoms > 0:
                 # Local indexes of MM1 and QM host atoms
                 mm_bonded_to_idx = mm_atoms.bonded_to_idx
-                self.mm1_local_idx = np.where(mm_bonded_to_idx != -1)[0]
-                self.qm_host_local_idx = mm_bonded_to_idx[self.mm1_local_idx]
-                self.qm_host_local_idx = self._map2unsorted[self.qm_host_local_idx]
+                mm1_local_idx = np.where(mm_bonded_to_idx != -1)[0]
+                qm_host_local_idx = mm_bonded_to_idx[mm1_local_idx]
+                qm_host_local_idx = self._map2unsorted[qm_host_local_idx]
 
                 # Number of MM2 atoms and coefficient to generate the virtual charges
                 mm_charge = mm_atoms.charge
@@ -107,8 +93,8 @@ class NAMD(MMBase):
 
                 for i in range(n_mm2):
                     for j in range(self.n_virt_qm_atoms):
-                        if np.abs(virt_atom_mm1_pos[i] - mm_pos[self.mm1_local_idx[j]]).sum() < 0.001:
-                            self._virt_atom_mm1_idx[i] = self.mm1_local_idx[j]
+                        if np.abs(virt_atom_mm1_pos[i] - mm_pos[mm1_local_idx[j]]).sum() < 0.001:
+                            self._virt_atom_mm1_idx[i] = mm1_local_idx[j]
                             break
 
                 for i in range(n_mm2):
@@ -118,10 +104,10 @@ class NAMD(MMBase):
                             break
 
                 # Local index of MM2 atoms
-                self.mm2_local_idx = []
+                mm2_local_idx = []
 
                 for i in range(self.n_virt_qm_atoms):
-                    self.mm2_local_idx.append(self._virt_atom_mm2_idx[self._virt_atom_mm1_idx == self.mm1_local_idx[i]])
+                    mm2_local_idx.append(self._virt_atom_mm2_idx[self._virt_atom_mm1_idx == mm1_local_idx[i]])
 
                 # Get original MM charges
                 mm1_charge = mm_atoms.charge[virt_mm_mask].reshape(-1, self._mm1_coeff.size).sum(axis=1)
@@ -136,8 +122,8 @@ class NAMD(MMBase):
                 coulomb_mask = np.ones((self.n_mm_atoms, self.n_qm_atoms), dtype=bool)
 
                 for i in range(self.n_virt_qm_atoms):
-                    coulomb_mask[self.mm2_local_idx[i], self.qm_host_local_idx[i]] = False
-                    coulomb_mask[self.mm1_local_idx[i], self.qm_host_local_idx[i]] = False
+                    coulomb_mask[mm2_local_idx[i], qm_host_local_idx[i]] = False
+                    coulomb_mask[mm1_local_idx[i], qm_host_local_idx[i]] = False
 
                 self.mm_atoms.coulomb_mask = coulomb_mask
 

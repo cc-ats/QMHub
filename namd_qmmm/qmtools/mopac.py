@@ -193,12 +193,3 @@ class MOPAC(QMBase):
         self.qm_charge = charges
 
         return self.qm_charge
-
-    def get_mm_esp(self):
-        """Get ESP at external point charges from output of QM calculation."""
-
-        if not hasattr(self, 'qm_charge'):
-            self.get_qm_charge()
-        self.mm_esp = np.sum(self.qm_charge[np.newaxis, :] / self.dij, axis=1)
-
-        return self.mm_esp

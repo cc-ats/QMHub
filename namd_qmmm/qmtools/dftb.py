@@ -21,14 +21,18 @@ class DFTB(QMBase):
         if self.mm_atoms_far.charge_eeq is not None:
             self._pbc = True
             self._mm_atoms = embed.mm_atoms
+            self._n_mm_atoms = self._mm_atoms.n_atoms
+            self._mm_position = self._mm_atoms.position
             self._mm_charge = self._mm_atoms.charge
+
+            self._cell_origin = embed.cell_origin
+            self._cell_basis = embed.cell_basis
         else:
             self._pbc = False
             self._mm_atoms = embed.mm_atoms_near
+            self._n_mm_atoms = self._mm_atoms.n_atoms
+            self._mm_position = self._mm_atoms.position
             self._mm_charge = self._mm_atoms.charge_eeq
-
-        self._n_mm_atoms = self._mm_atoms.n_atoms
-        self._mm_position = self._mm_atoms.position
 
     def get_qm_params(self, skfpath=None, **kwargs):
         """Get the parameters for QM calculation."""
@@ -90,10 +94,10 @@ class DFTB(QMBase):
                                  "%22.14e" % self._qm_position[i, 1],
                                  "%22.14e" % self._qm_position[i, 2], "\n"]))
             if self._pbc:
-                f.write("".join(["%22.14e" % i for i in self.cell_origin]) + "\n")
-                f.write("".join(["%22.14e" % i for i in self.cell_basis[0]]) + "\n")
-                f.write("".join(["%22.14e" % i for i in self.cell_basis[1]]) + "\n")
-                f.write("".join(["%22.14e" % i for i in self.cell_basis[2]]) + "\n")
+                f.write("".join(["%22.14e" % i for i in self._cell_origin]) + "\n")
+                f.write("".join(["%22.14e" % i for i in self._cell_basis[0]]) + "\n")
+                f.write("".join(["%22.14e" % i for i in self._cell_basis[1]]) + "\n")
+                f.write("".join(["%22.14e" % i for i in self._cell_basis[2]]) + "\n")
 
         with open(self.basedir + "charges.dat", 'w') as f:
             for i in range(self._n_mm_atoms):
@@ -182,12 +186,3 @@ class DFTB(QMBase):
         self.mm_force = np.loadtxt(output[start:stop], dtype=float)
 
         return self.mm_force
-
-    def get_mm_esp(self):
-        """Get ESP at external point charges from output of QM calculation."""
-
-        if not hasattr(self, 'qm_charge'):
-            self.get_qm_charge()
-        self.mm_esp = np.sum(self.qm_charge[np.newaxis, :] / self.dij, axis=1)
-
-        return self.mm_esp

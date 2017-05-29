@@ -11,180 +11,92 @@ class MMBase(object):
 
         self.fin = fin
         self.load_system()
-        self.get_pair_vectors()
-        self.get_pair_distances()
 
-    def get_pair_vectors(self):
-        """Get pair-wise vectors between QM and MM atoms."""
+    @property
+    def qm_energy(self):
+        return self.qm_atoms.qm_energy
 
-        self.rij = (self.qm_position[np.newaxis, :, :]
-                    - self.mm_position[:, np.newaxis, :])
+    @property
+    def qm_charge(self):
+        return self.qm_atoms.qm_charge
 
-        return self.rij
+    @property
+    def qm_charge_me(self):
+        return self.qm_atoms.charge_me
 
-    def get_pair_distances(self):
-        """Get pair-wise distances between QM and MM atoms."""
+    @property
+    def qm_force(self):
+        return self.qm_atoms.force
 
-        self.dij2 = np.sum(self.rij**2, axis=2)
-        self.dij = np.sqrt(self.dij2)
+    @property
+    def mm_force(self):
+        return self.mm_atoms.force
 
-        return self.dij
-
-    def get_min_distances(self):
-        """Get minimum distances between QM and MM atoms."""
-        self.dij_min2 = self.dij2[0:self.n_real_mm_atoms, 0:self.n_real_qm_atoms].min(axis=1)
-        self.dij_min_j = self.dij2[0:self.n_real_mm_atoms, 0:self.n_real_qm_atoms].argmin(axis=1)
-        self.dij_min = np.sqrt(self.dij_min2)
-
-        return self.dij_min
-
-    def split_mm_atoms(self, qmCutoff):
-        """Split external point charges into near- and far-fields."""
-
-        nearfield = np.append((self.dij_min <= qmCutoff), np.ones(self.n_virt_mm_atoms, dtype=bool))
-        self.mm_charge_near = self.mm_charge[nearfield]
-        self.mm_position_near = self.mm_position[nearfield]
-        self.rij_near = self.rij[nearfield]
-        self.dij_near = self.dij[nearfield]
-        self.dij2_near = self.dij2[nearfield]
-        self.dij_min_near = self.dij_min[nearfield[0:self.n_real_mm_atoms]]
-        self.dij_min2_near = self.dij_min2[nearfield[0:self.n_real_mm_atoms]]
-        self.dij_min_j_near = self.dij_min_j[nearfield[0:self.n_real_mm_atoms]]
-
-        self.mm_charge_far = self.mm_atoms.orig_charge
-        self.mm_position_far = self.mm_position[0:self.n_real_mm_atoms]
-        self.rij_far = self.rij[0:self.n_real_mm_atoms]
-        self.dij_far = self.dij[0:self.n_real_mm_atoms]
-        self.dij2_far = self.dij2[0:self.n_real_mm_atoms]
-
-    def scale_charges(self, qmSwitchingType=None, qmCutoff=None, qmSwdist=None):
-        """Scale external point charges."""
-
-        if qmSwitchingType is None:
-            qmSwdist = 0.0
-            self.charge_scale = np.ones(self.n_real_mm_atoms)
-            self.scale_deriv = np.zeros(self.n_real_mm_atoms)
-        elif qmSwitchingType.lower() == 'shift':
-            if qmCutoff is None:
-                raise ValueError("We need qmCutoff here.")
-            qmCutoff2 = qmCutoff**2
-            qmSwdist = 0.0
-            self.charge_scale = (1 - self.dij_min2 / qmCutoff2)**2
-            self.scale_deriv = 4 * (1 - self.dij_min2 / qmCutoff2) / qmCutoff2
-        elif qmSwitchingType.lower() == 'switch':
-            if qmCutoff is None:
-                raise ValueError("We need qmCutoff here.")
-            if qmSwdist is None:
-                qmSwdist = 0.75 * qmCutoff
-            if qmCutoff <= qmSwdist:
-                raise ValueError("qmCutoff should be greater than qmSwdist.")
-            qmCutoff2 = qmCutoff**2
-            qmSwdist2 = qmSwdist**2
-            self.charge_scale = ((self.dij_min2 - qmCutoff2)**2
-                             * (qmCutoff2 + 2 * self.dij_min2 - 3 * qmSwdist2)
-                             / (qmCutoff2 - qmSwdist2)**3
-                             * (self.dij_min2 >= qmSwdist2)
-                             + (self.dij_min2 < qmSwdist2))
-            self.scale_deriv = (12 * (self.dij_min2 - qmSwdist2)
-                                   * (qmCutoff2 - self.dij_min2)
-                                   / (qmCutoff2 - qmSwdist2)**3)
-        elif qmSwitchingType.lower() == 'lrec':
-            if qmCutoff is None:
-                raise ValueError("We need qmCutoff here.")
-            qmCutoff2 = qmCutoff**2
-            qmSwdist = 0.0
-            scale = 1 - self.dij_min / qmCutoff
-            self.charge_scale = 1 - (2 * scale**3 - 3 * scale**2 + 1)**2
-            self.scale_deriv = 12 * scale * (2 * scale**3 - 3 * scale**2 + 1) / qmCutoff2
-        else:
-            raise ValueError("Only 'shift', 'switch', and 'lrec' are supported at the moment.")
-
-        self.scale_deriv *= (self.dij_min > qmSwdist)
-        self.scale_deriv = (-1 * self.scale_deriv[:, np.newaxis]
-                               * self.rij[range(self.n_real_mm_atoms), self.dij_min_j])
-
-        # Just to be safe
-        self.charge_scale *= (self.dij_min < qmCutoff)
-        self.scale_deriv *= (self.dij_min < qmCutoff)[:, np.newaxis]
-
-        self.mm_charge_scaled = self.mm_charge * np.append(self.charge_scale, np.ones(self.n_virt_mm_atoms))
+    @property
+    def mm_esp_eed(self):
+        return self.mm_atoms.esp_eed
 
     def parse_output(self, qm):
         """Parse the output of QM calculation."""
+
         if qm.calc_forces:
-            self.qm_energy = qm.get_qm_energy() * units.E_AU
-            self.qm_force = qm.get_qm_force() * units.F_AU
-            self.qm_charge = qm.get_qm_charge()
-            self.mm_force = qm.get_mm_force() * units.F_AU
-            self.mm_esp = qm.get_mm_esp() * units.E_AU
-        else:
-            self.qm_energy = 0.0
-            self.qm_force = np.zeros((self.n_qm_atoms, 3))
-            self.mm_force = np.zeros((self.n_real_mm_atoms, 3))
+            qm.parse_output()
 
-    def corr_elecembed(self):
-        """Correct forces due to scaling external point charges in Electrostatic Embedding."""
+    def apply_corrections(self, embed):
+        """Correct the results."""
 
-        fCorr = self.mm_esp[0:self.n_real_mm_atoms] * self.mm_charge[0:self.n_real_mm_atoms]
-        fCorr = fCorr[:, np.newaxis] * self.scale_deriv
-        self.mm_force[0:self.n_real_mm_atoms] += fCorr
+        if self.qm_energy != 0.0:
+            self.calc_me(embed)
+            self.corr_scaling(embed)
+            self.corr_virt_mm_atoms()
 
-        for i in range(self.n_real_qm_atoms):
-            self.qm_force[i] -= fCorr[self.dij_min_j == i].sum(axis=0)
+    def calc_me(self, embed):
+        """Calculate forces and energy for mechanical embedding."""
 
-    def corr_mechembed(self):
-        """Correct forces and energy due to mechanical embedding."""
-        mm_charge_diff = self.mm_charge_mm[0:self.n_real_mm_atoms] - self.mm_charge_qm[0:self.n_real_mm_atoms]
+        if embed.mm_atoms_near.charge_me is not None:
 
-        fCorr = (-1 * units.KE * mm_charge_diff[:, np.newaxis] * self.qm_charge_me[np.newaxis, :]
-                 / self.dij[0:self.n_real_mm_atoms]**3)
-        fCorr = fCorr[:, :, np.newaxis] * self.rij[0:self.n_real_mm_atoms]
+            mm_esp_me = embed.get_mm_esp_me()
+            mm_charge = embed.mm_atoms_near.charge_me
+            deriv_r = embed.deriv_r
 
-        if self.n_virt_mm_atoms > 0:
-            for i in range(self.n_virt_qm_atoms):
-                fCorr[self.mm2_local_idx[i], self.qm_host_local_idx[i]] = 0.0
+            energy = mm_charge[:, np.newaxis] * mm_esp_me
 
-        self.mm_force[0:self.n_real_mm_atoms] += fCorr.sum(axis=1)
-        self.qm_force -= fCorr.sum(axis=0)
+            force = -1 * energy[:, :, np.newaxis] * deriv_r
 
-        if hasattr(self, 'mm_charge_scaled'):
-            fCorr = (units.KE * self.mm_charge[0:self.n_real_mm_atoms, np.newaxis]
-                     * self.qm_charge_me[np.newaxis, :]
-                     / self.dij[0:self.n_real_mm_atoms])
-            if self.n_virt_mm_atoms > 0:
-                for i in range(self.n_virt_qm_atoms):
-                    fCorr[self.mm2_local_idx[i], self.qm_host_local_idx[i]] = 0.0
-            fCorr = np.sum(fCorr, axis=1)
-            fCorr = fCorr[:, np.newaxis] * self.scale_deriv
+            embed.mm_atoms_near.force += force.sum(axis=1)
+            self.qm_atoms.force -= force.sum(axis=0)
 
-            if self.mm_charge_mm is self.mm_charge_scaled:
-                fCorr *= -1
+            self.qm_atoms.qm_energy += energy.sum()
 
-            self.mm_force[0:self.n_real_mm_atoms] -= fCorr
-            for i in range(self.n_real_qm_atoms):
-                self.qm_force[i] += fCorr[self.dij_min_j == i].sum(axis=0)
+    def corr_scaling(self, embed):
+        """Correct forces due to charge scaling."""
 
-        eCorr = (units.KE * mm_charge_diff[:, np.newaxis] * self.qm_charge_me[np.newaxis, :]
-                 / self.dij[0:self.n_real_mm_atoms])
+        if embed.qmSwitchingType is not None:
 
-        if self.n_virt_mm_atoms > 0:
-            for i in range(self.n_virt_qm_atoms):
-                eCorr[self.mm2_local_idx[i], self.qm_host_local_idx[i]] = 0.0
+            mm_charge = embed.mm_atoms_near.charge
+            mm_esp = embed.get_mm_esp()
+            scale_deriv = embed.scale_deriv
+            dij_min_j = embed.mm_atoms_near.dij_min_j
 
-        self.qm_energy += eCorr.sum()
+            energy = mm_charge * mm_esp
+
+            force_corr = -1 * energy[:, np.newaxis] * scale_deriv
+
+            embed.mm_atoms_near.force -= force_corr
+            np.add.at(self.qm_atoms.force, dij_min_j, force_corr)
 
     def corr_virt_mm_atoms(self):
         """Correct forces due to virtual MM charges."""
 
         if self.n_virt_mm_atoms > 0:
 
-            virt_force = self.mm_force[self.n_real_mm_atoms:].reshape(-1, self._mm1_coeff.size, 3)
+            virt_force = self.mm_atoms.virt_atoms.force.reshape(-1, self._mm1_coeff.size, 3)
 
             mm1_corr_force = (virt_force * self._mm1_coeff[:, np.newaxis]).sum(axis=1)
             mm2_corr_force = (virt_force * self._mm2_coeff[:, np.newaxis]).sum(axis=1)
 
-            np.add.at(self.mm_force, self._virt_atom_mm1_idx, mm1_corr_force)
-            np.add.at(self.mm_force, self._virt_atom_mm2_idx, mm2_corr_force)
+            np.add.at(self.mm_atoms.force, self._virt_atom_mm1_idx, mm1_corr_force)
+            np.add.at(self.mm_atoms.force, self._virt_atom_mm2_idx, mm2_corr_force)
 
-            self.mm_force[self.n_real_mm_atoms:] = 0.
+            self.mm_atoms.virt_atoms.force[:] = 0.
 

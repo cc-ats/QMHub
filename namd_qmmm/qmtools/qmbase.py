@@ -9,7 +9,7 @@ class QMBase(object):
 
     QMTOOL = None
 
-    def __init__(self, basedir, system, embed, charge=None, mult=None):
+    def __init__(self, basedir, embed, charge=None, mult=None):
         """
         Creat a QM object.
         """
@@ -28,11 +28,6 @@ class QMBase(object):
         # Load the system
         self.get_qm_system(embed)
         self.get_mm_system(embed)
-
-        self.rij = system.rij / units.L_AU
-        self.dij = system.dij / units.L_AU
-        self.cell_origin = system.cell_origin
-        self.cell_basis = system.cell_basis
 
     @classmethod
     def check_software(cls, software):

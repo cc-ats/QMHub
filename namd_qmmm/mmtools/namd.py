@@ -6,6 +6,22 @@ from ..atomtools import QMAtoms, MMAtoms
 
 
 class NAMD(MMBase):
+    """Class to communicate with NAMD.
+
+    Attributes
+    ----------
+    n_qm_atoms : int
+        Number of QM atoms including linking atoms
+    n_mm_atoms : int
+        Number of MM atoms including virtual particles
+    n_atoms: int
+        Number of total atoms in the whole system
+    step : int
+        Current step number
+    n_step : int
+        Number of total steps to run in the current job
+
+    """
 
     MMTOOL = 'NAMD'
 
@@ -23,7 +39,7 @@ class NAMD(MMBase):
             np.loadtxt(lines[0:1], dtype=int, unpack=True)
 
         # Load QM information
-        qm_atoms = np.loadtxt(lines[1:(self.n_qm_atoms + 1)],
+        qm_atoms = np.loadtxt(lines[1:(self.n_qm_atoms + 1)], delimiter=' ',
                               dtype=[('position', [('x', 'f8'), ('y', 'f8'), ('z', 'f8')]),
                                      ('element', 'S2'), ('charge', 'f8'), ('index', 'i8')])
         qm_atoms = qm_atoms.view(np.recarray)

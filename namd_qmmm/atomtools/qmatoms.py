@@ -21,6 +21,10 @@ class QMAtoms(AtomBase):
     def element(self):
         return self.atoms.element
 
+    @element.setter
+    def element(self, element):
+        self._atoms.element = element
+
     @property
     def qm_energy(self):
         return self._qm_energy

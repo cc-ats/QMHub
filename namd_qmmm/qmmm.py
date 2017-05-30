@@ -10,7 +10,8 @@ from . import qmtools
 class QMMM(object):
     def __init__(self, fin, qmSoftware, qmCharge, qmMult,
                  qmEmbedNear=None, qmEmbedFar=None,
-                 qmRefCharge='ff', qmSwitchingType='shift',
+                 qmElement=None, qmRefCharge='ff',
+                 qmSwitchingType='shift',
                  qmCutoff=None, qmSwdist=None,
                  qmReadGuess=False, postProc=False):
         """
@@ -21,6 +22,7 @@ class QMMM(object):
         self.qmMult = qmMult
         self.qmEmbedNear = qmEmbedNear
         self.qmEmbedFar = qmEmbedFar
+        self.qmElement = qmElement
         self.qmRefCharge = qmRefCharge
         self.qmSwitchingType = qmSwitchingType
         self.qmCutoff = qmCutoff
@@ -44,7 +46,8 @@ class QMMM(object):
 
         # Initialize the QM system
         basedir = os.path.dirname(fin) + "/"
-        self.qm = qmtools.choose_qmtool(self.qmSoftware)(basedir, self.embed, self.qmCharge, self.qmMult)
+        self.qm = qmtools.choose_qmtool(self.qmSoftware)(
+            basedir, self.embed, self.qmCharge, self.qmMult, self.qmElement)
 
         if self.qmReadGuess and not self.system.step == 0:
             self.qm.read_guess = True

@@ -41,8 +41,8 @@ class QMMM(object):
                 self.qmRefCharge = np.asarray(self.qmRefCharge)
 
         # Set up embedding scheme
-        self.embed = embedtools.choose_embedtool(self.qmEmbedNear, self.qmEmbedFar)(self.system,
-                self.qmRefCharge, self.qmSwitchingType, self.qmCutoff, self.qmSwdist)
+        self.embed = embedtools.choose_embedtool(self.qmEmbedNear, self.qmEmbedFar)(
+            self.system, self.qmRefCharge, self.qmSwitchingType, self.qmCutoff, self.qmSwdist)
 
         # Initialize the QM system
         basedir = os.path.dirname(fin) + "/"

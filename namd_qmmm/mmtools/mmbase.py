@@ -51,11 +51,11 @@ class MMBase(object):
 
             mm_esp_me = embed.get_mm_esp_me()
             mm_charge = embed.mm_atoms_near.charge_me
-            deriv_r = embed.deriv_r
+            coulomb_deriv = embed.coulomb_deriv
 
             energy = mm_charge[:, np.newaxis] * mm_esp_me
 
-            force = -1 * energy[:, :, np.newaxis] * deriv_r
+            force = -1 * energy[:, :, np.newaxis] * coulomb_deriv
 
             embed.mm_atoms_near.force += force.sum(axis=1)
             self.qm_atoms.force -= force.sum(axis=0)

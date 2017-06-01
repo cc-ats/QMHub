@@ -28,12 +28,12 @@ class MOPAC(QMBase):
         self._n_mm_atoms = self.mm_atoms_near.n_atoms
         self._mm_position = self.mm_atoms_near.position
         self._qm_esp = embed.qm_esp_near
-        self._qm_efield_near = embed.qm_efield_near
+        self._qmmm_efield_near = embed.qmmm_efield_near
 
         if self.mm_atoms_far.charge_eeq is not None:
-            raise NotImplementedError()
-            self._qm_esp_far = embed.qm_esp_far
-            self._qm_efield_far = embed.qm_efield_far
+            self._qm_esp = self._qm_esp + embed.qm_esp_far
+            self._qmmm_efield_far = embed.qmmm_efield_far
+            self._qmqm_efield_far = embed.qmqm_efield_far
 
     def get_qm_params(self, method=None, **kwargs):
         """Get the parameters for QM calculation."""
@@ -134,7 +134,7 @@ class MOPAC(QMBase):
         if not hasattr(self, 'qm_charge'):
             self.get_qm_charge()
 
-        self.fij_near = -1 * self._qm_efield_near * self.qm_charge[np.newaxis, :, np.newaxis]
+        self.fij_near = -1 * self._qmmm_efield_near * self.qm_charge[np.newaxis, :, np.newaxis]
 
         return self.fij_near
 
@@ -159,6 +159,11 @@ class MOPAC(QMBase):
             self.get_fij_near()
 
         self.qm_force -= self.fij_near.sum(axis=0)
+
+        # if not hasattr(self, 'fij_far'):
+        #     self.get_fij_far()
+
+        # self.qm_force -= self.fij_far.sum(axis=0)
 
         self.qm_force /= units.F_AU
 

@@ -12,6 +12,14 @@ class QMAtoms(AtomBase):
 
         self._atoms.element = element
 
+        # Get pair-wise vectors
+        self._rij = (self.position[np.newaxis, :, :]
+                     - self.position[:, np.newaxis, :])
+
+        # Get pair-wise distances
+        self._dij2 = np.sum(self._rij**2, axis=2)
+        self._dij = np.sqrt(self._dij2)
+
         # Set initial QM energy and charges
         self._qm_energy = 0.0
         self._qm_charge = np.zeros(self.n_atoms)
@@ -24,6 +32,18 @@ class QMAtoms(AtomBase):
     @element.setter
     def element(self, element):
         self._atoms.element = element
+
+    @property
+    def rij(self):
+        return self._get_property(self._rij)
+
+    @property
+    def dij2(self):
+        return self._get_property(self._dij2)
+
+    @property
+    def dij(self):
+        return self._get_property(self._dij)
 
     @property
     def qm_energy(self):
@@ -48,3 +68,4 @@ class QMAtoms(AtomBase):
     @charge_me.setter
     def charge_me(self, charge):
         self._set_property(self._charge_me, charge)
+

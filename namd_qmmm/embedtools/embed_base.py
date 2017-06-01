@@ -2,6 +2,7 @@ import warnings
 import numpy as np
 
 from .. import units
+from .. import ewaldsum
 
 
 class EmbedBase(object):
@@ -28,13 +29,22 @@ class EmbedBase(object):
         self.cell_basis = system.cell_basis
         self.cell_origin = system.cell_origin
 
+        self.ewaldsum = ewaldsum.EwaldSum(self.cell_basis, self.qmCutoff)
+
         # Initialize properties
-        self._deriv_r = None
+        self._coulomb_deriv = None
         self._coulomb_potential = None
         self._coulomb_field = None
+        self._ewald_potential_qmmm = None
+        self._ewald_potential_qmqm = None
+        self._ewald_field_qmmm = None
+        self._ewald_field_qmqm = None
 
         self._qm_esp_near = None
-        self._qm_efield_near = None
+        self._qm_esp_far = None
+        self._qmmm_efield_near = None
+        self._qmmm_efield_far = None
+        self._qmqm_efield_far = None
 
         # Get QM charges for Mechanical Embedding
         self.get_qm_charge_me()
@@ -153,12 +163,12 @@ class EmbedBase(object):
         return self.mm_atoms_near.esp_eed
 
     @property
-    def deriv_r(self):
-        if self._deriv_r is None:
+    def coulomb_deriv(self):
+        if self._coulomb_deriv is None:
             rij = self.mm_atoms_near.rij
             dij2 = self.mm_atoms_near.dij2
-            self._deriv_r = rij / dij2[:, :, np.newaxis]
-        return self._deriv_r
+            self._coulomb_deriv = rij / dij2[:, :, np.newaxis]
+        return self._coulomb_deriv
 
     @property
     def coulomb_potential(self):
@@ -169,8 +179,36 @@ class EmbedBase(object):
     @property
     def coulomb_field(self):
         if self._coulomb_field is None:
-            self._coulomb_field = self.coulomb_potential[:, :, np.newaxis] * self.deriv_r
+            self._coulomb_field = self.coulomb_potential[:, :, np.newaxis] * self.coulomb_deriv
         return self._coulomb_field
+
+    @property
+    def ewald_potential_qmmm(self):
+        if self._ewald_potential_qmmm is None:
+            self._ewald_potential_qmmm = units.KE * self.ewaldsum.get_recip_esp(
+                rij=self.mm_atoms_far.rij, dij=self.mm_atoms_far.dij)
+        return self._ewald_potential_qmmm
+
+    @property
+    def ewald_potential_qmqm(self):
+        if self._ewald_potential_qmqm is None:
+            self._ewald_potential_qmqm = 0.5 * units.KE * self.ewaldsum.get_recip_esp(
+                rij=self.qm_atoms.rij, dij=self.qm_atoms.dij, self_energy=True)
+        return self._ewald_potential_qmqm
+
+    @property
+    def ewald_field_qmmm(self):
+        if self._ewald_field_qmmm is None:
+            self._ewald_field_qmmm = units.KE * self.ewaldsum.get_recip_efield(
+                rij=self.mm_atoms_far.rij, dij=self.mm_atoms_far.dij)
+        return self._ewald_field_qmmm
+
+    @property
+    def ewald_field_qmqm(self):
+        if self._ewald_field_qmqm is None:
+            self._ewald_field_qmqm = 0.5 * units.KE * self.ewaldsum.get_recip_efield(
+                rij=self.qm_atoms.rij, dij=self.qm_atoms.dij)
+        return self._ewald_field_qmqm
 
     @property
     def qm_esp_near(self):
@@ -179,7 +217,28 @@ class EmbedBase(object):
         return self._qm_esp_near
 
     @property
-    def qm_efield_near(self):
-        if self._qm_efield_near is None:
-            self._qm_efield_near = self.coulomb_field * self.mm_atoms_near.charge_eeq[:, np.newaxis, np.newaxis]
-        return self._qm_efield_near
+    def qm_esp_far(self):
+        if self._qm_esp_far is None:
+            self._qm_esp_far = np.sum(self.ewald_potential_qmmm * self.mm_atoms_far.charge_eeq[:, np.newaxis], axis=0)
+            if self.qmRefCharge is not None:
+                self._qm_esp_far += np.sum(self.ewald_potential_qmqm * self.qmRefCharge[:, np.newaxis], axis=0)
+        return self._qm_esp_far
+
+    @property
+    def qmmm_efield_near(self):
+        if self._qmmm_efield_near is None:
+            self._qmmm_efield_near = self.coulomb_field * self.mm_atoms_near.charge_eeq[:, np.newaxis, np.newaxis]
+        return self._qmmm_efield_near
+
+    @property
+    def qmmm_efield_far(self):
+        if self._qmmm_efield_far is None:
+            self._qmmm_efield_far = self.ewald_field_qmmm * self.mm_atoms_far.charge_eeq[:, np.newaxis, np.newaxis]
+        return self._qmmm_efield_far
+
+    @property
+    def qmqm_efield_far(self):
+        if self._qmqm_efield_far is None:
+            if self.qmRefCharge is not None:
+                self._qmqm_efield_far = self.ewald_field_qmqm * self.qmRefCharge[:, np.newaxis, np.newaxis]
+        return self._qmqm_efield_far

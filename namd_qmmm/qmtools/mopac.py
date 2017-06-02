@@ -17,6 +17,7 @@ class MOPAC(QMBase):
 
         super(MOPAC, self).get_qm_system(embed)
 
+        self._n_qm_atoms = self.qm_atoms.n_atoms
         self._n_real_qm_atoms = self.qm_atoms.n_real_atoms
         self._n_virt_qm_atoms = self.qm_atoms.n_virt_atoms
 
@@ -27,13 +28,16 @@ class MOPAC(QMBase):
 
         self._n_mm_atoms = self.mm_atoms_near.n_atoms
         self._mm_position = self.mm_atoms_near.position
-        self._qm_esp = embed.qm_esp_near
-        self._qmmm_efield_near = embed.qmmm_efield_near
 
-        if self.mm_atoms_far.charge_eeq is not None:
-            self._qm_esp = self._qm_esp + embed.qm_esp_far
-            self._qmmm_efield_far = embed.qmmm_efield_far
-            self._qmqm_efield_far = embed.qmqm_efield_far
+        self._qmmm_efield_near = embed.qmmm_efield_near
+        self._qmmm_efield_far = embed.qmmm_efield_far
+        self._qmqm_efield_far = embed.qmqm_efield_far
+
+        self._qm_esp = np.zeros(self._n_qm_atoms, dtype=float)
+        if self._qmmm_efield_near is not None:
+            self._qm_esp += embed.qm_esp_near
+        if self._qmmm_efield_far is not None:
+            self._qm_esp += embed.qm_esp_far
 
     def get_qm_params(self, method=None, **kwargs):
         """Get the parameters for QM calculation."""
@@ -108,12 +112,22 @@ class MOPAC(QMBase):
         self.get_qm_energy(output)
         self.get_qm_charge(output)
         self.get_qm_force(output)
-        self.get_mm_force()
+
+        if self._qmmm_efield_near is not None:
+            self.get_mm_force_near()
+
+        if self._qmmm_efield_far is not None:
+            self.get_mm_force_far()
 
         self.qm_atoms.qm_energy = self.qm_energy * units.E_AU
         self.qm_atoms.qm_charge = self.qm_charge
         self.qm_atoms.force = self.qm_force * units.F_AU
-        self.mm_atoms_near.force = self.mm_force * units.F_AU
+
+        if self._qmmm_efield_near is not None:
+            self.mm_atoms_near.force = self.mm_force_near * units.F_AU
+
+        if self._qmmm_efield_far is not None:
+            self.mm_atoms_far.force += self.mm_force_far * units.F_AU
 
     def get_qm_energy(self, output=None):
         """Get QM energy from output of QM calculation."""
@@ -138,6 +152,26 @@ class MOPAC(QMBase):
 
         return self.fij_near
 
+    def get_fij_far_qmmm(self):
+        """Get pair-wise forces between QM charges and MM charges."""
+
+        if not hasattr(self, 'qm_charge'):
+            self.get_qm_charge()
+
+        self.fij_far_qmmm = -1 * self._qmmm_efield_far * self.qm_charge[np.newaxis, :, np.newaxis]
+
+        return self.fij_far_qmmm
+
+    def get_fij_far_qmqm(self):
+        """Get pair-wise forces between QM charges and MM charges."""
+
+        if not hasattr(self, 'qm_charge'):
+            self.get_qm_charge()
+
+        self.fij_far_qmqm = -1 * self._qmqm_efield_far * self.qm_charge[np.newaxis, :, np.newaxis]
+
+        return self.fij_far_qmqm
+
     def get_qm_force(self, output=None):
         """Get QM forces from output of QM calculation."""
 
@@ -155,29 +189,48 @@ class MOPAC(QMBase):
 
         self.qm_force = -1 * gradients.reshape(self._n_qm_atoms, 3)
 
-        if not hasattr(self, 'fij_near'):
-            self.get_fij_near()
+        if self._qmmm_efield_near is not None:
+            if not hasattr(self, 'fij_near'):
+                self.get_fij_near()
 
-        self.qm_force -= self.fij_near.sum(axis=0)
+            self.qm_force -= self.fij_near.sum(axis=0)
 
-        # if not hasattr(self, 'fij_far'):
-        #     self.get_fij_far()
+        if self._qmmm_efield_far is not None:
+            if not hasattr(self, 'fij_far_qmmm'):
+                self.get_fij_far_qmmm()
 
-        # self.qm_force -= self.fij_far.sum(axis=0)
+            self.qm_force -= self.fij_far_qmmm.sum(axis=0)
+
+        if self._qmqm_efield_far is not None:
+            if not hasattr(self, 'fij_far_qmqm'):
+                self.get_fij_far_qmqm()
+
+            self.qm_force -= self.fij_far_qmqm.sum(axis=0)
+            self.qm_force += self.fij_far_qmqm.sum(axis=1)
 
         self.qm_force /= units.F_AU
 
         return self.qm_force
 
-    def get_mm_force(self):
-        """Get external point charge forces from output of QM calculation."""
+    def get_mm_force_near(self):
+        """Get MM forces from QM charges in the near field."""
 
         if not hasattr(self, 'fij_near'):
             self.get_fij_near()
 
-        self.mm_force = self.fij_near.sum(axis=1) / units.F_AU
+        self.mm_force_near = self.fij_near.sum(axis=1) / units.F_AU
 
-        return self.mm_force
+        return self.mm_force_near
+
+    def get_mm_force_far(self):
+        """Get MM forces from QM charges in the far field."""
+
+        if not hasattr(self, 'fij_far_qmmm'):
+            self.get_fij_far_qmmm()
+
+        self.mm_force_far = self.fij_far_qmmm.sum(axis=1) / units.F_AU
+
+        return self.mm_force_far
 
     def get_qm_charge(self, output=None):
         """Get Mulliken charges from output of QM calculation."""

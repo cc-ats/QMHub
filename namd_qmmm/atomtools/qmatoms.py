@@ -68,4 +68,3 @@ class QMAtoms(AtomBase):
     @charge_me.setter
     def charge_me(self, charge):
         self._set_property(self._charge_me, charge)
-

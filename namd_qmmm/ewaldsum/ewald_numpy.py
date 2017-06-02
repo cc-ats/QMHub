@@ -6,7 +6,7 @@ from .ewald_base import EwaldBase
 
 class EwaldNumPy(EwaldBase):
 
-    def get_recip_esp(self, rij, order='spherical'):
+    def get_recip_esp(self, rij, dij=None, self_energy=False, order='spherical'):
         if order.lower() == 'spherical':
             k = self.recip_lattice_spherical
             fac = self.recip_prefactor_spherical
@@ -19,9 +19,16 @@ class EwaldNumPy(EwaldBase):
         kr = np.dot(rij, k.T)
         recip_esp = np.sum(fac * np.cos(kr), axis=2)
 
+        if dij is None:
+            dij2 = np.sum(rij**2, axis=2)
+            dij = np.sqrt(dij2)
+
+        if self_energy:
+            recip_esp -= 2 * np.equal(dij, 0) * self.alpha / np.sqrt(np.pi)
+
         return recip_esp
 
-    def get_recip_efield(self, rij, order='spherical'):
+    def get_recip_efield(self, rij, dij=None, order='spherical'):
         if order.lower() == 'spherical':
             k = self.recip_lattice_spherical
             fac = self.recip_prefactor_spherical

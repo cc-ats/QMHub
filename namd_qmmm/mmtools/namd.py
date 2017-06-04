@@ -1,4 +1,5 @@
 import os
+import copy
 import numpy as np
 
 from .mmbase import MMBase
@@ -73,11 +74,13 @@ class NAMD(MMBase):
                                          ('charge', 'f8'), ('index', 'i8'), ('bonded_to_idx', 'i8')])
             mm_atoms = mm_atoms.view(np.recarray)
 
-            virt_mm_mask = np.array((mm_atoms.index == -1), dtype=bool)
-            orig_mm_charge = mm_atoms.charge[~virt_mm_mask]
-
-            self.n_virt_mm_atoms = np.count_nonzero(virt_mm_mask)
+            self.n_virt_mm_atoms = np.count_nonzero(mm_atoms.index == -1)
             self.n_real_mm_atoms = self.n_mm_atoms - self.n_virt_mm_atoms
+
+            real_mm_indices = np.s_[0:self.n_real_mm_atoms]
+            virt_mm_indices = np.s_[self.n_real_mm_atoms:]
+
+            orig_mm_charge = copy.copy(mm_atoms.charge[real_mm_indices])
 
             # Prepare for link atoms
             if self.n_virt_mm_atoms > 0:
@@ -102,7 +105,7 @@ class NAMD(MMBase):
 
                 # Local indexes of MM1 and MM2 atoms the virtual point charges belong to
                 mm_pos = mm_atoms.position.view((float, 3))
-                virt_mm_pos = mm_atoms.position.view((float, 3))[virt_mm_mask].reshape(-1, self._mm1_coeff.size, 3)
+                virt_mm_pos = mm_atoms.position.view((float, 3))[virt_mm_indices].reshape(-1, self._mm1_coeff.size, 3)
 
                 virt_atom_mm1_pos = (virt_mm_pos[:, 1] - virt_mm_pos[:, 0] * self._mm2_coeff[1]) / self._mm1_coeff[1]
                 virt_atom_mm2_pos = virt_mm_pos[:, 0]
@@ -129,7 +132,7 @@ class NAMD(MMBase):
                     mm2_local_idx.append(self._virt_atom_mm2_idx[self._virt_atom_mm1_idx == mm1_local_idx[i]])
 
                 # Get original MM charges
-                mm1_charge = mm_atoms.charge[virt_mm_mask].reshape(-1, self._mm1_coeff.size).sum(axis=1)
+                mm1_charge = mm_atoms.charge[virt_mm_indices].reshape(-1, self._mm1_coeff.size).sum(axis=1)
                 np.add.at(orig_mm_charge, self._virt_atom_mm1_idx, mm1_charge)
 
             # Initialize the MMAtoms object
@@ -141,8 +144,17 @@ class NAMD(MMBase):
                 coulomb_mask = np.ones((self.n_mm_atoms, self.n_qm_atoms), dtype=bool)
 
                 for i in range(self.n_virt_qm_atoms):
+                    # Cancel 1-3 interactions between MM2 atoms and QM hosts
                     coulomb_mask[mm2_local_idx[i], qm_host_local_idx[i]] = False
+                    # Cancel 1-2 interactions between MM1 atoms and QM hosts
                     coulomb_mask[mm1_local_idx[i], qm_host_local_idx[i]] = False
+
+                # Cancel 1-3 interactions between virtual atoms and QM hosts
+                start = 0
+                for i in range(self.n_virt_qm_atoms):
+                    stop = start + mm2_local_idx[i].size * self._mm1_coeff.size
+                    coulomb_mask[virt_mm_indices][start:stop, qm_host_local_idx[i]] = False
+                    start = stop
 
                 self.mm_atoms.coulomb_mask = coulomb_mask
 

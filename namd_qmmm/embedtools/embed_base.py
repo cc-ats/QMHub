@@ -187,13 +187,20 @@ class EmbedBase(object):
         if self._ewald_potential_qmmm is None:
             self._ewald_potential_qmmm = units.KE * self.ewaldsum.get_recip_esp(
                 rij=self.mm_atoms_far.rij, dij=self.mm_atoms_far.dij)
+
+            near_real_mask = self.mm_atoms_near._atom_mask[self.mm_atoms_near.real_atoms._indices]
+
+            self._ewald_potential_qmmm[near_real_mask] -= units.KE * self.ewaldsum.get_recip_esp_near(
+                rij=self.mm_atoms_near.real_atoms.rij, dij=self.mm_atoms_near.real_atoms.dij)
+
         return self._ewald_potential_qmmm
 
     @property
     def ewald_potential_qmqm(self):
         if self._ewald_potential_qmqm is None:
-            self._ewald_potential_qmqm = 0.5 * units.KE * self.ewaldsum.get_recip_esp(
-                rij=self.qm_atoms.rij, dij=self.qm_atoms.dij, self_energy=True)
+            self._ewald_potential_qmqm = 0.5 * units.KE * (self.ewaldsum.get_recip_esp(
+                rij=self.qm_atoms.rij, dij=self.qm_atoms.dij, self_energy=True) -
+                self.ewaldsum.get_recip_esp_near(rij=self.qm_atoms.rij, dij=self.qm_atoms.dij))
         return self._ewald_potential_qmqm
 
     @property
@@ -201,13 +208,20 @@ class EmbedBase(object):
         if self._ewald_field_qmmm is None:
             self._ewald_field_qmmm = units.KE * self.ewaldsum.get_recip_efield(
                 rij=self.mm_atoms_far.rij, dij=self.mm_atoms_far.dij)
+
+            near_real_mask = self.mm_atoms_near._atom_mask[self.mm_atoms.real_atoms._indices]
+
+            self._ewald_field_qmmm[near_real_mask] -= units.KE * self.ewaldsum.get_recip_efield_near(
+                rij=self.mm_atoms_near.real_atoms.rij, dij=self.mm_atoms_near.real_atoms.dij)
+
         return self._ewald_field_qmmm
 
     @property
     def ewald_field_qmqm(self):
         if self._ewald_field_qmqm is None:
-            self._ewald_field_qmqm = 0.5 * units.KE * self.ewaldsum.get_recip_efield(
-                rij=self.qm_atoms.rij, dij=self.qm_atoms.dij)
+            self._ewald_field_qmqm = 0.5 * units.KE * (self.ewaldsum.get_recip_efield(
+                rij=self.qm_atoms.rij, dij=self.qm_atoms.dij) -
+                self.ewaldsum.get_recip_efield_near(rij=self.qm_atoms.rij, dij=self.qm_atoms.dij))
         return self._ewald_field_qmqm
 
     @property

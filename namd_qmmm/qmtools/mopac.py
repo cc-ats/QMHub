@@ -34,10 +34,15 @@ class MOPAC(QMBase):
         self._qmqm_efield_far = embed.qmqm_efield_far
 
         self._qm_esp = np.zeros(self._n_qm_atoms, dtype=float)
+
         if self._qmmm_efield_near is not None:
-            self._qm_esp += embed.qm_esp_near
+            self._qm_esp += embed.qmmm_esp_near.sum(axis=0)
+
         if self._qmmm_efield_far is not None:
-            self._qm_esp += embed.qm_esp_far
+            self._qm_esp += embed.qmmm_esp_far.sum(axis=0)
+
+        if self._qmqm_efield_far is not None:
+            self._qm_esp += embed.qmqm_esp_far.sum(axis=0)
 
     def get_qm_params(self, method=None, **kwargs):
         """Get the parameters for QM calculation."""
@@ -142,36 +147,6 @@ class MOPAC(QMBase):
 
         return self.qm_energy
 
-    def get_fij_near(self):
-        """Get pair-wise forces between QM charges and MM charges."""
-
-        if not hasattr(self, 'qm_charge'):
-            self.get_qm_charge()
-
-        self.fij_near = -1 * self._qmmm_efield_near * self.qm_charge[np.newaxis, :, np.newaxis]
-
-        return self.fij_near
-
-    def get_fij_far_qmmm(self):
-        """Get pair-wise forces between QM charges and MM charges."""
-
-        if not hasattr(self, 'qm_charge'):
-            self.get_qm_charge()
-
-        self.fij_far_qmmm = -1 * self._qmmm_efield_far * self.qm_charge[np.newaxis, :, np.newaxis]
-
-        return self.fij_far_qmmm
-
-    def get_fij_far_qmqm(self):
-        """Get pair-wise forces between QM charges and MM charges."""
-
-        if not hasattr(self, 'qm_charge'):
-            self.get_qm_charge()
-
-        self.fij_far_qmqm = -1 * self._qmqm_efield_far * self.qm_charge[np.newaxis, :, np.newaxis]
-
-        return self.fij_far_qmqm
-
     def get_qm_force(self, output=None):
         """Get QM forces from output of QM calculation."""
 
@@ -187,7 +162,7 @@ class MOPAC(QMBase):
                     gradients = np.append(gradients, np.fromstring(line, sep=' '))
                 break
 
-        self.qm_force = -1 * gradients.reshape(self._n_qm_atoms, 3)
+        self.qm_force = -1 * gradients.reshape(self._n_qm_atoms, 3) / units.F_AU
 
         if self._qmmm_efield_near is not None:
             if not hasattr(self, 'fij_near'):
@@ -208,8 +183,6 @@ class MOPAC(QMBase):
             self.qm_force -= self.fij_far_qmqm.sum(axis=0)
             self.qm_force += self.fij_far_qmqm.sum(axis=1)
 
-        self.qm_force /= units.F_AU
-
         return self.qm_force
 
     def get_mm_force_near(self):
@@ -218,7 +191,7 @@ class MOPAC(QMBase):
         if not hasattr(self, 'fij_near'):
             self.get_fij_near()
 
-        self.mm_force_near = self.fij_near.sum(axis=1) / units.F_AU
+        self.mm_force_near = self.fij_near.sum(axis=1)
 
         return self.mm_force_near
 
@@ -228,7 +201,7 @@ class MOPAC(QMBase):
         if not hasattr(self, 'fij_far_qmmm'):
             self.get_fij_far_qmmm()
 
-        self.mm_force_far = self.fij_far_qmmm.sum(axis=1) / units.F_AU
+        self.mm_force_far = self.fij_far_qmmm.sum(axis=1)
 
         return self.mm_force_far
 

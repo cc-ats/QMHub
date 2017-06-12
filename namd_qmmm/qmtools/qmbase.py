@@ -2,6 +2,7 @@ import os
 import subprocess as sp
 import numpy as np
 
+from .. import units
 
 class QMBase(object):
 
@@ -91,3 +92,33 @@ class QMBase(object):
         proc.wait()
         self.exitcode = proc.returncode
         return self.exitcode
+
+    def get_fij_near(self):
+        """Get pair-wise forces between QM charges and MM charges."""
+
+        if not hasattr(self, 'qm_charge'):
+            self.get_qm_charge()
+
+        self.fij_near = -1 * self._qmmm_efield_near * self.qm_charge[np.newaxis, :, np.newaxis] / units.F_AU
+
+        return self.fij_near
+
+    def get_fij_far_qmmm(self):
+        """Get pair-wise forces between QM charges and MM charges."""
+
+        if not hasattr(self, 'qm_charge'):
+            self.get_qm_charge()
+
+        self.fij_far_qmmm = -1 * self._qmmm_efield_far * self.qm_charge[np.newaxis, :, np.newaxis] / units.F_AU
+
+        return self.fij_far_qmmm
+
+    def get_fij_far_qmqm(self):
+        """Get pair-wise forces between QM charges and MM charges."""
+
+        if not hasattr(self, 'qm_charge'):
+            self.get_qm_charge()
+
+        self.fij_far_qmqm = -1 * self._qmqm_efield_far * self.qm_charge[np.newaxis, :, np.newaxis] / units.F_AU
+
+        return self.fij_far_qmqm

@@ -25,6 +25,7 @@ class EmbedEEdEEq(EmbedBase):
 
         self.mm_atoms_near.charge_eeq = self.mm_atoms_near.charge_comp
         self.mm_atoms_near.charge_eed = self.mm_atoms_near.charge_near
+        self.mm_atoms_far.charge_eeq = self.mm_atoms_far.orig_charge
 
     def get_mm_esp(self):
 

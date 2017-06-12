@@ -44,6 +44,9 @@ class MOPAC(QMBase):
         if self._qmqm_efield_far is not None:
             self._qm_esp += embed.qmqm_esp_far.sum(axis=0)
 
+        if np.all(self._qm_esp == 0.0):
+            self._qm_esp = None
+
     def get_qm_params(self, method=None, **kwargs):
         """Get the parameters for QM calculation."""
 

@@ -1,4 +1,5 @@
 import os
+import shutil
 import numpy as np
 
 from .. import units
@@ -105,8 +106,8 @@ class ORCA(QMBase):
         """Generate commandline for QM calculation."""
 
         cmdline = "cd " + self.basedir + "; "
-        cmdline += "orca orca.inp > orca.out; "
-        cmdline += "orca_vpot orca.gbw orca.scfp orca.pntvpot.xyz orca.pntvpot.out >> orca.out"
+        cmdline += shutil.which("orca") + " orca.inp > orca.out; "
+        cmdline += shutil.which("orca_vpot") + " orca.gbw orca.scfp orca.pntvpot.xyz orca.pntvpot.out >> orca.out"
 
         return cmdline
 

@@ -6,6 +6,9 @@ class EmbedEEdME(EmbedBase):
     EMBEDNEAR = 'EEd'
     EMBEDFAR = 'ME'
 
+    def get_qm_charge_eeq(self):
+        self.qm_charge_eeq = None
+
     def get_mm_charge(self):
 
         super(EmbedEEdME, self).get_mm_charge()

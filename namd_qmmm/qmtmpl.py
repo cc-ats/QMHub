@@ -9,8 +9,8 @@ basis ${basis}
 ${read_guess}\
 maxscf 200
 qm_mm true
-qmmm_charges true
 igdefield 1
+skip_charge_self_interact true
 ${addparam}\
 $$end
 

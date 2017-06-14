@@ -19,6 +19,9 @@ class EmbedEEqEEq(EmbedBase):
     def get_qm_charge_me(self):
         self.qm_charge_me = np.zeros(self.qm_atoms.n_atoms)
 
+    def get_qm_charge_eeq(self):
+        self.qm_charge_eeq = self.qmRefCharge
+
     def check_qm_switching_type(self):
         if self.qmSwitchingType is not None:
             raise ValueError("Switching MM charges is not necessary here.")

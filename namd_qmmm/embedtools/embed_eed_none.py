@@ -6,9 +6,6 @@ class EmbedEEdNone(EmbedBase):
     EMBEDNEAR = 'EEd'
     EMBEDFAR = 'None'
 
-    def get_qm_charge_eeq(self):
-        self.qm_charge_eeq = None
-
     def get_mm_charge(self):
 
         super(EmbedEEdNone, self).get_mm_charge()

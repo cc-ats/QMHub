@@ -75,7 +75,7 @@ class EmbedBase(object):
         self.qm_charge_me = self.qmRefCharge
 
     def get_qm_charge_eeq(self):
-        self.qm_charge_eeq = self.qmRefCharge
+        self.qm_charge_eeq = None
 
     def get_near_mask(self):
         return np.ones(self.mm_atoms.n_atoms, dtype=bool)

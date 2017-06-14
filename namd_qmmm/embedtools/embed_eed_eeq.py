@@ -19,6 +19,9 @@ class EmbedEEdEEq(EmbedBase):
     def get_qm_charge_me(self):
         self.qm_charge_me = np.zeros(self.qm_atoms.n_atoms)
 
+    def get_qm_charge_eeq(self):
+        self.qm_charge_eeq = self.qmRefCharge
+
     def get_mm_charge(self):
 
         super(EmbedEEdEEq, self).get_mm_charge()

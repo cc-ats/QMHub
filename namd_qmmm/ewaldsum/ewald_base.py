@@ -57,7 +57,7 @@ class EwaldBase(object):
             grids = grids.reshape((kmax[0]*2 + 1) * (kmax[1]*2 + 1) * (kmax[2]*2 + 1), 3)
 
             # Delete the central unit
-            grids = grids[np.all(grids != 0, axis=1)]
+            grids = grids[~np.all(grids == 0, axis=1)]
 
             self._recip_grids = grids
 

@@ -177,7 +177,7 @@ class NAMD(MMBase):
             for i in range(self.n_real_mm_atoms):
                 f.write(" ".join(format(j, "22.14e") for j in self.mm_force[i]) + "\n")
 
-    def preserve_input(self):
+    def preserve_input(self, n_digits=None):
         """Preserve the input file passed from NAMD."""
         import glob
         import shutil
@@ -187,5 +187,10 @@ class NAMD(MMBase):
         else:
             idx = 0
 
+        if n_digits is not None:
+            idx = '{:0{}}'.format(idx, n_digits)
+        else:
+            idx = str(idx)
+
         if os.path.isfile(self.fin):
-            shutil.copyfile(self.fin, self.fin+"_"+str(idx))
+            shutil.copyfile(self.fin, self.fin + "_" + idx)

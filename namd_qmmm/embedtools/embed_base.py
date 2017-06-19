@@ -129,7 +129,7 @@ class EmbedBase(object):
             elif self.qmSwitchingType.lower() == 'lrec':
                 swdist = 0.0
                 scale = 1 - dij_min / cutoff
-                charge_scale = 1 - (2 * scale**3 - 3 * scale**3 + 1)**2
+                charge_scale = 1 - (2 * scale**3 - 3 * scale**2 + 1)**2
                 scale_deriv = 12 * scale * (2 * scale**3 - 3 * scale**2 + 1) / cutoff2
             else:
                 raise ValueError("Only 'shift', 'switch', and 'lrec' are supported at the moment.")

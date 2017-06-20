@@ -154,6 +154,7 @@ class EmbedBase(object):
         self.mm_atoms_near.charge_eeq = None
         self.mm_atoms_near.charge_eed = None
         self.mm_atoms_far.charge_eeq = None
+        self.mm_atoms_far.charge_eed = None
 
     def get_mm_esp_me(self):
 

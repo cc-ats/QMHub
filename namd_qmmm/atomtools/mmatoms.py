@@ -22,7 +22,7 @@ class MMAtoms(AtomBase):
 
         # # Apply minimum image convention
         if not np.all(self._cell_basis == 0):
-            _rij -= np.diagonal(self._cell_basis) * np.rint(_rij / np.diagonal(self._cell_basis))
+            self._rij -= np.diagonal(self._cell_basis) * np.rint(self._rij / np.diagonal(self._cell_basis))
 
         # Get pair-wise distances
         self._dij2 = np.sum(self._rij**2, axis=2)

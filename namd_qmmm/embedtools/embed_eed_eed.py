@@ -3,24 +3,18 @@ import numpy as np
 from .embed_base import EmbedBase
 
 
-class EmbedEEqEEq(EmbedBase):
+class EmbedEEdEEd(EmbedBase):
 
-    EMBEDNEAR = 'EEq'
-    EMBEDFAR = 'EEq'
+    EMBEDNEAR = 'EEd'
+    EMBEDFAR = 'EEd'
 
     @staticmethod
     def check_unitcell(system):
         if system.n_atoms != system.n_real_qm_atoms + system.n_real_mm_atoms:
             raise ValueError("Unit cell is not complete.")
 
-    def get_near_mask(self):
-        return np.array((self.mm_atoms.dij_min <= self.ewald_cutoff), dtype=bool)
-
     def get_qm_charge_me(self):
         self.qm_charge_me = np.zeros(self.qm_atoms.n_atoms)
-
-    def get_qm_charge_eeq(self):
-        self.qm_charge_eeq = self.qmRefCharge
 
     def check_qm_switching_type(self):
         if self.qmSwitchingType is not None:
@@ -28,11 +22,13 @@ class EmbedEEqEEq(EmbedBase):
 
     def get_mm_charge(self):
 
-        super(EmbedEEqEEq, self).get_mm_charge()
+        super(EmbedEEdEEd, self).get_mm_charge()
 
-        self.mm_atoms_near.charge_eeq = self.mm_atoms_near.charge
-        self.mm_atoms_far.charge_eeq = self.mm_atoms_far.orig_charge
+        self.mm_atoms_near.charge_eed = self.mm_atoms_near.charge_near
+        self.mm_atoms_far.charge_eed = self.mm_atoms_far.orig_charge
 
     def get_mm_esp(self):
 
-        return self.get_mm_esp_eeq().sum(axis=1)
+        mm_esp_near = self.get_mm_esp_eed()
+
+        return mm_esp_near

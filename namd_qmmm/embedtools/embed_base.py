@@ -29,7 +29,8 @@ class EmbedBase(object):
         self.cell_basis = system.cell_basis
         self.cell_origin = system.cell_origin
 
-        self.ewaldsum = ewaldsum.EwaldSum(self.cell_basis, self.qmCutoff)
+        self.ewald_cutoff = np.diag(self.cell_basis).min() / 2.0
+        self.ewaldsum = ewaldsum.EwaldSum(self.cell_basis, self.ewald_cutoff)
 
         # Initialize properties
         self._coulomb_deriv = None

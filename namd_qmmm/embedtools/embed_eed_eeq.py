@@ -14,7 +14,7 @@ class EmbedEEdEEq(EmbedBase):
             raise ValueError("Unit cell is not complete.")
 
     def get_near_mask(self):
-        return np.array((self.mm_atoms.dij_min <= self.qmCutoff), dtype=bool)
+        return np.array((self.mm_atoms.dij_min <= self.ewald_cutoff), dtype=bool)
 
     def get_qm_charge_me(self):
         self.qm_charge_me = np.zeros(self.qm_atoms.n_atoms)

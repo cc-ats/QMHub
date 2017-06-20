@@ -4,16 +4,17 @@ import numpy as np
 
 class EwaldBase(object):
 
-    def __init__(self, cell_basis, cutoff, tolerance=1e-4):
+    def __init__(self, cell_basis, cutoff, tolerance=1e-4, alpha=None, kmax=None):
 
         self.cell_basis = cell_basis
         self.cutoff = cutoff
         self.tolerance = tolerance
 
+        self._alpha = alpha
+        self._kmax = kmax
+
         self._volume = None
         self._recip_basis = None
-        self._alpha = None
-        self._kmax = None
 
         self._recip_grids = None
         self._recip_lattice = None
@@ -45,7 +46,6 @@ class EwaldBase(object):
     def kmax(self):
         if self._kmax is None:
             self._kmax = np.ceil(2 * self.alpha**2 * self.cutoff / np.diag(self.recip_basis)).astype(int)
-            # self._kmax = np.ceil(self.alpha * np.diag(self.cell_basis)).astype(int)
         return self._kmax
 
     @property

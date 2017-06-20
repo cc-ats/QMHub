@@ -6,9 +6,12 @@ from .atombase import AtomBase
 class MMAtoms(AtomBase):
     """Class to hold MM atoms."""
 
-    def __init__(self, x, y, z, charge, index, orig_charge, qm_atoms):
+    def __init__(self, x, y, z, charge, index, orig_charge, cell_basis, qm_atoms):
 
         super(MMAtoms, self).__init__(x, y, z, charge, index)
+
+        # # Get cell basis
+        self._cell_basis = cell_basis
 
         # Embed QM atoms
         self._qm_atoms = qm_atoms
@@ -16,6 +19,10 @@ class MMAtoms(AtomBase):
         # Get pair-wise vectors
         self._rij = (self._qm_atoms.position[np.newaxis, :, :]
                      - self.position[:, np.newaxis, :])
+
+        # # Apply minimum image convention
+        if not np.all(self._cell_basis == 0):
+            _rij -= np.diagonal(self._cell_basis) * np.rint(_rij / np.diagonal(self._cell_basis))
 
         # Get pair-wise distances
         self._dij2 = np.sum(self._rij**2, axis=2)

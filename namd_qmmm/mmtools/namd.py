@@ -137,7 +137,7 @@ class NAMD(MMBase):
 
             # Initialize the MMAtoms object
             self.mm_atoms = MMAtoms(mm_atoms.position.x, mm_atoms.position.y, mm_atoms.position.z,
-                                    mm_atoms.charge, mm_atoms.index, orig_mm_charge, self.qm_atoms)
+                                    mm_atoms.charge, mm_atoms.index, orig_mm_charge, self.cell_basis, self.qm_atoms)
 
             if self.n_virt_mm_atoms > 0:
                 # Get array mask to cancel 1-2 and 1-3 interactions for coulomb

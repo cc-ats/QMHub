@@ -41,7 +41,7 @@ class ORCA(QMBase):
         else:
             raise ValueError("Please set basis for ORCA.")
 
-    def gen_input(self):
+    def gen_input(self, path=None):
         """Generate input file for QM software."""
 
         qmtmpl = QMTmpl(self.QMTOOL)
@@ -66,7 +66,10 @@ class ORCA(QMBase):
 
         nproc = self.get_nproc()
 
-        with open(self.basedir + "orca.inp", 'w') as f:
+        if path is None:
+            path = self.basedir
+
+        with open(os.path.join(path, "orca.inp"), 'w') as f:
             f.write(qmtmpl.gen_qmtmpl().substitute(
                 method=self.method, basis=self.basis,
                 calc_forces=calc_forces, read_guess=read_guess,
@@ -87,7 +90,7 @@ class ORCA(QMBase):
             f.write("  end\n")
             f.write("end\n")
 
-        with open(self.basedir + "orca.pntchrg", 'w') as f:
+        with open(os.path.join(path, "orca.pntchrg"), 'w') as f:
             f.write("%d\n" % self._n_mm_atoms)
             for i in range(self._n_mm_atoms):
                 f.write("".join(["%22.14e " % self._mm_charge[i],
@@ -95,7 +98,7 @@ class ORCA(QMBase):
                                  "%22.14e" % self._mm_position[i, 1],
                                  "%22.14e" % self._mm_position[i, 2], "\n"]))
 
-        with open(self.basedir + "orca.pntvpot.xyz", 'w') as f:
+        with open(os.path.join(path, "orca.pntvpot.xyz"), 'w') as f:
             f.write("%d\n" % self._n_mm_atoms)
             for i in range(self._n_mm_atoms):
                 f.write("".join(["%22.14e" % (self._mm_position[i, 0] / units.L_AU),

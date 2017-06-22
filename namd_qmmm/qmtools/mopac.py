@@ -1,5 +1,6 @@
 from __future__ import division
 
+import os
 import numpy as np
 
 from .. import units
@@ -57,7 +58,7 @@ class MOPAC(QMBase):
         else:
             raise ValueError("Please set method for MOPAC.")
 
-    def gen_input(self):
+    def gen_input(self, path=None):
         """Generate input file for QM software."""
 
         qmtmpl = QMTmpl(self.QMTOOL)
@@ -77,7 +78,10 @@ class MOPAC(QMBase):
 
         nproc = self.get_nproc()
 
-        with open(self.basedir + "mopac.mop", 'w') as f:
+        if path is None:
+            path = self.basedir
+
+        with open(os.path.join(path, "mopac.mop"), 'w') as f:
             f.write(qmtmpl.gen_qmtmpl().substitute(
                 method=self.method, charge=self.charge,
                 calc_forces=calc_forces, addparam=addparam, nproc=nproc))
@@ -88,7 +92,7 @@ class MOPAC(QMBase):
                                   "%22.14e 1" % self._qm_position[i, 1],
                                   "%22.14e 1" % self._qm_position[i, 2], "\n"]))
 
-        with open(self.basedir + "mol.in", 'w') as f:
+        with open(os.path.join(path, "mol.in"), 'w') as f:
             f.write("\n")
             f.write("%d %d\n" % (self._n_real_qm_atoms, self._n_virt_qm_atoms))
 

@@ -41,7 +41,7 @@ class QChem(QMBase):
         else:
             raise ValueError("Please set basis for Q-Chem.")
 
-    def gen_input(self):
+    def gen_input(self, path=None):
         """Generate input file for QM software."""
 
         qmtmpl = QMTmpl(self.QMTOOL)
@@ -66,7 +66,10 @@ class QChem(QMBase):
         else:
             addparam = ''
 
-        with open(self.basedir + "qchem.inp", 'w') as f:
+        if path is None:
+            path = self.basedir
+
+        with open(os.path.join(path, "qchem.inp"), 'w') as f:
             f.write(qmtmpl.gen_qmtmpl().substitute(
                 jobtype=jobtype, method=self.method, basis=self.basis,
                 read_guess=read_guess, qm_mm=qm_mm, addparam=addparam))

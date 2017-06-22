@@ -44,7 +44,7 @@ class DFTB(QMBase):
         else:
             raise ValueError("Please set skfpath for DFTB+.")
 
-    def gen_input(self):
+    def gen_input(self, path=None):
         """Generate input file for QM software."""
 
         qmtmpl = QMTmpl(self.QMTOOL)
@@ -73,7 +73,10 @@ class DFTB(QMBase):
         else:
             addparam = ''
 
-        with open(self.basedir + "dftb_in.hsd", 'w') as f:
+        if path is None:
+            path = self.basedir
+
+        with open(os.path.join(path, "dftb_in.hsd"), 'w') as f:
             f.write(qmtmpl.gen_qmtmpl().substitute(
                 charge=self.charge, n_mm_atoms=self._n_mm_atoms,
                 read_guess=read_guess, calc_forces=calc_forces,
@@ -82,7 +85,7 @@ class DFTB(QMBase):
                 HubbardDerivs=HubbardDerivs,
                 KPointsAndWeights=KPointsAndWeights))
 
-        with open(self.basedir + "input_geometry.gen", 'w') as f:
+        with open(os.path.join(path, "input_geometry.gen"), 'w') as f:
             if self._pbc:
                 f.write(str(self._n_qm_atoms) + " S" + "\n")
             else:
@@ -100,7 +103,7 @@ class DFTB(QMBase):
                 f.write("".join(["%22.14e" % i for i in self._cell_basis[1]]) + "\n")
                 f.write("".join(["%22.14e" % i for i in self._cell_basis[2]]) + "\n")
 
-        with open(self.basedir + "charges.dat", 'w') as f:
+        with open(os.path.join(path, "charges.dat"), 'w') as f:
             for i in range(self._n_mm_atoms):
                 f.write("".join(["%22.14e" % self._mm_position[i, 0],
                                  "%22.14e" % self._mm_position[i, 1],

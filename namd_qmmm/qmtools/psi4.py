@@ -58,7 +58,7 @@ class PSI4(QMBase):
         else:
             raise ValueError("Please set basis for PSI4.")
 
-    def gen_input(self):
+    def gen_input(self, path=None):
         """Generate input file for QM software."""
 
         psi4.set_options({'dft_functional': '%s' % self.method,
@@ -100,7 +100,10 @@ class PSI4(QMBase):
         mm_charge.populateExtern()
         psi4.core.set_global_option_python('EXTERN', mm_charge.extern)
 
-        with open(self.basedir + "grid.dat", 'w') as f:
+        if path is None:
+            path = self.basedir
+
+        with open(os.path.join(path, "grid.dat"), 'w') as f:
             for i in range(self._n_mm_atoms):
                 f.write("".join(["%22.14e" % self._mm_position[i, 0],
                                  "%22.14e" % self._mm_position[i, 1],

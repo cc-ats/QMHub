@@ -101,7 +101,7 @@ class QMMM(object):
         system_dij_min = np.zeros(self.system.n_atoms)
         system_charge = np.zeros(self.system.n_atoms)
 
-        system_scale[self.system.mm_atoms.real_atoms.index] = self.embed.charge_scale
+        system_scale.flat[self.system.mm_atoms.real_atoms.index] = self.embed.charge_scale
 
         system_dij_min[self.system.mm_atoms.real_atoms.index] = self.system.mm_atoms.real_atoms.dij_min
 

@@ -1,5 +1,3 @@
-import numpy as np
-
 from .embed_base import EmbedBase
 
 
@@ -7,9 +5,6 @@ class EmbedEEqME(EmbedBase):
 
     EMBEDNEAR = 'EEq'
     EMBEDFAR = 'ME'
-
-    def get_near_mask(self):
-        return np.array((self.mm_atoms.dij_min <= self.qmCutoff), dtype=bool)
 
     def get_mm_charge(self):
 

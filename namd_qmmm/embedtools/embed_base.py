@@ -20,9 +20,6 @@ class EmbedBase(object):
         # Check if unit cell is complete
         self.check_unitcell(system)
 
-        # Check if MM charges need to be switched
-        self.check_qm_switching_type()
-
         # Pass system infomation
         self.qm_atoms = system.qm_atoms
         self.mm_atoms = system.mm_atoms
@@ -68,10 +65,6 @@ class EmbedBase(object):
     def check_unitcell(system):
         pass
 
-    def check_qm_switching_type(self):
-        if self.qmSwitchingType is None:
-            warnings.warn("Not switching MM charges might cause discontinuity at the cutoff boundary.")
-
     def get_qm_charge_me(self):
         self.qm_charge_me = self.qmRefCharge
 
@@ -91,15 +84,22 @@ class EmbedBase(object):
     def scale_mm_charges(self):
         """Scale external point charges."""
 
-        if self.qmSwitchingType is None:
-            self.charge_scale = np.ones(self.mm_atoms_near.n_atoms, dtype=float)
-            self.scale_deriv = np.zeros(self.mm_atoms_near.n_atoms, dtype=float)
-            self.mm_atoms_near.charge_near = self.mm_atoms_near.charge
-            self.mm_atoms_near.charge_comp = None
-        else:
-            if self.qmCutoff is None:
-                raise ValueError("We need qmCutoff here.")
+        if self.qmCutoff is None:
+            raise ValueError("We need qmCutoff here.")
 
+        if self.qmSwitchingType is None:
+            warnings.warn("Not switching MM charges might cause discontinuity at the cutoff boundary.")
+
+            cutoff = self.qmCutoff
+            dij_min = self.mm_atoms_near.dij_min
+
+            charge_scale = np.ones(self.mm_atoms_near.n_atoms, dtype=float)
+            scale_deriv = np.zeros((self.mm_atoms_near.n_atoms, 3), dtype=float)
+
+            charge_scale *= (dij_min < cutoff)
+            scale_deriv *= (dij_min < cutoff)[:, np.newaxis]
+
+        else:
             cutoff = self.qmCutoff
             cutoff2 = cutoff**2
             swdist = self.qmSwdist
@@ -143,10 +143,14 @@ class EmbedBase(object):
             charge_scale *= (dij_min < cutoff)
             scale_deriv *= (dij_min < cutoff)[:, np.newaxis]
 
-            self.charge_scale = charge_scale
-            self.scale_deriv = scale_deriv
-            self.mm_atoms_near.charge_near = self.mm_atoms_near.charge * self.charge_scale
-            self.mm_atoms_near.charge_comp = self.mm_atoms_near.charge * (1 - self.charge_scale)
+        self.charge_scale = charge_scale
+        self.scale_deriv = scale_deriv
+
+        self.mm_atoms_near.charge_near = self.mm_atoms_near.charge * self.charge_scale
+        self.mm_atoms_near.charge_comp = self.mm_atoms_near.charge * (1 - self.charge_scale)
+
+        if np.all(self.mm_atoms_near.charge_comp == 0.0):
+            self.mm_atoms_near.charge_comp = None
 
     def get_mm_charge(self):
         """Get MM atom charges."""

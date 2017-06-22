@@ -22,9 +22,15 @@ class EmbedEEqEEq(EmbedBase):
     def get_qm_charge_eeq(self):
         self.qm_charge_eeq = self.qmRefCharge
 
-    def check_qm_switching_type(self):
+    def scale_mm_charges(self):
+        """Scale external point charges."""
         if self.qmSwitchingType is not None:
             raise ValueError("Switching MM charges is not necessary here.")
+        else:
+            self.charge_scale = np.ones(self.mm_atoms_near.n_atoms, dtype=float)
+            self.scale_deriv = np.zeros((self.mm_atoms_near.n_atoms, 3), dtype=float)
+            self.mm_atoms_near.charge_near = self.mm_atoms_near.charge
+            self.mm_atoms_near.charge_comp = None
 
     def get_mm_charge(self):
 

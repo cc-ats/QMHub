@@ -8,8 +8,12 @@ method ${method}
 basis ${basis}
 ${read_guess}\
 maxscf 200
-qm_mm true
+qm_mm ${qm_mm}
 igdefield 1
+symmetry off
+sym_ignore true
+print_input false
+qmmm_print true
 skip_charge_self_interact true
 ${addparam}\
 $$end
@@ -145,7 +149,7 @@ if __name__ == "__main__":
     qmtmpl = QMTmpl('q-chem')
     print(qmtmpl.gen_qmtmpl().safe_substitute(
         jobtype='force', method='hf', basis='6-31g',
-        read_guess='scf_guess read\n',
+        read_guess='scf_guess read\n', qm_mm='true',
         addparam='chelpg true\n'))
     qmtmpl = QMTmpl('dftb+')
     print(qmtmpl.gen_qmtmpl().safe_substitute(

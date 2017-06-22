@@ -48,8 +48,10 @@ class QChem(QMBase):
 
         if self.calc_forces:
             jobtype = 'force'
+            qm_mm = 'true'
         else:
             jobtype = 'sp'
+            qm_mm = 'false'
 
         if self.read_guess:
             read_guess = 'scf_guess read\n'
@@ -67,7 +69,7 @@ class QChem(QMBase):
         with open(self.basedir + "qchem.inp", 'w') as f:
             f.write(qmtmpl.gen_qmtmpl().substitute(
                 jobtype=jobtype, method=self.method, basis=self.basis,
-                read_guess=read_guess, addparam=addparam))
+                read_guess=read_guess, qm_mm=qm_mm, addparam=addparam))
             f.write("$molecule\n")
             f.write("%d %d\n" % (self.charge, self.mult))
 

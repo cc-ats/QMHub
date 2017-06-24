@@ -67,7 +67,7 @@ class EwaldNumba(EwaldBase):
 
 
 @nb.guvectorize([(nb.float64[:], nb.float64[:, :], nb.float64[:], nb.float64[0])],
-                '(m),(n,m),(n)->()', nopython=True, target='parallel')
+                '(m),(n,m),(n)->()', nopython=True, target='parallel', cache=True)
 def get_recip_esp(rij, k, fac, recip_esp):
     kr = np.dot(k, rij)
     for n in range(len(fac)):
@@ -75,7 +75,7 @@ def get_recip_esp(rij, k, fac, recip_esp):
 
 
 @nb.guvectorize([(nb.float64[:], nb.float64[:, :], nb.float64[:], nb.float64[:])],
-                '(m),(n,m),(n)->(m)', nopython=True, target='parallel')
+                '(m),(n,m),(n)->(m)', nopython=True, target='parallel', cache=True)
 def get_recip_efield(rij, k, fac, recip_efield):
     kr = np.dot(k, rij)
     for n in range(len(fac)):
@@ -86,7 +86,7 @@ def get_recip_efield(rij, k, fac, recip_efield):
 
 
 @nb.vectorize([nb.float64(nb.float64, nb.float64)],
-              nopython=True, target='parallel')
+              nopython=True, target='parallel', cache=True)
 def get_recip_esp_near(dij, alpha):
     if dij > 0:
         return math.erf(alpha * dij) / dij
@@ -95,7 +95,7 @@ def get_recip_esp_near(dij, alpha):
 
 
 @nb.guvectorize([(nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:])],
-                '(m),(),()->(m)', nopython=True, target='parallel')
+                '(m),(),()->(m)', nopython=True, target='parallel', cache=True)
 def get_recip_efield_near(rij, dij, alpha, recip_efield_near):
     if dij[0] > 0:
         prod = (math.erf(alpha[0] * dij[0]) / dij[0]**3

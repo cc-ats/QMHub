@@ -106,9 +106,7 @@ class NAMD(MMBase):
                 n_mm2 = self.n_virt_mm_atoms // self._mm1_coeff.size
 
                 # Local indexes of MM1 and MM2 atoms the virtual point charges belong to
-                # mm_pos = mm_atoms.position.view((float, 3))
-                # virt_mm_pos = mm_atoms.position.view((float, 3))[virt_mm_indices].reshape(-1, self._mm1_coeff.size, 3)
-                mm_pos = mm_atoms[['pos_x', 'pos_y', 'pos_z']].view((float, 3))
+                mm_pos = np.column_stack([mm_atoms.pos_x, mm_atoms.pos_y, mm_atoms.pos_z])
                 virt_mm_pos = mm_pos[virt_mm_indices].reshape(-1, self._mm1_coeff.size, 3)
 
                 virt_atom_mm1_pos = (virt_mm_pos[:, 1] - virt_mm_pos[:, 0] * self._mm2_coeff[1]) / self._mm1_coeff[1]

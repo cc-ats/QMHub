@@ -1,6 +1,8 @@
 import os
+import io
 import copy
 import numpy as np
+import pandas as pd
 
 from .mmbase import MMBase
 from ..atomtools import QMAtoms, MMAtoms
@@ -37,28 +39,17 @@ class NAMD(MMBase):
 
         # Load system information
         self.n_qm_atoms, self.n_mm_atoms, self.n_atoms, self.step, self.n_steps = \
-            np.loadtxt(lines[0:1], dtype=int, unpack=True)
+            np.fromstring(lines[0], dtype=int, count=5, sep=' ')
 
         # Load QM information
-        qm_atoms = np.loadtxt(lines[1:(self.n_qm_atoms + 1)], delimiter=' ',
-                              dtype=[('position', [('x', 'f8'), ('y', 'f8'), ('z', 'f8')]),
-                                     ('element', 'S2'), ('charge', 'f8'), ('index', 'i8')])
-        qm_atoms = qm_atoms.view(np.recarray)
+        f = io.StringIO("".join(lines[1:(self.n_qm_atoms + 1)]))
+        qm_atoms = pd.read_csv(f, delimiter=' ', header=None, nrows=self.n_qm_atoms,
+                               names=['pos_x', 'pos_y', 'pos_z', 'element', 'charge', 'idx']).to_records()
 
-        self.n_virt_qm_atoms = np.count_nonzero(qm_atoms.index == -1)
-        self.n_real_qm_atoms = self.n_qm_atoms - self.n_virt_qm_atoms
-
-        # Sort QM atoms
-        self._map2sorted = np.concatenate((np.argsort(qm_atoms.index[0:self.n_real_qm_atoms]),
-                                          np.arange(self.n_real_qm_atoms, self.n_qm_atoms)))
-        self._map2unsorted = np.argsort(self._map2sorted)
-
-        qm_atoms = qm_atoms[self._map2sorted]
-        qm_element = np.core.defchararray.decode(np.char.capitalize(qm_atoms.element))
-
-        # Initialize the QMAtoms object
-        self.qm_atoms = QMAtoms(qm_atoms.position.x, qm_atoms.position.y, qm_atoms.position.z,
-                                qm_element, qm_atoms.charge, qm_atoms.index)
+        if self.n_mm_atoms > 0:
+            f = io.StringIO("".join(lines[(self.n_qm_atoms + 1):(self.n_qm_atoms + self.n_mm_atoms + 1)]))
+            mm_atoms = pd.read_csv(f, delimiter=' ', header=None, nrows=self.n_mm_atoms,
+                                   names=['pos_x', 'pos_y', 'pos_z', 'charge', 'idx', 'bonded_to_idx']).to_records()
 
         # Load unit cell information
         start = 1 + self.n_qm_atoms + self.n_mm_atoms
@@ -67,14 +58,25 @@ class NAMD(MMBase):
         self.cell_basis = cell_list[0:3]
         self.cell_origin = cell_list[3]
 
-        # Load MM information
-        if self.n_mm_atoms > 0:
-            mm_atoms = np.loadtxt(lines[(1+self.n_qm_atoms):(1+self.n_qm_atoms+self.n_mm_atoms)],
-                                  dtype=[('position', [('x', 'f8'), ('y', 'f8'), ('z', 'f8')]),
-                                         ('charge', 'f8'), ('index', 'i8'), ('bonded_to_idx', 'i8')])
-            mm_atoms = mm_atoms.view(np.recarray)
+        # Process QM atoms
+        self.n_virt_qm_atoms = np.count_nonzero(qm_atoms.idx == -1)
+        self.n_real_qm_atoms = self.n_qm_atoms - self.n_virt_qm_atoms
 
-            self.n_virt_mm_atoms = np.count_nonzero(mm_atoms.index == -1)
+        # Sort QM atoms
+        self._map2sorted = np.concatenate((np.argsort(qm_atoms.idx[0:self.n_real_qm_atoms]),
+                                          np.arange(self.n_real_qm_atoms, self.n_qm_atoms)))
+        self._map2unsorted = np.argsort(self._map2sorted)
+
+        qm_atoms = qm_atoms[self._map2sorted]
+        qm_element = np.char.capitalize(qm_atoms.element.astype(str))
+
+        # Initialize the QMAtoms object
+        self.qm_atoms = QMAtoms(qm_atoms.pos_x, qm_atoms.pos_y, qm_atoms.pos_z,
+                                qm_element, qm_atoms.charge, qm_atoms.idx)
+
+        # Process MM atoms
+        if self.n_mm_atoms > 0:
+            self.n_virt_mm_atoms = np.count_nonzero(mm_atoms.idx == -1)
             self.n_real_mm_atoms = self.n_mm_atoms - self.n_virt_mm_atoms
 
             real_mm_indices = np.s_[0:self.n_real_mm_atoms]
@@ -104,8 +106,10 @@ class NAMD(MMBase):
                 n_mm2 = self.n_virt_mm_atoms // self._mm1_coeff.size
 
                 # Local indexes of MM1 and MM2 atoms the virtual point charges belong to
-                mm_pos = mm_atoms.position.view((float, 3))
-                virt_mm_pos = mm_atoms.position.view((float, 3))[virt_mm_indices].reshape(-1, self._mm1_coeff.size, 3)
+                # mm_pos = mm_atoms.position.view((float, 3))
+                # virt_mm_pos = mm_atoms.position.view((float, 3))[virt_mm_indices].reshape(-1, self._mm1_coeff.size, 3)
+                mm_pos = mm_atoms[['pos_x', 'pos_y', 'pos_z']].view((float, 3))
+                virt_mm_pos = mm_pos[virt_mm_indices].reshape(-1, self._mm1_coeff.size, 3)
 
                 virt_atom_mm1_pos = (virt_mm_pos[:, 1] - virt_mm_pos[:, 0] * self._mm2_coeff[1]) / self._mm1_coeff[1]
                 virt_atom_mm2_pos = virt_mm_pos[:, 0]
@@ -136,8 +140,8 @@ class NAMD(MMBase):
                 np.add.at(orig_mm_charge, self._virt_atom_mm1_idx, mm1_charge)
 
             # Initialize the MMAtoms object
-            self.mm_atoms = MMAtoms(mm_atoms.position.x, mm_atoms.position.y, mm_atoms.position.z,
-                                    mm_atoms.charge, mm_atoms.index, orig_mm_charge, self.cell_basis, self.qm_atoms)
+            self.mm_atoms = MMAtoms(mm_atoms.pos_x, mm_atoms.pos_y, mm_atoms.pos_z,
+                                    mm_atoms.charge, mm_atoms.idx, orig_mm_charge, self.cell_basis, self.qm_atoms)
 
             if self.n_virt_mm_atoms > 0:
                 # Get array mask to cancel 1-2 and 1-3 interactions for coulomb

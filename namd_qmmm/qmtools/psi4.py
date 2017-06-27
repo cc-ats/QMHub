@@ -89,6 +89,7 @@ class PSI4(QMBase):
         molecule.set_multiplicity(self.mult)
         molecule.fix_com(True)
         molecule.fix_orientation(True)
+        molecule.update_geometry()
 
         mm_charge = psi4.QMMM()
 
@@ -112,16 +113,18 @@ class PSI4(QMBase):
     def run(self):
         """Run QM calculation."""
 
+        psi4.core.set_output_file(self.basedir + "psi4.out", False)
+
+        psi4_io = psi4.core.IOManager.shared_object()
+        psi4_io.set_default_path(os.path.abspath(self.basedir))
+        psi4_io.set_specific_retention(32, True)
+        psi4_io.set_specific_path(32, os.path.abspath(self.basedir))
+
         nproc = self.get_nproc()
         psi4.core.set_num_threads(nproc, True)
 
         oldpwd = os.getcwd()
         os.chdir(self.basedir)
-        psi4.core.set_output_file(self.basedir + "psi4.out", False)
-
-        # psi4_io = psi4.core.IOManager.shared_object()
-        # psi4_io.set_specific_path(32, self.basedir)
-        # psi4_io.set_specific_retention(32, True)
 
         scf_e, self.scf_wfn = psi4.energy('scf', return_wfn=True)
 

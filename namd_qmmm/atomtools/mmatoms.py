@@ -20,10 +20,6 @@ class MMAtoms(AtomBase):
         self._rij = (self._qm_atoms.position[np.newaxis, :, :]
                      - self.position[:, np.newaxis, :])
 
-        # # Apply minimum image convention
-        if not np.all(self._cell_basis == 0):
-            self._rij -= np.diagonal(self._cell_basis) * np.rint(self._rij / np.diagonal(self._cell_basis))
-
         # Get pair-wise distances
         self._dij2 = np.sum(self._rij**2, axis=2)
         self._dij = np.sqrt(self._dij2)

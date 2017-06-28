@@ -68,7 +68,11 @@ class NAMD(MMBase):
         self._map2unsorted = np.argsort(self._map2sorted)
 
         qm_atoms = qm_atoms[self._map2sorted]
-        qm_element = np.char.capitalize(qm_atoms.element.astype(str))
+
+        if np.any(np.isnan(qm_atoms.element)):
+            qm_element = np.empty(self.n_qm_atoms, dtype=str)
+        else:
+            qm_element = np.char.capitalize(qm_atoms.element.astype(str))
 
         # Initialize the QMAtoms object
         self.qm_atoms = QMAtoms(qm_atoms.pos_x, qm_atoms.pos_y, qm_atoms.pos_z,

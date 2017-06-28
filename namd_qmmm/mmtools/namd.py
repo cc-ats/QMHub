@@ -69,7 +69,7 @@ class NAMD(MMBase):
 
         qm_atoms = qm_atoms[self._map2sorted]
 
-        if np.any(np.isnan(qm_atoms.element)):
+        if np.any(qm_atoms.element.astype(str) == 'nan'):
             qm_element = np.empty(self.n_qm_atoms, dtype=str)
         else:
             qm_element = np.char.capitalize(qm_atoms.element.astype(str))
@@ -173,13 +173,13 @@ class NAMD(MMBase):
             os.remove(self.fin + ".result")
 
         qm_force = self.qm_force[self._map2unsorted]
-        qm_charge_me = self.qm_charge_me[self._map2unsorted]
+        qm_charge = self.qm_atoms.charge[self._map2unsorted]
 
         with open(self.fin + ".result", 'w') as f:
             f.write("%22.14e\n" % self.qm_energy)
             for i in range(self.n_qm_atoms):
                 f.write(" ".join(format(j, "22.14e") for j in qm_force[i])
-                        + "  " + format(qm_charge_me[i], "22.14e") + "\n")
+                        + "  " + format(qm_charge[i], "22.14e") + "\n")
             for i in range(self.n_real_mm_atoms):
                 f.write(" ".join(format(j, "22.14e") for j in self.mm_force[i]) + "\n")
 

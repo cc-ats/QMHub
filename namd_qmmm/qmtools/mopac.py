@@ -8,6 +8,8 @@ from .. import units
 from .qmbase import QMBase
 from ..qmtmpl import QMTmpl
 
+import IPython
+
 
 class MOPAC(QMBase):
 
@@ -164,9 +166,15 @@ class MOPAC(QMBase):
 
         for i in range(len(output)):
             if "GRADIENTS" in output[i]:
-                gradients = np.array([])
+                gradients = np.empty(self._n_qm_atoms * 3, dtype=float)
+
+                grad_lines = []
                 for line in output[(i + 1):(i + 1 + n_lines)]:
-                    gradients = np.append(gradients, np.fromstring(line, sep=' '))
+                    grad_lines.append(line.rstrip())
+                grad_lines = "".join(grad_lines)
+
+                for i in range(self._n_qm_atoms * 3):
+                    gradients[i] = grad_lines[(i * 18):(i * 18 + 18)]
                 break
 
         self.qm_force = -1 * gradients.reshape(self._n_qm_atoms, 3) / units.F_AU

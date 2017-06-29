@@ -8,8 +8,6 @@ from .. import units
 from .qmbase import QMBase
 from ..qmtmpl import QMTmpl
 
-import IPython
-
 
 class MOPAC(QMBase):
 

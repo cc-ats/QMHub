@@ -66,7 +66,7 @@ class EmbedBase(object):
         pass
 
     def get_qm_charge_me(self):
-        self.qm_charge_me = self.qmRefCharge
+        self.qm_charge_me = self.qm_atoms.charge
 
     def get_qm_charge_eeq(self):
         self.qm_charge_eeq = None

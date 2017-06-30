@@ -20,7 +20,10 @@ class EmbedEEqEEq(EmbedBase):
         self.qm_charge_me = np.zeros(self.qm_atoms.n_atoms)
 
     def get_qm_charge_eeq(self):
-        self.qm_charge_eeq = self.qmRefCharge
+        if self.qmRefCharge:
+            self.qm_charge_eeq = self.qmRefCharge
+        else:
+            raise NotImplementedError()
 
     def scale_mm_charges(self):
         """Scale external point charges."""

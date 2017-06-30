@@ -10,7 +10,7 @@ from . import qmtools
 class QMMM(object):
     def __init__(self, fin, qmSoftware, qmCharge, qmMult,
                  qmEmbedNear=None, qmEmbedFar=None,
-                 qmElement=None, qmRefCharge='ff',
+                 qmElement=None, qmRefCharge=True,
                  qmSwitchingType='shift',
                  qmCutoff=None, qmSwdist=None,
                  qmReadGuess=False, postProc=False):
@@ -32,13 +32,6 @@ class QMMM(object):
 
         # Initialize the system
         self.system = mmtools.NAMD(fin)
-
-        # Set the refernce charges for QM atoms
-        if not isinstance(self.qmRefCharge, np.ndarray):
-            if self.qmRefCharge == 'ff':
-                self.qmRefCharge = self.system.qm_atoms.charge
-            elif isinstance(self.qmRefCharge, list):
-                self.qmRefCharge = np.asarray(self.qmRefCharge)
 
         # Set up embedding scheme
         self.embed = embedtools.choose_embedtool(self.qmEmbedNear, self.qmEmbedFar)(

@@ -21,7 +21,7 @@ class EmbedEEqEEq(EmbedBase):
 
     def get_qm_charge_eeq(self):
         if self.qmRefCharge:
-            self.qm_charge_eeq = self.qmRefCharge
+            self.qm_charge_eeq = self.qm_atoms.charge
         else:
             raise NotImplementedError()
 

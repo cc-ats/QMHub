@@ -116,9 +116,9 @@ class PSI4(QMBase):
         psi4.core.set_output_file(self.basedir + "psi4.out", False)
 
         psi4_io = psi4.core.IOManager.shared_object()
-        psi4_io.set_default_path(os.path.abspath(self.basedir))
+        psi4_io.set_default_path(self.basedir)
         psi4_io.set_specific_retention(32, True)
-        psi4_io.set_specific_path(32, os.path.abspath(self.basedir))
+        psi4_io.set_specific_path(32, self.basedir)
 
         nproc = self.get_nproc()
         psi4.core.set_num_threads(nproc, True)

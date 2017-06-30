@@ -38,9 +38,9 @@ class QMMM(object):
             self.system, self.qmRefCharge, self.qmSwitchingType, self.qmCutoff, self.qmSwdist)
 
         # Initialize the QM system
-        basedir = os.path.dirname(fin) + "/"
+        self.basedir = os.path.dirname(os.path.abspath(fin)) + "/"
         self.qm = qmtools.choose_qmtool(self.qmSoftware)(
-            basedir, self.embed, self.qmCharge, self.qmMult, self.qmElement)
+            self.basedir, self.embed, self.qmCharge, self.qmMult, self.qmElement)
 
         if self.qmReadGuess and not self.system.step == 0:
             self.qm.read_guess = True
@@ -102,6 +102,6 @@ class QMMM(object):
         system_charge[self.embed.mm_atoms_near.real_atoms.index] = self.embed.mm_atoms_near.real_atoms.charge_near
         system_charge[self.system.qm_atoms.real_atoms.index] = self.system.qm_atoms.real_atoms.charge
 
-        np.save(self.qm.basedir + "system_scale", system_scale)
-        np.save(self.qm.basedir + "system_dij_min", system_dij_min)
-        np.save(self.qm.basedir + "system_charge", system_charge)
+        np.save(self.basedir + "system_scale", system_scale)
+        np.save(self.basedir + "system_dij_min", system_dij_min)
+        np.save(self.basedir + "system_charge", system_charge)

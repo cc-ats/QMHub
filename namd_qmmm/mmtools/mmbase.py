@@ -50,12 +50,12 @@ class MMBase(object):
         if embed.mm_atoms_near.charge_me is not None:
 
             mm_esp_me = embed.get_mm_esp_me()
+            mm_efield_me = embed.get_mm_efield_me()
             mm_charge = embed.mm_atoms_near.charge_me
-            coulomb_deriv = embed.coulomb_deriv
 
             energy = mm_charge[:, np.newaxis] * mm_esp_me
 
-            force = -1 * energy[:, :, np.newaxis] * coulomb_deriv
+            force = -1 * mm_charge[:, np.newaxis, np.newaxis] * mm_efield_me
 
             embed.mm_atoms_near.force += force.sum(axis=1)
             self.qm_atoms.force -= force.sum(axis=0)

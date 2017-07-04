@@ -4,7 +4,7 @@ import numpy as np
 
 class EwaldBase(object):
 
-    def __init__(self, cell_basis, cutoff, tolerance=1e-4, alpha=None, kmax=None):
+    def __init__(self, cell_basis, cutoff, tolerance=1e-6, alpha=None, kmax=None):
 
         self.cell_basis = cell_basis
         self.cutoff = cutoff

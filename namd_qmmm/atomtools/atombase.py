@@ -33,6 +33,14 @@ class AtomBase(object):
 
         return self.atoms[item]
 
+    def __getattr__(self, attr):
+        if attr == "_elec":
+            raise AttributeError()
+        return self._get_property(getattr(self._elec, attr))
+
+    def __dir__(self):
+        return dir(type(self)) + list(self.__dict__.keys()) + [i for i in self._elec.__dir__() if not i.startswith('_')]
+
     @property
     def atoms(self):
         return self._get_property(self._atoms)
@@ -77,25 +85,19 @@ class AtomBase(object):
     def force(self, force):
         self._set_property(self._force, force)
 
-    def _get_property(self, name, indices=None):
+    def _get_property(self, name):
         """Get property."""
-        if indices is None:
-            indices = self._indices
-
         if self._atom_mask is None:
-            return name[indices]
+            return name[self._indices]
         else:
-            return name[indices][self._atom_mask[indices]]
+            return name[self._indices][self._atom_mask[self._indices]]
 
-    def _set_property(self, name, value, indices=None):
+    def _set_property(self, name, value):
         """Set property."""
-        if indices is None:
-            indices = self._indices
-
         if self._atom_mask is None:
-            name[indices] = value
+            name[self._indices] = value
         else:
-            name[indices][self._atom_mask[indices]] = value
+            name[self._indices][self._atom_mask[self._indices]] = value
 
     def slice_atoms(self, indices):
         """Slice atoms."""

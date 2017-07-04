@@ -211,7 +211,7 @@ class EmbedBase(object):
     @property
     def ewald_potential_qmqm(self):
         if self._ewald_potential_qmqm is None:
-            self._ewald_potential_qmqm = 0.5 * units.KE * (self.ewaldsum.get_recip_esp(
+            self._ewald_potential_qmqm = units.KE * (self.ewaldsum.get_recip_esp(
                 rij=self.qm_atoms.rij, dij=self.qm_atoms.dij, self_energy=True) -
                 self.ewaldsum.get_recip_esp_near(rij=self.qm_atoms.rij, dij=self.qm_atoms.dij))
         return self._ewald_potential_qmqm
@@ -232,7 +232,7 @@ class EmbedBase(object):
     @property
     def ewald_field_qmqm(self):
         if self._ewald_field_qmqm is None:
-            self._ewald_field_qmqm = 0.5 * units.KE * (self.ewaldsum.get_recip_efield(
+            self._ewald_field_qmqm = units.KE * (self.ewaldsum.get_recip_efield(
                 rij=self.qm_atoms.rij, dij=self.qm_atoms.dij) -
                 self.ewaldsum.get_recip_efield_near(rij=self.qm_atoms.rij, dij=self.qm_atoms.dij))
         return self._ewald_field_qmqm

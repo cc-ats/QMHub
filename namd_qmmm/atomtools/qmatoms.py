@@ -1,24 +1,19 @@
 import numpy as np
 
 from .atombase import AtomBase
+from ..electools import ElecQMQM
 
 
 class QMAtoms(AtomBase):
     """Class to hold QM atoms."""
 
-    def __init__(self, x, y, z, element, charge, index):
+    def __init__(self, x, y, z, element, charge, index, cell_basis):
 
         super(QMAtoms, self).__init__(x, y, z, charge, index)
 
         self._atoms.element = element
 
-        # Get pair-wise vectors
-        self._rij = (self.position[np.newaxis, :, :]
-                     - self.position[:, np.newaxis, :])
-
-        # Get pair-wise distances
-        self._dij2 = np.sum(self._rij**2, axis=2)
-        self._dij = np.sqrt(self._dij2)
+        self._elec = ElecQMQM(self, cell_basis)
 
         # Set initial QM energy and charges
         self._qm_energy = 0.0
@@ -32,18 +27,6 @@ class QMAtoms(AtomBase):
     @element.setter
     def element(self, element):
         self._atoms.element = element
-
-    @property
-    def rij(self):
-        return self._get_property(self._rij)
-
-    @property
-    def dij2(self):
-        return self._get_property(self._dij2)
-
-    @property
-    def dij(self):
-        return self._get_property(self._dij)
 
     @property
     def qm_energy(self):

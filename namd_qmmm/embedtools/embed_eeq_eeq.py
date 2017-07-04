@@ -13,9 +13,6 @@ class EmbedEEqEEq(EmbedBase):
         if system.n_atoms != system.n_real_qm_atoms + system.n_real_mm_atoms:
             raise ValueError("Unit cell is not complete.")
 
-    def get_near_mask(self):
-        return np.array((self.mm_atoms.dij_min <= self.ewald_cutoff), dtype=bool)
-
     def get_qm_charge_me(self):
         self.qm_charge_me = np.zeros(self.qm_atoms.n_atoms)
 

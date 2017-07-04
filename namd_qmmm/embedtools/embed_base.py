@@ -46,8 +46,8 @@ class EmbedBase(object):
 
         # Get QM charges for Mechanical Embedding
         self.get_qm_charge_me()
-        self.qm_atoms.charge_me = self.qm_charge_me
 
+        # Get QM charges for Electrostatic Embedding with Atomic Charges
         self.get_qm_charge_eeq()
 
         # Split MM atoms

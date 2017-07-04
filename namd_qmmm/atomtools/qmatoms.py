@@ -18,7 +18,6 @@ class QMAtoms(AtomBase):
         # Set initial QM energy and charges
         self._qm_energy = 0.0
         self._qm_charge = np.zeros(self.n_atoms)
-        self._charge_me = np.zeros(self.n_atoms)
 
     @property
     def element(self):
@@ -43,11 +42,3 @@ class QMAtoms(AtomBase):
     @qm_charge.setter
     def qm_charge(self, charge):
         self._set_property(self._qm_charge, charge)
-
-    @property
-    def charge_me(self):
-        return self._get_property(self._charge_me)
-
-    @charge_me.setter
-    def charge_me(self, charge):
-        self._set_property(self._charge_me, charge)

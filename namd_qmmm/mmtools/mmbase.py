@@ -14,10 +14,6 @@ class MMBase(object):
         return self.qm_atoms.qm_charge
 
     @property
-    def qm_charge_me(self):
-        return self.qm_atoms.charge_me
-
-    @property
     def qm_force(self):
         return self.qm_atoms.force
 

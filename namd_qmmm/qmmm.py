@@ -99,7 +99,7 @@ class QMMM(object):
         system_dij_min[self.system.mm_atoms.real_atoms.index] = self.system.mm_atoms.real_atoms.dij_min
 
         system_charge[self.system.mm_atoms.real_atoms.index] = self.system.mm_atoms.real_atoms.charge
-        system_charge[self.embed.mm_atoms_near.real_atoms.index] = self.embed.mm_atoms_near.real_atoms.charge_near
+        system_charge.flat[self.embed.mm_atoms_near.real_atoms.index] = self.embed.mm_atoms_near.charge_near
         system_charge[self.system.qm_atoms.real_atoms.index] = self.system.qm_atoms.real_atoms.charge
 
         np.save(self.basedir + "system_scale", system_scale)

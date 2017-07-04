@@ -58,6 +58,9 @@ class NAMD(MMBase):
         self.cell_basis = cell_list[0:3]
         self.cell_origin = cell_list[3]
 
+        if np.all(self.cell_basis == 0.0):
+            self.cell_basis = None
+
         # Process QM atoms
         self.n_virt_qm_atoms = np.count_nonzero(qm_atoms.idx == -1)
         self.n_real_qm_atoms = self.n_qm_atoms - self.n_virt_qm_atoms

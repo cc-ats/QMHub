@@ -72,7 +72,7 @@ class ElecQMMM(object):
     def dij_min(self):
         if self._dij_min is None:
             self._dij_min = np.sqrt(self.dij_min2)
-        return self._dij_min2
+        return self._dij_min
 
     @property
     def coulomb_esp(self):

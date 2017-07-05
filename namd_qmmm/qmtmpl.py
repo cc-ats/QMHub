@@ -98,7 +98,7 @@ orca_tmpl = """\
 """
 
 mopac_tmpl = """\
-${method} XYZ T=2M 1SCF SCFCRT=1.D-7 AUX(PRECISION=9) ${calc_forces}QMMM NOMM CHARGE=${charge}${addparam} THREADS=${nproc}
+${method} XYZ T=2M 1SCF SCFCRT=1.D-7 AUX(PRECISION=9) ${qmmm}${calc_forces}NOMM CHARGE=${charge}${addparam} THREADS=${nproc}
 """
 
 

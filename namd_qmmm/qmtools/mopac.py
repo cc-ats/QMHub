@@ -68,6 +68,11 @@ class MOPAC(QMBase):
 
         qmtmpl = QMTmpl(self.QMTOOL)
 
+        if self._qm_esp is not None:
+            qmmm = 'QMMM '
+        else:
+            qmmm = ''
+
         if self.calc_forces:
             calc_forces = 'GRAD '
         else:
@@ -89,7 +94,8 @@ class MOPAC(QMBase):
         with open(os.path.join(path, "mopac.mop"), 'w') as f:
             f.write(qmtmpl.gen_qmtmpl().substitute(
                 method=self.method, charge=self.charge,
-                calc_forces=calc_forces, addparam=addparam, nproc=nproc))
+                qmmm=qmmm, calc_forces=calc_forces,
+                addparam=addparam, nproc=nproc))
             f.write("NAMD QM/MM\n\n")
             for i in range(self._n_qm_atoms):
                 f.write(" ".join(["%6s" % self._qm_element[i],
@@ -97,16 +103,17 @@ class MOPAC(QMBase):
                                   "%22.14e 1" % self._qm_position[i, 1],
                                   "%22.14e 1" % self._qm_position[i, 2], "\n"]))
 
-        with open(os.path.join(path, "mol.in"), 'w') as f:
-            f.write("\n")
-            f.write("%d %d\n" % (self._n_real_qm_atoms, self._n_virt_qm_atoms))
+        if self._qm_esp is not None:
+            with open(os.path.join(path, "mol.in"), 'w') as f:
+                f.write("\n")
+                f.write("%d %d\n" % (self._n_real_qm_atoms, self._n_virt_qm_atoms))
 
-            for i in range(self._n_qm_atoms):
-                f.write(" ".join(["%6s" % self._qm_element[i],
-                                  "%22.14e" % self._qm_position[i, 0],
-                                  "%22.14e" % self._qm_position[i, 1],
-                                  "%22.14e" % self._qm_position[i, 2],
-                                  " %22.14e" % (self._qm_esp[i]), "\n"]))
+                for i in range(self._n_qm_atoms):
+                    f.write(" ".join(["%6s" % self._qm_element[i],
+                                    "%22.14e" % self._qm_position[i, 0],
+                                    "%22.14e" % self._qm_position[i, 1],
+                                    "%22.14e" % self._qm_position[i, 2],
+                                    " %22.14e" % (self._qm_esp[i]), "\n"]))
 
     def gen_cmdline(self):
         """Generate commandline for QM calculation."""

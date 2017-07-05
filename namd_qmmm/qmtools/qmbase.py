@@ -119,6 +119,6 @@ class QMBase(object):
         if not hasattr(self, 'qm_charge'):
             self.get_qm_charge()
 
-        self.fij_far_qmqm = -1 * self._qmqm_efield_far * self.qm_charge[np.newaxis, :, np.newaxis] / units.F_AU
+        self.fij_far_qmqm = -0.5 * self._qmqm_efield_far * self.qm_charge[np.newaxis, :, np.newaxis] / units.F_AU
 
         return self.fij_far_qmqm

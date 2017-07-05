@@ -30,20 +30,25 @@ class MOPAC(QMBase):
         self._n_mm_atoms = self.mm_atoms_near.n_atoms
         self._mm_position = self.mm_atoms_near.position
 
+        self._qmmm_esp_near = embed.qmmm_esp_near
         self._qmmm_efield_near = embed.qmmm_efield_near
+
+        self._qmmm_esp_far = embed.qmmm_esp_far
         self._qmmm_efield_far = embed.qmmm_efield_far
+
+        self._qmqm_esp_far = embed.qmqm_esp_far
         self._qmqm_efield_far = embed.qmqm_efield_far
 
         self._qm_esp = np.zeros(self._n_qm_atoms, dtype=float)
 
-        if self._qmmm_efield_near is not None:
-            self._qm_esp += embed.qmmm_esp_near.sum(axis=0)
+        if self._qmmm_esp_near is not None:
+            self._qm_esp += self._qmmm_esp_near.sum(axis=0)
 
-        if self._qmmm_efield_far is not None:
-            self._qm_esp += embed.qmmm_esp_far.sum(axis=0)
+        if self._qmmm_esp_far is not None:
+            self._qm_esp += self._qmmm_esp_far.sum(axis=0)
 
-        if self._qmqm_efield_far is not None:
-            self._qm_esp += embed.qmqm_esp_far.sum(axis=0)
+        if self._qmqm_esp_far is not None:
+            self._qm_esp += self._qmqm_esp_far.sum(axis=0)
 
         if np.all(self._qm_esp == 0.0):
             self._qm_esp = None
@@ -151,6 +156,12 @@ class MOPAC(QMBase):
             if "TOTAL_ENERGY" in line:
                 self.qm_energy = float(line[17:].replace("D", "E")) / units.EH_TO_EV
                 break
+
+        if self._qmqm_esp_far is not None:
+            if not hasattr(self, 'qm_charge'):
+                self.get_qm_charge()
+
+            self.qm_energy -= 0.5 * (self._qmqm_esp_far * self.qm_charge[np.newaxis, :]).sum() / units.E_AU
 
         return self.qm_energy
 

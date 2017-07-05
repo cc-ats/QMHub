@@ -34,9 +34,6 @@ class EmbedBase(object):
         self._qmqm_esp_far = None
         self._qmqm_efield_far = None
 
-        # Get QM charges for Mechanical Embedding
-        self.get_qm_charge_me()
-
         # Get QM charges for Electrostatic Embedding with Atomic Charges
         self.get_qm_charge_eeq()
 
@@ -52,9 +49,6 @@ class EmbedBase(object):
     @staticmethod
     def check_unitcell(system):
         pass
-
-    def get_qm_charge_me(self):
-        self.qm_charge_me = self.qm_atoms.charge
 
     def get_qm_charge_eeq(self):
         self.qm_charge_eeq = None
@@ -147,21 +141,20 @@ class EmbedBase(object):
         self.mm_atoms_near.charge_eeq = None
         self.mm_atoms_near.charge_eed = None
         self.mm_atoms_far.charge_eeq = None
-        self.mm_atoms_far.charge_eed = None
 
     def get_mm_esp_me(self):
 
         coulomb_esp = self.mm_atoms_near.coulomb_esp
         coulomb_mask = self.mm_atoms_near.coulomb_mask
 
-        return coulomb_esp * coulomb_mask * self.qm_charge_me
+        return coulomb_esp * coulomb_mask * self.qm_atoms.charge
 
     def get_mm_efield_me(self):
 
         coulomb_efield = self.mm_atoms_near.coulomb_efield
         coulomb_mask = self.mm_atoms_near.coulomb_mask
 
-        return coulomb_efield * coulomb_mask[:, :, np.newaxis] * self.qm_charge_me[np.newaxis, :,  np.newaxis]
+        return coulomb_efield * coulomb_mask[:, :, np.newaxis] * self.qm_atoms.charge[np.newaxis, :,  np.newaxis]
 
     def get_mm_esp_eeq(self):
 
@@ -206,7 +199,7 @@ class EmbedBase(object):
                 efield[near_real_mask] -= self.mm_atoms_near.real_atoms.coulomb_efield
 
                 self._qmmm_efield_far = efield * self.mm_atoms_far.charge_eeq[:, np.newaxis, np.newaxis]
-                
+
         return self._qmmm_efield_far
 
     @property

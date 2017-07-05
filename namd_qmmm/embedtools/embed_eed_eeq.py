@@ -16,9 +16,6 @@ class EmbedEEdEEq(EmbedBase):
     def get_near_mask(self):
         return np.array((self.mm_atoms.dij_min <= self.ewald_cutoff), dtype=bool)
 
-    def get_qm_charge_me(self):
-        self.qm_charge_me = np.zeros(self.qm_atoms.n_atoms)
-
     def get_qm_charge_eeq(self):
         if self.qmRefCharge:
             self.qm_charge_eeq = self.qm_atoms.charge

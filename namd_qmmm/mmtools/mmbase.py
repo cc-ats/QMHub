@@ -10,20 +10,12 @@ class MMBase(object):
         return self.qm_atoms.qm_energy
 
     @property
-    def qm_charge(self):
-        return self.qm_atoms.qm_charge
-
-    @property
     def qm_force(self):
         return self.qm_atoms.force
 
     @property
     def mm_force(self):
         return self.mm_atoms.force
-
-    @property
-    def mm_esp_eed(self):
-        return self.mm_atoms.esp_eed
 
     @staticmethod
     def parse_output(qm):
@@ -40,7 +32,8 @@ class MMBase(object):
             self.corr_scaling(embed)
             self.corr_virt_mm_atoms()
 
-    def calc_me(self, embed):
+    @staticmethod
+    def calc_me(embed):
         """Calculate forces and energy for mechanical embedding."""
 
         if embed.mm_atoms_near.charge_me is not None:
@@ -54,11 +47,27 @@ class MMBase(object):
             force = -1 * mm_charge[:, np.newaxis, np.newaxis] * mm_efield_me
 
             embed.mm_atoms_near.force += force.sum(axis=1)
-            self.qm_atoms.force -= force.sum(axis=0)
+            embed.qm_atoms.force -= force.sum(axis=0)
 
-            self.qm_atoms.qm_energy += energy.sum()
+            embed.qm_atoms.qm_energy += energy.sum()
 
-    def corr_scaling(self, embed):
+        # Cancel QM-MM and QM-QM image interactions in MM package
+        if embed.mm_atoms_far.charge_eeq is not None:
+
+            energy = (embed.qmmm_esp_far.sum(axis=0) + 0.5 * embed.qmqm_esp_far.sum(axis=0)) * embed.qm_atoms.charge
+            force_qmmm = -1 * embed.qmmm_efield_far * embed.qm_atoms.charge[np.newaxis, :, np.newaxis]
+            force_qmqm = -0.5 * embed.qmqm_efield_far * embed.qm_atoms.charge[np.newaxis, :, np.newaxis]
+
+            embed.qm_atoms.qm_energy -= energy.sum()
+
+            embed.mm_atoms_far.force -= force_qmmm.sum(axis=1)
+            embed.qm_atoms.force += force_qmmm.sum(axis=0)
+
+            embed.qm_atoms.force -= force_qmqm.sum(axis=1)
+            embed.qm_atoms.force += force_qmqm.sum(axis=0)
+
+    @staticmethod
+    def corr_scaling(embed):
         """Correct forces due to charge scaling."""
 
         if embed.qmSwitchingType is not None:
@@ -73,7 +82,7 @@ class MMBase(object):
             force_corr = -1 * energy[:, np.newaxis] * scale_deriv
 
             embed.mm_atoms_near.force -= force_corr
-            np.add.at(self.qm_atoms.force, dij_min_j, force_corr)
+            np.add.at(embed.qm_atoms.force, dij_min_j, force_corr)
 
     def corr_virt_mm_atoms(self):
         """Correct forces due to virtual MM charges."""

@@ -15,6 +15,7 @@ sym_ignore true
 print_input false
 qmmm_print true
 skip_charge_self_interact true
+${esp_and_asp}
 ${addparam}\
 $$end
 

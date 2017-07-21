@@ -1,10 +1,10 @@
 import importlib
 
 QMCLASS = {'q-chem': "QChem", 'dftb+': "DFTB", 'orca': "ORCA",
-           'mopac': "MOPAC", 'psi4': "PSI4"}
+           'mopac': "MOPAC", 'psi4': "PSI4", 'sqm': "SQM"}
 
 QMMODULE = {'QChem': ".qchem", 'DFTB': ".dftb", 'ORCA': ".orca",
-            'MOPAC': ".mopac", 'PSI4': ".psi4"}
+            'MOPAC': ".mopac", 'PSI4': ".psi4", 'SQM': ".sqm"}
 
 
 def choose_qmtool(qmSoftware):
@@ -12,7 +12,7 @@ def choose_qmtool(qmSoftware):
         qm_class = QMCLASS[qmSoftware.lower()]
         qm_module = QMMODULE[qm_class]
     except:
-        raise ValueError("Please choose 'q-chem', 'dftb+', 'orca', 'mopac', or 'psi4' for qmSoftware.")
+        raise ValueError("Please choose 'q-chem', 'dftb+', 'orca', 'mopac', 'psi4', or 'sqm' for qmSoftware.")
 
     qmtool = importlib.import_module(qm_module, package='namd_qmmm.qmtools').__getattribute__(qm_class)
 

@@ -15,7 +15,7 @@ sym_ignore true
 print_input false
 qmmm_print true
 skip_charge_self_interact true
-${esp_and_asp}
+${esp_and_asp}\
 ${addparam}\
 $$end
 
@@ -90,6 +90,15 @@ MaxAngularMomentum = dict([('Br', 'd'), ('C', 'p'), ('Ca', 'p'),
                            ('N', 'p'), ('Na', 'p'), ('O', 'p'),
                            ('P', 'd'), ('S', 'd'), ('Zn', 'd')])
 
+Elements = ["None", 'H', 'He',
+            'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne',
+            'Na', 'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar',
+            'K', 'Ca', 'Sc', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn', 'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr',
+            'Rb', 'Sr', 'Y', 'Zr', 'Nb', 'Mo', 'Tc', 'Ru', 'Rh', 'Pd', 'Ag', 'Cd', 'In', 'Sn', 'Sb', 'Te', 'I', 'Xe',
+            'Cs', 'Ba', 'La', 'Ce', 'Pr', 'Nd', 'Pm', 'Sm', 'Eu', 'Gd', 'Tb', 'Dy', 'Ho', 'Er', 'Tm', 'Yb',
+            'Lu', 'Hf', 'Ta', 'W', 'Re', 'Os', 'Ir', 'Pt', 'Au', 'Hg', 'Tl', 'Pb', 'Bi', 'Po', 'At', 'Rn',
+            'Fr', 'Ra', 'Ac', 'Th', 'Pa', 'U', 'Np', 'Pu', 'Am', 'Cm', 'Bk', 'Cf', 'Es', 'Fm', 'Md', 'No', 'Lr', 'Rf', 'Db', 'Sg', 'Bh', 'Hs', 'Mt']
+
 orca_tmpl = """\
 ! ${method} ${basis} Grid4 TightSCF NOFINALGRID ${calc_forces}${read_guess}${addparam}KeepDens
 %output PrintLevel Mini Print[ P_Mulliken ] 1 Print[P_AtCharges_M] 1 end
@@ -99,9 +108,22 @@ orca_tmpl = """\
 """
 
 mopac_tmpl = """\
-${method} XYZ T=2M 1SCF SCFCRT=1.D-7 AUX(PRECISION=9) ${qmmm}${calc_forces}NOMM CHARGE=${charge}${addparam} THREADS=${nproc}
+${method} XYZ T=2M 1SCF SCFCRT=1.D-7 AUX(PRECISION=9) ${qm_mm}${calc_forces}NOMM CHARGE=${charge}${addparam} THREADS=${nproc}
 """
 
+sqm_tmpl = """\
+&qmmm
+ qm_theory= '${method}',
+ qmcharge = ${charge},
+ spin     = ${mult},
+ maxcyc   = 0,
+ qmmm_int = ${qm_mm},
+ verbosity= ${verbosity},
+${skfpath}\
+${addparam}\
+ /
+
+"""
 
 class QMTmpl(object):
     """Input templates for QM softwares."""
@@ -119,7 +141,7 @@ class QMTmpl(object):
         if qmSoftware is not None:
             self.qmSoftware = qmSoftware
         else:
-            raise ValueError("Please choose 'q-chem', 'dftb+', 'orca', 'mopac' for qmSoftware.")
+            raise ValueError("Please choose 'q-chem', 'dftb+', 'orca', 'mopac', or 'sqm' for qmSoftware.")
 
         if self.qmSoftware.lower() == 'q-chem':
             pass
@@ -131,8 +153,10 @@ class QMTmpl(object):
             pass
         elif self.qmSoftware.lower() == 'mopac':
             pass
+        elif self.qmSoftware.lower() == 'sqm':
+            self.Elements = Elements
         else:
-            raise ValueError("Only 'q-chem', 'dftb+', 'orca', and 'mopac' are supported at the moment.")
+            raise ValueError("Only 'q-chem', 'dftb+', 'orca', 'mopac', and 'sqm' are supported at the moment.")
 
     def gen_qmtmpl(self):
         """Generare input templates for QM softwares."""
@@ -144,6 +168,8 @@ class QMTmpl(object):
             return Template(orca_tmpl)
         elif self.qmSoftware.lower() == 'mopac':
             return Template(mopac_tmpl)
+        elif self.qmSoftware.lower() == 'sqm':
+            return Template(sqm_tmpl)
 
 
 if __name__ == "__main__":
@@ -151,7 +177,7 @@ if __name__ == "__main__":
     print(qmtmpl.gen_qmtmpl().safe_substitute(
         jobtype='force', method='hf', basis='6-31g',
         read_guess='scf_guess read\n', qm_mm='true',
-        addparam='chelpg true\n'))
+        esp_and_asp='', addparam='chelpg true\n'))
     qmtmpl = QMTmpl('dftb+')
     print(qmtmpl.gen_qmtmpl().safe_substitute(
         charge=0, n_mm_atoms=1000, read_guess='No',
@@ -164,5 +190,10 @@ if __name__ == "__main__":
         addparam='CHELPG ', nproc='8'))
     qmtmpl = QMTmpl('mopac')
     print(qmtmpl.gen_qmtmpl().safe_substitute(
-        method='PM7', calc_forces='GRAD ',
+        method='PM7', qm_mm='QMMM ', calc_forces='GRAD ',
         charge=0, addparam=' ESP', nproc='8'))
+    qmtmpl = QMTmpl('sqm')
+    print(qmtmpl.gen_qmtmpl().safe_substitute(
+        method='DFTB3', verbosity=4,
+        charge=0, mult=1, qm_mm=0,
+        skfpath='', addparam=''))

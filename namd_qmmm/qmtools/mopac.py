@@ -69,9 +69,9 @@ class MOPAC(QMBase):
         qmtmpl = QMTmpl(self.QMTOOL)
 
         if self._qm_esp is not None:
-            qmmm = 'QMMM '
+            qm_mm = 'QMMM '
         else:
-            qmmm = ''
+            qm_mm = ''
 
         if self.calc_forces:
             calc_forces = 'GRAD '
@@ -94,7 +94,7 @@ class MOPAC(QMBase):
         with open(os.path.join(path, "mopac.mop"), 'w') as f:
             f.write(qmtmpl.gen_qmtmpl().substitute(
                 method=self.method, charge=self.charge,
-                qmmm=qmmm, calc_forces=calc_forces,
+                qm_mm=qm_mm, calc_forces=calc_forces,
                 addparam=addparam, nproc=nproc))
             f.write("NAMD QM/MM\n\n")
             for i in range(self._n_qm_atoms):

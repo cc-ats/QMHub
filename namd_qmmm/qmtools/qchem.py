@@ -71,7 +71,7 @@ class QChem(QMBase):
         qmtmpl = QMTmpl(self.QMTOOL)
 
         if self._qm_esp is not None:
-            esp_and_asp = 'esp_and_asp true\nesp_charges true\n'
+            esp_and_asp = 'esp_and_asp true\nesp_charges 3\n'
         else:
             esp_and_asp = ''
 

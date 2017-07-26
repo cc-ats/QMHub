@@ -159,11 +159,9 @@ class NAMD(MMBase):
                     coulomb_mask[mm1_local_idx[i], qm_host_local_idx[i]] = False
 
                 # Cancel 1-3 interactions between virtual atoms and QM hosts
-                start = 0
+                virt_atom_mm1_idx = np.repeat(self._virt_atom_mm1_idx, self._mm1_coeff.size)
                 for i in range(self.n_virt_qm_atoms):
-                    stop = start + mm2_local_idx[i].size * self._mm1_coeff.size
-                    coulomb_mask[virt_mm_indices][start:stop, qm_host_local_idx[i]] = False
-                    start = stop
+                    coulomb_mask[virt_mm_indices][virt_atom_mm1_idx == mm1_local_idx[i], qm_host_local_idx[i]] = False
 
                 self.mm_atoms.coulomb_mask = coulomb_mask
 

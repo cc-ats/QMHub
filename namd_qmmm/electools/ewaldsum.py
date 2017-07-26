@@ -4,7 +4,7 @@ import numpy as np
 
 class EwaldSum(object):
 
-    def __init__(self, cell_basis, tolerance=1e-6, order='spherical'):
+    def __init__(self, cell_basis, tolerance=1e-4, order='spherical'):
 
         self.cell_basis = cell_basis
         self.tolerance = tolerance

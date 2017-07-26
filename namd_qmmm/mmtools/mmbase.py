@@ -30,7 +30,6 @@ class MMBase(object):
         if self.qm_energy != 0.0:
             self.calc_me(embed)
             self.corr_scaling(embed)
-            self.corr_virt_mm_atoms()
 
     @staticmethod
     def calc_me(embed):
@@ -83,18 +82,3 @@ class MMBase(object):
 
             embed.mm_atoms_near.force -= force_corr
             np.add.at(embed.qm_atoms.force, dij_min_j, force_corr)
-
-    def corr_virt_mm_atoms(self):
-        """Correct forces due to virtual MM charges."""
-
-        if self.n_virt_mm_atoms > 0:
-
-            virt_force = self.mm_atoms.virt_atoms.force.reshape(-1, self._mm1_coeff.size, 3)
-
-            mm1_corr_force = (virt_force * self._mm1_coeff[:, np.newaxis]).sum(axis=1)
-            mm2_corr_force = (virt_force * self._mm2_coeff[:, np.newaxis]).sum(axis=1)
-
-            np.add.at(self.mm_atoms.force, self._virt_atom_mm1_idx, mm1_corr_force)
-            np.add.at(self.mm_atoms.force, self._virt_atom_mm2_idx, mm2_corr_force)
-
-            self.mm_atoms.virt_atoms.force[:] = 0.

@@ -1,0 +1,449 @@
+diff -Naur src/ComputeQM.C src-modified/ComputeQM.C
+--- src/ComputeQM.C	2017-07-25 01:37:05.000000000 -0500
++++ src-modified/ComputeQM.C	2017-07-25 17:00:54.175871798 -0500
+@@ -638,7 +638,7 @@
+     numQMGrps = molPtr->get_qmNumGrps();
+     qmGrpIDArray = molPtr->get_qmGrpID() ;
+     
+-    cutoff = simParams->cutoff;
++    cutoff = simParams->qmCutoff;
+     
+     customPC = simParams->qmCustomPCSel;
+     if (customPC) {
+@@ -2219,7 +2219,7 @@
+             msg->PMEEwaldCoefficient = simParams->PMEEwaldCoefficient ;
+         msg->switching = simParams->qmPCSwitchOn;
+         msg->switchType = simParams->qmPCSwitchType;
+-        msg->cutoff = simParams->cutoff;
++        msg->cutoff = simParams->qmCutoff;
+         msg->swdist = simParams->switchingDist;
+         msg->pcScheme = simParams->qmPCScheme;
+         msg->qmAtmChrgMode = simParams->qmChrgMode;
+@@ -4418,13 +4418,12 @@
+     outputFileName = inputFileName ;
+     outputFileName.append(".result") ;
+     
+-    int numPntChrgs = 0;
+-    for (int i=0; i<msg->numAllPntChrgs; i++ ) {
+-        if (pcP[i].type != QMPCTYPE_IGNORE)
+-            numPntChrgs++;
+-    }
+-    
+-    iret = fprintf(inputFile,"%d %d\n",msg->numAllAtoms, numPntChrgs);
++    int numAtoms = Node::Object()->molecule->numAtoms;
++    int stepNum = qmCoordMsgs[0]->timestep - simParams->firstTimestep;
++    int numSteps = simParams->N - simParams->firstTimestep;
++
++    iret = fprintf(inputFile,"%d %d %d %d %d\n",
++                   msg->numAllAtoms,msg->numAllPntChrgs,numAtoms,stepNum,numSteps);
+     if ( iret < 0 ) { NAMD_die(strerror(errno)); }
+     
+     DebugM(4, "Writing " << msg->numAllAtoms << " QM atom coords in file " << 
+@@ -4435,37 +4434,51 @@
+     QMAtomData *atmP = msg->data ;
+     for (size_t i=0; i<msg->numAllAtoms; ++i, ++atmP ) {
+         
++        double charge = atmP->charge;
++        int id = atmP->id;
++
+         double x = atmP->position.x;
+         double y = atmP->position.y;
+         double z = atmP->position.z;
+         
+-        iret = fprintf(inputFile,"%f %f %f %s\n",
+-                       x,y,z,atmP->element);
++        iret = fprintf(inputFile,"%f %f %f %s %f %d\n",
++                       x,y,z,atmP->element,charge,id);
+         if ( iret < 0 ) { NAMD_die(strerror(errno)); }
+         
+     }
+     
+-    int numWritenPCs = 0;
+     // Write point charges to file.
+     pcP = msg->data + msg->numAllAtoms ;
+     for ( size_t j=0; j < msg->numAllPntChrgs; j++, ++pcP) {
+         
+-        if (pcP->type == QMPCTYPE_IGNORE)
+-                continue;
+-        
+         double charge = pcP->charge;
++        if (pcP->type == QMPCTYPE_IGNORE) {
++            charge = 0.0;
++        }
++        
++        int id = pcP->id;
++        int type = pcP->type;
++        int bountToIndx = pcP->bountToIndx;
+         
+         double x = pcP->position.x;
+         double y = pcP->position.y;
+         double z = pcP->position.z;
+         
+-        iret = fprintf(inputFile,"%f %f %f %f\n",
+-                       x,y,z,charge);
++        iret = fprintf(inputFile,"%f %f %f %f %d %d %d\n",
++                       x,y,z,charge,id,type,bountToIndx);
+         if ( iret < 0 ) { NAMD_die(strerror(errno)); }
+-        
+-        numWritenPCs++;
+     }
+-    
++
++    // Write cell information
++    iret = fprintf(inputFile,"%f %f %f\n",
++                   simParams->cellBasisVector1.x, simParams->cellBasisVector1.y, simParams->cellBasisVector1.z);
++    iret = fprintf(inputFile,"%f %f %f\n",
++                   simParams->cellBasisVector2.x, simParams->cellBasisVector2.y, simParams->cellBasisVector2.z);
++    iret = fprintf(inputFile,"%f %f %f\n",
++                   simParams->cellBasisVector3.x, simParams->cellBasisVector3.y, simParams->cellBasisVector3.z);
++    iret = fprintf(inputFile,"%f %f %f\n",
++                   simParams->cellOrigin.x, simParams->cellOrigin.y, simParams->cellOrigin.z);
++
+     DebugM(4,"Closing input file\n");
+     fclose(inputFile);
+     
+@@ -4555,26 +4568,13 @@
+     // Reads the data form the output file created by the QM software.
+     // Gradients over the QM atoms, and Charges for QM atoms will be read.
+     
+-    // Number of point charges for which we will receive forces.
+-    int usrPCnum = 0;
+-    const size_t lineLen = 256;
+-    char *line = new char[lineLen];
+-    
+-    fgets(line, lineLen, outputFile);
+-    
+-//     iret = fscanf(outputFile,"%lf %d\n", &resMsg->energyOrig, &usrPCnum);
+-    iret = sscanf(line,"%lf %i\n", &resMsg->energyOrig, &usrPCnum);
+-    if ( iret < 1 ) {
++    iret = fscanf(outputFile,"%lf\n", &resMsg->energyOrig);
++    if ( iret != 1 ) {
+         NAMD_die("Error reading energy from QM results file.");
+     }
+     
+     resMsg->energyCorr = resMsg->energyOrig;
+     
+-    if (iret == 2 && numWritenPCs != usrPCnum) {
+-        iout << iERROR << "Number of point charges does not match what was provided!\n" << endi ;
+-        NAMD_die("Error reading QM results file.");
+-    }
+-    
+     size_t atmIndx;
+     double localForce[3];
+     double localCharge;
+@@ -4632,31 +4632,10 @@
+             Force mmForce(0), qmForce(0), 
+                 linkForce(localForce[0], localForce[1], localForce[2]);
+             
+-            Vector base = (linkDist/(mmqmDist*mmqmDist*mmqmDist))*dir;
+-            // Unit vectors
+-            Vector xuv(1,0,0), yuv(0,1,0), zuv(0,0,1);
+-            Real xDelta = pcP[mmInd].position.x - atmP[qmInd].position.x;
+-            Real yDelta = pcP[mmInd].position.y - atmP[qmInd].position.y;
+-            Real zDelta = pcP[mmInd].position.z - atmP[qmInd].position.z;
+-            
+-            qmForce += (linkForce*((1 - linkDist/mmqmDist)*xuv + 
+-                        (xDelta)*base) )*xuv;
+-            
+-            qmForce += (linkForce*((1 - linkDist/mmqmDist)*yuv + 
+-                        (yDelta)*base) )*yuv;
+-            
+-            qmForce += (linkForce*((1 - linkDist/mmqmDist)*zuv + 
+-                        (zDelta)*base) )*zuv;
+-            
+-            
+-            mmForce += (linkForce*((linkDist/mmqmDist)*xuv -
+-                        (xDelta)*base) )*xuv;
+-            
+-            mmForce += (linkForce*((linkDist/mmqmDist)*yuv -
+-                        (yDelta)*base) )*yuv;
+-            
+-            mmForce += (linkForce*((linkDist/mmqmDist)*zuv -
+-                        (zDelta)*base) )*zuv;
++            Real prod = (linkForce * dir) * linkDist / (mmqmDist*mmqmDist*mmqmDist);
++
++            qmForce += (1 - linkDist/mmqmDist) * linkForce + prod * dir;
++            mmForce += linkDist/mmqmDist * linkForce - prod * dir;
+             
+             resForce[qmInd].force += qmForce;
+             resForce[msg->numQMAtoms + mmInd].force += mmForce;
+@@ -4667,59 +4646,47 @@
+     // atoms, since the dummy atoms have no representation in NAMD
+     int pcIndx = msg->numQMAtoms;
+     
+-    if (usrPCnum > 0) {
+-        // We loop over point charges, reading the total electrostatic force 
+-        // applied on them by the QM region.
+-        // We redistribute the forces applied over virtual point
+-        // charges to the MM1 and MM2 atoms (if any virtual PCs exists).
+-        for (size_t i=0; i < msg->numAllPntChrgs; i++, pcIndx++ ) {
+-            
+-            Force totalForce(0);
++    // We loop over point charges, reading the total electrostatic force 
++    // applied on them by the QM region.
++    // We redistribute the forces applied over virtual point
++    // charges to the MM1 and MM2 atoms (if any virtual PCs exists).
++    for (size_t i=0; i < msg->numAllPntChrgs; i++, pcIndx++ ) {
++        
++        Force totalForce(0);
++        
++        iret = fscanf(outputFile,"%lf %lf %lf\n", 
++                        &totalForce[0], &totalForce[1], &totalForce[2]);
++        if ( iret != 3 ) {
++            NAMD_die("Error reading PC forces from QM results file.");
++        }
++        
++        if (pcP[i].type == QMPCTYPE_CLASSICAL) {
++            // If we already ignored MM1 charges, we take all other 
++            // non-virtual charges and apply forces directly to them.
++            resForce[pcIndx].force += totalForce;
++        }
++        else {
++            // If we are handling virtual PC, we distribute the force over
++            // MM1 and MM2.
+             
+-            // No force was applied to the QM region due to this charge, since it
+-            // was skipped when writing down point charges to the QM software, so it
+-            // does not receive any back from the QM region. It must be an MM1 atom
+-            // from a QM-MM bond.
+-            if (pcP[i].type == QMPCTYPE_IGNORE)
+-                continue;
++            Force mm1Force(0), mm2Force(0);
+             
+-            iret = fscanf(outputFile,"%lf %lf %lf\n", 
+-                           &totalForce[0], &totalForce[1], &totalForce[2]);
+-            if ( iret != 3 ) {
+-                NAMD_die("Error reading PC forces from QM results file.");
+-            }
++            // Virtual PC are bound to MM2.
++            int mm2Indx = pcP[i].bountToIndx;
++            // MM2 charges are bound to MM1.
++            int mm1Indx = pcP[mm2Indx].bountToIndx;
+             
+-            if (pcP[i].type == QMPCTYPE_CLASSICAL) {
+-                // If we already ignored MM1 charges, we take all other 
+-                // non-virtual charges and apply forces directly to them.
+-                resForce[pcIndx].force += totalForce;
+-            }
+-            else {
+-                // If we are handling virtual PC, we distribute the force over
+-                // MM1 and MM2.
+-                
+-                Force mm1Force(0), mm2Force(0);
+-                
+-                // Virtual PC are bound to MM2.
+-                int mm2Indx = pcP[i].bountToIndx;
+-                // MM2 charges are bound to MM1.
+-                int mm1Indx = pcP[mm2Indx].bountToIndx;
+-                
+-                Real Cq = pcP[i].dist;
+-                
+-                mm1Force = (1-Cq)*totalForce ;
+-                mm2Force = Cq*totalForce ;
+-                
+-                resForce[msg->numQMAtoms + mm1Indx].force += mm1Force;
+-                resForce[msg->numQMAtoms + mm2Indx].force += mm2Force;
+-            }
++            Real Cq = pcP[i].dist;
+             
++            mm1Force = (1-Cq)*totalForce ;
++            mm2Force = Cq*totalForce ;
+             
++            resForce[msg->numQMAtoms + mm1Indx].force += mm1Force;
++            resForce[msg->numQMAtoms + mm2Indx].force += mm2Force;
+         }
+     }
+     
+     fclose(outputFile);
+-    delete [] line;
+     
+     // In case charges are not to be read form the QM software output,
+     // we load the origianl atom charges.
+@@ -4751,77 +4718,9 @@
+     }
+     
+     // remove force file
+-//     DebugM(4, "Removing output file: " << outputFileName << std::endl) ;
+-//     iret = remove(outputFileName);
+-//     if ( iret ) { NAMD_die(strerror(errno)); }
+-    
+-    if (usrPCnum == 0) {
+-        DebugM(4, "Applying forces on " << msg->numRealPntChrgs << " point charges" << std::endl) ;
+-        
+-        atmP = msg->data ;
+-        pcP = msg->data + msg->numAllAtoms ;
+-        
+-        // We only loop over point charges from real atoms, ignoring the ones 
+-        // created to handle QM-MM bonds.
+-        for (size_t i=0; i < msg->numRealPntChrgs; i++, pcIndx++ ) {
+-            
+-            // No force was applied to the QM region due to this charge, so it 
+-            // does not receive any back from the QM region. It must be an MM1 atom
+-            // from a QM-MM bond.
+-            if (pcP[i].type == QMPCTYPE_IGNORE)
+-                continue;
+-            
+-            Force totalForce(0);
+-            
+-            BigReal pntCharge = pcP[i].charge;
+-            
+-            Position posMM = pcP[i].position ;
+-            
+-            for (size_t j=0; j<msg->numAllAtoms; ++j ) {
+-                
+-                BigReal qmCharge = atmP[j].charge ;
+-                
+-                BigReal force = pntCharge*qmCharge*constants ;
+-                
+-                Position rVec = posMM - atmP[j].position ;
+-                
+-                force /= rVec.length2();
+-                
+-                // We accumulate the total force felt by a point charge
+-                // due to the QM charge distribution. This total force
+-                // will be applied to the point charge if it is a real one,
+-                // or will be distirbuted over MM1 and MM2 point charges, it 
+-                // this is a virtual point charge.
+-                totalForce += force*rVec.unit();
+-            }
+-            
+-            if (pcP[i].type == QMPCTYPE_CLASSICAL) {
+-                // If we already ignored MM1 charges, we take all other 
+-                // non-virtual charges and apply forces directly to them.
+-                resForce[pcIndx].force += totalForce;
+-            }
+-            else {
+-                // If we are handling virtual PC, we distribute the force over
+-                // MM1 and MM2.
+-                
+-                Force mm1Force(0), mm2Force(0);
+-                
+-                // Virtual PC are bound to MM2.
+-                int mm2Indx = pcP[i].bountToIndx;
+-                // MM2 charges are bound to MM1.
+-                int mm1Indx = pcP[mm2Indx].bountToIndx;
+-                
+-                Real Cq = pcP[i].dist;
+-                
+-                mm1Force = (1-Cq)*totalForce ;
+-                mm2Force = Cq*totalForce ;
+-                
+-                resForce[msg->numQMAtoms + mm1Indx].force += mm1Force;
+-                resForce[msg->numQMAtoms + mm2Indx].force += mm2Force;
+-            }
+-            
+-        }
+-    }
++    DebugM(4, "Removing output file: " << outputFileName.c_str() << std::endl) ;
++    iret = remove(outputFileName.c_str());
++    if ( iret ) { NAMD_die(strerror(errno)); }
+     
+     // Adjusts forces from PME, canceling contributions from the QM and 
+     // direct Coulomb forces calculated here.
+@@ -4838,6 +4737,8 @@
+             BigReal p_i_charge = atmP[i].charge ;
+             Position pos_i = atmP[i].position ;
+             
++            const BigReal kq_i = p_i_charge * constants;
++
+             for (size_t j=i+1; j < msg->numQMAtoms; j++) {
+                 
+                 BigReal p_j_charge = atmP[j].charge ;
+@@ -4854,9 +4755,7 @@
+ //                 BigReal recip_energy = (1-tmp_b)/r = erf(tmp_a)/r;
+                 BigReal recip_energy = (1-tmp_b)/r;
+                 
+-                BigReal recip_gradient = -(1-corr_gradient)/(r*2);
+-                
+-                const BigReal kq_i = p_i_charge * constants;
++                BigReal recip_gradient = -(1-corr_gradient)/(r*r);
+                 
+                 // Final force and energy correction for this pair of atoms.
+                 BigReal energy = kq_i * p_j_charge * recip_energy ;
+@@ -4889,8 +4788,6 @@
+             
+             const BigReal kq_i = p_i_charge * constants;
+             
+-            Force fixForce = 0;
+-            
+             for (size_t j=0; j<msg->numQMAtoms; ++j ) {
+                 
+                 BigReal p_j_charge = atmP[j].charge ;
+@@ -4907,24 +4804,28 @@
+ //                 BigReal recip_energy = (1-tmp_b)/r = erf(tmp_a)/r;
+                 BigReal recip_energy = (1-tmp_b)/r;
+                 
+-                BigReal recip_gradient = -(1-corr_gradient)/(r*2);
++                BigReal recip_gradient = -(1-corr_gradient)/(r*r);
+                 
+                 // Final force and energy correction for this pair of atoms.
+                 BigReal energy = kq_i * p_j_charge * recip_energy ;
+                 
+-                fixForce += -1*p_j_charge*(recip_gradient/r)*(pos_i - pos_j) ;
++                Force fixForce = -1*kq_i*p_j_charge*(recip_gradient/r)*(pos_i - pos_j) ;
++                
++                // The force is *subtracted* from the total force acting on
++                // both atoms. The sign on fixForce corrects the orientation
++                // of the subtracted force.
++//                 DebugM(4,"Old forces for PC " << pcIndx << ": " << resForce[pcIndx].force
++//                     << std::endl);
++//                 DebugM(4,"Old forces for QM " << j << ": " << resForce[j].force
++//                     << std::endl);
++//                 DebugM(4,"Force correction: " << fixForce << std::endl);
++                resForce[pcIndx].force -= fixForce ;
++                resForce[j].force -= -1*fixForce;
+                 
+                 // The energy is *subtracted* from the total energy calculated here.
+                 resMsg->energyCorr -= energy;
+-                
+             }
+             
+-            // The force is *subtracted* from the total force acting on
+-                // the point charge.
+-//                 DebugM(4,"Old forces for PC " << pcIndx << ": " << resForce[pcIndx].force
+-//                     << std::endl);
+-//                 DebugM(4,"Force correction: " << fixForce << std::endl);
+-            resForce[pcIndx].force -= kq_i*fixForce ;
+         }
+         
+     }
+diff -Naur src/SimParameters.C src-modified/SimParameters.C
+--- src/SimParameters.C	2017-07-25 01:37:05.000000000 -0500
++++ src-modified/SimParameters.C	2017-07-25 15:21:49.419969551 -0500
+@@ -1633,6 +1633,8 @@
+       "Do we use Conditional SMD option?", &qmCSMD, FALSE);
+    opts.optional("QMForces", "QMCSMDFile",
+                 "File for Conditional SMD information",qmCSMDFile);
++   opts.optional("QMForces", "QMCutoff",
++      "cutoff for MM point charges included in QM calculations", &qmCutoff);
+    
+    //print which bad contacts are being moved downhill
+    opts.optionalB("main", "printBadContacts", "Print atoms with huge forces?",
+@@ -4310,6 +4312,15 @@
+         
+         if (qmCSMD && (! opts.defined("QMCSMDFile") ))
+             NAMD_die("QM Conditional SMD is ON, but no CSMD configuration file was profided!");
++
++        if (!opts.defined("QMCutoff"))
++            qmCutoff = cutoff;
++
++        if (qmCutoff <= 0)
++            NAMD_die("QMCutoff can only be a positive number!");
++
++        if (qmCutoff < cutoff)
++            NAMD_die("QMCutoff must be greater than cutoff!");
+     }
+ }
+ 
+diff -Naur src/SimParameters.h src-modified/SimParameters.h
+--- src/SimParameters.h	2017-07-25 01:37:05.000000000 -0500
++++ src-modified/SimParameters.h	2017-07-25 15:19:49.144870610 -0500
+@@ -482,6 +482,8 @@
+         
+         int qmOutFreq ;
+         int qmPosOutFreq ;
++
++        BigReal qmCutoff;
+         
+   Bool printBadContacts;        //print indices of bad contacts being moved downhill
+ 

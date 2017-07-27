@@ -134,13 +134,10 @@ class NAMD(MMBase):
         if os.path.isfile(self.fin + ".result"):
             os.remove(self.fin + ".result")
 
-        with open(self.fin + ".result", 'w') as f:
-            f.write("%22.14e\n" % self.qm_energy)
-            for i in range(self.n_qm_atoms):
-                f.write(" ".join(format(j, "22.14e") for j in self.qm_force[i])
-                        + "  " + format(self.qm_atoms.charge[i], "22.14e") + "\n")
-            for i in range(self.n_mm_atoms):
-                f.write(" ".join(format(j, "22.14e") for j in self.mm_force[i]) + "\n")
+        with open(self.fin + ".result", 'wb') as f:
+            f.write(b"%22.14e\n" % self.qm_energy)
+            np.savetxt(f, np.column_stack((self.qm_force, self.qm_atoms.charge)), fmt='%22.14e')
+            np.savetxt(f, self.mm_force, fmt='%22.14e')
 
     def preserve_input(self, n_digits=None):
         """Preserve the input file passed from NAMD."""

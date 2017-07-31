@@ -34,6 +34,10 @@ class ElecQMMM(object):
         self._coulomb_efield = None
         self._ewald_esp = None
         self._ewald_efield = None
+        self._ewald_real_esp = None
+        self._ewald_real_efield = None
+        self._ewald_recip_esp = None
+        self._ewald_recip_efield = None
 
     @property
     def rij(self):
@@ -77,31 +81,53 @@ class ElecQMMM(object):
     @property
     def coulomb_esp(self):
         if self._coulomb_esp is None:
-            self._coulomb_esp = units.KE * elec_core.get_coulomb_esp(self.dij)
+            self._coulomb_esp, self._coulomb_efield = elec_core.get_coulomb(self.rij, self.dij, units.KE)
         return self._coulomb_esp
 
     @property
     def coulomb_efield(self):
         if self._coulomb_efield is None:
-            self._coulomb_efield = units.KE * elec_core.get_coulomb_efield(self.rij, self.dij)
+            self._coulomb_esp, self._coulomb_efield = elec_core.get_coulomb(self.rij, self.dij, units.KE)
         return self._coulomb_efield
 
     @property
     def ewald_esp(self):
         if self._ewald_esp is None:
             if self.ewald is not None:
-                self._ewald_esp = (units.KE *
-                    (elec_core.get_ewald_real_esp(self.rij, self.ewald.real_lattice, self.ewald.alpha) +
-                     elec_core.get_ewald_recip_esp(self.rij, self.ewald.recip_lattice, self.ewald.recip_prefactor)))
-
+                self._ewald_esp = self.ewald_real_esp + self.ewald_recip_esp
         return self._ewald_esp
 
     @property
     def ewald_efield(self):
         if self._ewald_efield is None:
             if self.ewald is not None:
-                self._ewald_efield = (units.KE *
-                    (elec_core.get_ewald_real_efield(self.rij, self.ewald.real_lattice, self.ewald.alpha) +
-                     elec_core.get_ewald_recip_efield(self.rij, self.ewald.recip_lattice, self.ewald.recip_prefactor)))
-
+                self._ewald_efield = self.ewald_real_efield + self.ewald_recip_efield
         return self._ewald_efield
+
+    @property
+    def ewald_real_esp(self):
+        if self._ewald_real_esp is None:
+            if self.ewald is not None:
+                self._ewald_real_esp, self._ewald_real_efield = elec_core.get_ewald_real(self.rij, self.ewald.real_lattice, self.ewald.alpha, units.KE)
+        return self._ewald_real_esp
+
+    @property
+    def ewald_real_efield(self):
+        if self._ewald_real_efield is None:
+            if self.ewald is not None:
+                self._ewald_real_esp, self._ewald_real_efield = elec_core.get_ewald_real(self.rij, self.ewald.real_lattice, self.ewald.alpha, units.KE)
+        return self._ewald_real_efield
+
+    @property
+    def ewald_recip_esp(self):
+        if self._ewald_recip_esp is None:
+            if self.ewald is not None:
+                self._ewald_recip_esp, self._ewald_recip_efield = elec_core.get_ewald_recip(self.rij, self.ewald.recip_lattice, self.ewald.recip_prefactor, units.KE)
+        return self._ewald_recip_esp
+
+    @property
+    def ewald_recip_efield(self):
+        if self._ewald_recip_efield is None:
+            if self.ewald is not None:
+                self._ewald_recip_esp, self._ewald_recip_efield = elec_core.get_ewald_recip(self.rij, self.ewald.recip_lattice, self.ewald.recip_prefactor, units.KE)
+        return self._ewald_recip_efield

@@ -35,7 +35,7 @@ class EwaldSum(object):
     @property
     def threshold(self):
         if self._threshold is None:
-            self._threshold = math.sqrt(-1 * math.log(self.tolerance)) 
+            self._threshold = math.sqrt(-1 * math.log(self.tolerance))
         return self._threshold
 
     @property

@@ -1,9 +1,9 @@
 from setuptools import setup, find_packages
 
-setup(name='namd_qmmm',
+setup(name='QMHub',
       version='2.12.1',
-      description='Custom QM/MM interface for NAMD',
-      url='https://github.com/panxl/namd-qmmm',
+      description='A universal QM/MM interface.',
+      url='https://github.com/cc-ats/QMHub',
       author='Xiaoliang Pan',
       author_email='panxl@ou.edu',
       license='MIT',

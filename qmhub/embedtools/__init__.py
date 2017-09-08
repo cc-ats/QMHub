@@ -31,6 +31,6 @@ def choose_embedtool(qmEmbedNear, qmEmbedFar):
     except:
         raise ValueError("Cannot use '{}' for far field while using '{}' for near field.".format(embed_far, embed_near))
 
-    embedtool = importlib.import_module(embed_module, package='namd_qmmm.embedtools').__getattribute__(embed_class)
+    embedtool = importlib.import_module(embed_module, package='qmhub.embedtools').__getattribute__(embed_class)
 
     return embedtool

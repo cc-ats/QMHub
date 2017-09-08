@@ -14,6 +14,6 @@ def choose_qmtool(qmSoftware):
     except:
         raise ValueError("Please choose 'q-chem', 'dftb+', 'orca', 'mopac', 'psi4', or 'sqm' for qmSoftware.")
 
-    qmtool = importlib.import_module(qm_module, package='namd_qmmm.qmtools').__getattribute__(qm_class)
+    qmtool = importlib.import_module(qm_module, package='qmhub.qmtools').__getattribute__(qm_class)
 
     return qmtool

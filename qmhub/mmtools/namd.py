@@ -61,7 +61,6 @@ class NAMD(MMBase):
         stop = start + 4
         cell_list = np.loadtxt(lines[start:stop], dtype=float)
         self.cell_basis = cell_list[0:3]
-        self.cell_origin = cell_list[3]
 
         if np.all(self.cell_basis == 0.0):
             self.cell_basis = None

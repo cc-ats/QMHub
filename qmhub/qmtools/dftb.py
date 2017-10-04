@@ -24,8 +24,6 @@ class DFTB(QMBase):
             self._n_mm_atoms = self._mm_atoms.n_atoms
             self._mm_position = self._mm_atoms.position
             self._mm_charge = self._mm_atoms.charge
-
-            self._cell_origin = embed.cell_origin
             self._cell_basis = embed.cell_basis
         else:
             self._pbc = False
@@ -98,7 +96,7 @@ class DFTB(QMBase):
                                  "%22.14e" % self._qm_position[i, 1],
                                  "%22.14e" % self._qm_position[i, 2], "\n"]))
             if self._pbc:
-                f.write("".join(["%22.14e" % i for i in self._cell_origin]) + "\n")
+                f.write("%22.14e %22.14e %22.14e\n" % (0.0, 0.0, 0.0))
                 f.write("".join(["%22.14e" % i for i in self._cell_basis[0]]) + "\n")
                 f.write("".join(["%22.14e" % i for i in self._cell_basis[1]]) + "\n")
                 f.write("".join(["%22.14e" % i for i in self._cell_basis[2]]) + "\n")

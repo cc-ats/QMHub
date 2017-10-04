@@ -24,7 +24,6 @@ class EmbedBase(object):
         self.qm_atoms = system.qm_atoms
         self.mm_atoms = system.mm_atoms
         self.cell_basis = system.cell_basis
-        self.cell_origin = system.cell_origin
 
         # Initialize properties
         self._qmmm_esp_near = None

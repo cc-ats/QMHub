@@ -96,7 +96,7 @@ class DFTB(QMBase):
                                  "%22.14e" % self._qm_position[i, 1],
                                  "%22.14e" % self._qm_position[i, 2], "\n"]))
             if self._pbc:
-                f.write("%22.14e %22.14e %22.14e\n" % (0.0, 0.0, 0.0))
+                f.write("%22.14e%22.14e%22.14e\n" % (0.0, 0.0, 0.0))
                 f.write("".join(["%22.14e" % i for i in self._cell_basis[0]]) + "\n")
                 f.write("".join(["%22.14e" % i for i in self._cell_basis[1]]) + "\n")
                 f.write("".join(["%22.14e" % i for i in self._cell_basis[2]]) + "\n")

@@ -1,0 +1,571 @@
+diff -Naur '--exclude=*.o' '--exclude=*.mod' sander-orig/depend sander/depend
+--- sander-orig/depend	2017-10-03 16:50:53.832331310 -0500
++++ sander/depend	2017-09-29 14:16:19.572722030 -0500
+@@ -4302,6 +4302,7 @@
+                     qm2_extern_genmpi_module.o\
+                     qm2_extern_qc_module.o\
+                     qm2_extern_lio_module.o\
++                    qm2_extern_genfx_module.o\
+                     pimd_vars.o\
+                     file_io_dat.o\
+                     remd.o\
+@@ -4326,6 +4327,7 @@
+                     qm2_extern_genmpi_module.o\
+                     qm2_extern_qc_module.o\
+                     qm2_extern_lio_module.o\
++                    qm2_extern_genfx_module.o\
+                     pimd_vars.o\
+                     file_io_dat.o\
+                     remd.LES.o\
+@@ -4394,6 +4396,18 @@
+ qm2_extern_tc_module.o:   qm2_extern_tc_module.F90
+ 	$(FC) $(FWARNFLAGS) $(FPPFLAGS) -c $(FNOOPTFLAGS) $(FFLAGS) $(AMBERFFLAGS) $(RISMSANDER) -o $@ qm2_extern_tc_module.F90
+ 
++qm2_extern_genfx_module.o: \
++                    ../include/dprec.fh\
++                    qm2_extern_util_module.o\
++                    constants.o\
++                    file_io_dat.o\
++                    utilitiesmodule.o\
++                    elementOrbitalIndex.o
++
++
++qm2_extern_genfx_module.o:   qm2_extern_genfx_module.F90
++	$(FC) $(FWARNFLAGS) $(FPPFLAGS) -c $(FNOOPTFLAGS) $(FFLAGS) $(AMBERFFLAGS) $(RISMSANDER) -o $@ qm2_extern_genfx_module.F90
++
+ qm2_extern_util_module.o: \
+                     ../include/dprec.fh\
+                     constants.o
+diff -Naur '--exclude=*.o' '--exclude=*.mod' sander-orig/force.F90 sander/force.F90
+--- sander-orig/force.F90	2017-10-03 16:50:55.658332861 -0500
++++ sander/force.F90	2017-10-04 16:51:05.819677923 -0500
+@@ -607,7 +607,7 @@
+     call qm_mm(x, natom, qmmm_struct%scaled_mm_charges, f, escf, periodic, &
+                reff, onereff, intdiel, extdiel, Arad, cut, &
+                qm2_struct%scf_mchg, ntypes, ih(m04), ih(m06), xx(lmass), &
+-               ix(i04), nstep)
++               ix(i04), nstep, ntb)
+     pot%scf = escf
+ #endif
+     call timer_stop(TIME_QMMM)
+diff -Naur '--exclude=*.o' '--exclude=*.mod' sander-orig/Makefile sander/Makefile
+--- sander-orig/Makefile	2017-10-03 16:50:56.428333160 -0500
++++ sander/Makefile	2017-09-29 14:16:30.835728651 -0500
+@@ -117,7 +117,7 @@
+     ArrayList.o qm2_extern_gms_module.o qm2_extern_tc_module.o \
+     qm2_extern_gau_module.o qm2_extern_orc_module.o \
+     qm2_extern_nw_module.o qm2_extern_qc_module.o qm2_extern_mrcc_module.o \
+-    qm2_extern_genmpi_module.o \
++    qm2_extern_genmpi_module.o qm2_extern_genfx_module.o \
+     qmmm_adaptive_module.o prn_qmmm_dipole.o
+ 
+ ifdef LIOLIBS
+@@ -131,7 +131,7 @@
+     ArrayList.o qm2_extern_gms_module.o qm2_extern_tc_module.o \
+     qm2_extern_gau_module.o qm2_extern_orc_module.o qm2_extern_nw_module.o \
+     qm2_extern_qc_module.o qm2_extern_mrcc_module.o \
+-    qm2_extern_genmpi_module.o \
++    qm2_extern_genmpi_module.o qm2_extern_genfx_module.o \
+     qmmm_adaptive_module.o prn_qmmm_dipole.o
+ 
+ ifdef LIOLIBS
+@@ -266,7 +266,7 @@
+     ArrayList.o qm2_extern_gms_module.o qm2_extern_tc_module.o \
+     qm2_extern_gau_module.o qm2_extern_orc_module.o qm2_extern_nw_module.o \
+     qm2_extern_qc_module.o qm2_extern_mrcc_module.o \
+-    qm2_extern_genmpi_module.o \
++    qm2_extern_genmpi_module.o qm2_extern_genfx_module.o \
+     qmmm_adaptive_module.o abfqmmm_module.o prn_qmmm_dipole.o \
+     AmberNetcdf.o bintraj.LES.o binrestart.LES.o getcor.LES.o mdfil.LES.o mdwrit.LES.o \
+     lmod.LES.o trajene.o ew_box.LES.o minrit.LES.o set.LES.o qm_mm.LES.o amd.o scaledMD.o
+diff -Naur '--exclude=*.o' '--exclude=*.mod' sander-orig/qm2_extern_genfx_module.F90 sander/qm2_extern_genfx_module.F90
+--- sander-orig/qm2_extern_genfx_module.F90	1969-12-31 18:00:00.000000000 -0600
++++ sander/qm2_extern_genfx_module.F90	2017-10-04 17:29:38.483197297 -0500
+@@ -0,0 +1,365 @@
++#include "../include/dprec.fh"
++module qm2_extern_genfx_module
++  use qm2_extern_util_module, only: debug_enter_function, debug_exit_function
++
++  implicit none
++
++  private
++  public :: get_genfx_forces
++
++  character(len=*), parameter :: module_name = "qm2_extern_genfx_module"
++
++  type genfx_nml_type
++     character(len=100) :: program
++     character(len=100) :: basedir
++     integer :: debug
++     integer :: ntpr
++  end type genfx_nml_type
++
++contains
++
++  ! --------------------------------------------
++  ! Get QM energy and forces from Q-Chem
++  ! --------------------------------------------
++  subroutine get_genfx_forces(do_grad, nstep, ntpr_default, id, nqmatoms, qmcoords,&
++    qmtypes, qmcharges, nclatoms, clcoords, escf, dxyzqm, dxyzcl, charge, spinmult, natom, ucell, ntb, nsteps)
++
++    use qm2_extern_util_module, only: check_installation, print_results, write_dipole
++    use constants, only: CODATA08_AU_TO_KCAL, CODATA08_A_TO_BOHRS, ZERO
++    use file_io_dat
++
++    implicit none
++    
++    logical, intent(in) :: do_grad              ! Return gradient/not
++    integer, intent(in) :: nstep                ! MD step number
++    integer, intent(in) :: ntpr_default         ! frequency of printing
++    character(len=3), intent(in) :: id          ! ID number for PIMD or REMD
++    integer, intent(in) :: nqmatoms             ! Number of QM atoms
++    _REAL_,  intent(in) :: qmcoords(3,nqmatoms) ! QM atom coordinates
++    integer, intent(in) :: qmtypes(nqmatoms)    ! QM atom types (nuclear charge in au)
++    _REAL_,  intent(in) :: qmcharges(nqmatoms)  ! QM atom RESP charges in au
++    integer, intent(in) :: nclatoms             ! Number of MM atoms
++    _REAL_,  intent(in) :: clcoords(4,nclatoms) ! MM atom coordinates and charges in au
++    _REAL_, intent(out) :: escf                 ! SCF energy
++    _REAL_, intent(out) :: dxyzqm(3,nqmatoms)   ! SCF QM force
++    _REAL_, intent(out) :: dxyzcl(3,nclatoms)   ! SCF MM force
++    _REAL_              :: dipxyz(3), dipole    ! Dipole moment
++    integer, intent(in) :: charge, spinmult     ! Charge and spin multiplicity
++    integer, intent(in) :: natom                ! Number of REAL atoms
++    _REAL_,  intent(in) :: ucell(3,3)           ! Unit cell vectors
++    integer, intent(in) :: ntb                  ! Flag to control PBC
++    integer, intent(in) :: nsteps               ! Number of steps to run
++
++    type(genfx_nml_type), save      :: genfx_nml
++    logical, save                :: first_call = .true.
++    integer                      :: i
++    integer                      :: printed =-1 ! Used to tell if we have printed this step yet 
++                                                ! since the same step may be called multiple times
++    character(len=200)           :: call_buffer
++    character(len=*), parameter  :: basename = 'qmmm'
++    character(len=*), parameter  :: inpext = '.inp'
++    character(len=*), parameter  :: outext = '.out'
++    character(len=100),save      :: inpfile, outfile
++    ! Need to prepend subdirectory if doing REMD, PIMD
++    character(len=5)             :: subdir = '/000/'
++
++    ! for system call
++    integer :: system
++    integer :: stat
++
++    ! Setup on first call
++    if ( first_call ) then
++       first_call = .false.
++       write (6,'(/,a,/)') '  >>> Running calculation with GenFX <<<'
++       call get_namelist( ntpr_default, genfx_nml )
++       call print_namelist( genfx_nml ) 
++       ! Check for version of Q-Chem to use; store as 'program'
++       call check_installation( genfx_nml%program, id, .true., genfx_nml%debug )
++
++       write (6,'(80a)') ('-', i=1,80)
++       write (6,'(a)') '   4.  RESULTS'
++       write (6,'(80a)') ('-', i=1,80)
++
++       ! assemble input - / output data filenames
++       if ( trim(id)/='' ) then 
++          subdir='/'//trim(id)//'/'
++       end if
++
++       ! Make directory
++       call_buffer = 'mkdir -p '//trim(genfx_nml%basedir)//trim(subdir)//';'
++
++       if ( genfx_nml%debug > 0 ) then
++          write (6,'(2a)') 'call_buffer=', trim(call_buffer)
++       end if
++
++       stat = system(trim(call_buffer))
++
++       if ( stat /= 0 ) then
++       call sander_bomb('get_genfx_forces (qm2_extern_genfx_module)', & 
++               'Error with system call (mkdir)', &
++               'Will quit now.')
++       end if
++
++       inpfile = trim(genfx_nml%basedir)//trim(subdir)//basename//trim(id)//inpext
++       outfile = trim(genfx_nml%basedir)//trim(subdir)//basename//trim(id)//outext
++
++       ! Remove old inpfile, outfile, fort.7, and dipfile at the 
++       ! beginning of a run so only the latest run is stored.
++       stat = system('rm -f '//trim(inpfile)//' '//trim(outfile))
++       if ( stat /= 0 ) then
++          call sander_bomb('get_genfx_forces (qm2_extern_genfx_module)', & 
++               'Error with system call (removing files)', &
++               'Will quit now.')
++       end if
++    end if
++    
++    call write_inpfile( trim(inpfile), &
++      nqmatoms, qmcoords, qmtypes, qmcharges, nclatoms, clcoords, genfx_nml, do_grad, charge, spinmult, &
++      natom, nstep, ucell, ntb, nsteps )
++
++    ! Run Q-Chem
++    call_buffer = trim(genfx_nml%program)//' '//trim(inpfile)//' sander'
++
++    if ( genfx_nml%debug > 0 ) then
++       write (6,'(2a)') 'call_buffer=', trim(call_buffer)
++    end if
++    
++    stat = system(trim(call_buffer))
++
++    if ( stat /= 0 ) then
++       call sander_bomb('get_genfx_forces (qm2_extern_genfx_module)', & 
++            'Error with system call (executing Q-Chem)', &
++            'Will quit now.')
++    end if
++
++    ! Retrieve data from Q-Chem .log and efield.dat files
++    ! Will output data to escf and dxyqm for pure QM or mechanical embedding QM/MM
++    ! Search in subdir for outfile if doind PIMD
++    ! Otherwise, search current directory
++    call read_results( trim(outfile), & 
++      nqmatoms, escf, dxyzqm, nclatoms, dxyzcl, dipxyz, dipole)
++ 
++    if ( .not. do_grad ) then
++      dxyzqm = ZERO
++      if ( nclatoms > 0 ) dxyzcl = ZERO
++    end if
++    
++    call print_results( 'qm2_extern_genfx_module', escf, nqmatoms, dxyzqm,&
++      genfx_nml%debug, nclatoms, dxyzcl )
++ 
++    ! Save copy of last input and log files
++    stat = system('mv '//trim(inpfile)//' '//trim(inpfile)//'.old')
++    stat = stat + system('mv '//trim(outfile)//' '//trim(outfile)//'.old')
++    if ( stat /= 0 ) then
++      call sander_bomb('get_genfx_forces (qm2_extern_genfx_module)', & 
++        'Error with system call (moving / removing files)', &
++        'Will quit now.')
++    end if
++
++  end subroutine get_genfx_forces
++
++  ! ---------------------------------------------
++  ! Read Q-Chem namelist values from file mdin,
++  ! use default values if none are present.
++  ! ---------------------------------------------
++ 
++  subroutine get_namelist(ntpr_default, genfx_nml)
++
++    use UtilitiesModule, only : Upcase
++
++    implicit none
++    integer, intent(in) :: ntpr_default
++    type(genfx_nml_type), intent(out) :: genfx_nml
++
++    integer :: debug, ntpr 
++    character(len=100) :: program, basedir
++    namelist /genfx/ program, basedir, debug
++
++    integer :: ierr
++
++    call debug_enter_function( 'get_namelist', module_name, genfx_nml%debug )
++
++    ! Set default values for genfx namelist values
++    program           = ""
++    basedir           = "."
++    ntpr              = ntpr_default
++    debug             = 0
++
++    ! Read namelist
++    rewind 5
++    read(5,nml=genfx,iostat=ierr)
++
++    if ( ierr > 0 ) then
++       call sander_bomb('get_namelist (qm2_extern_genfx_module)', &
++            '&genfx namelist read error', &
++            'Please check your input.')
++    else if ( ierr < 0 ) then
++       write(6,'(a/a)') '&genfx namelist read encountered end of file', &
++            'Please check your input if the calculation encounters a problem'
++    end if
++
++    genfx_nml%program      = program
++    genfx_nml%basedir      = basedir
++    genfx_nml%ntpr         = ntpr
++    genfx_nml%debug        = debug
++
++    call debug_exit_function( 'get_namelist', module_name, genfx_nml%debug )
++
++  end subroutine get_namelist
++
++  ! --------------------------------
++  ! Print GenFX namelist settings
++  ! --------------------------------
++  subroutine print_namelist(genfx_nml)
++
++    implicit none
++    type(genfx_nml_type), intent(in) :: genfx_nml
++
++    write(6, '(a)')       '| &genfx'
++    write(6, '(2a)')      '|   program      = ', genfx_nml%program
++    write(6, '(2a)')      '|   basedir      = ', genfx_nml%basedir
++    write(6, '(a,i0)')    '|   ntpr         = ', genfx_nml%ntpr
++    write(6, '(a,i2)')    '|   debug        = ', genfx_nml%debug
++    write(6,'(a)')        '| /'
++
++  end subroutine print_namelist
++
++  ! -----------------------------
++  ! Write input file for genfx
++  ! -----------------------------
++  subroutine write_inpfile( inpfile, nqmatoms, qmcoords, &
++    qmtypes, qmcharges, nclatoms, clcoords, genfx_nml, do_grad, charge, spinmult, &
++    natom, nstep, ucell, ntb, nsteps )
++
++    use ElementOrbitalIndex, only : elementSymbol
++    use UtilitiesModule, only     : Upcase
++    implicit none
++
++    character(len=*), intent(in)   :: inpfile
++    integer, intent(in)            :: nqmatoms
++    _REAL_,  intent(in)            :: qmcoords(:,:)
++    integer, intent(in)            :: qmtypes(:)
++    _REAL_,  intent(in)            :: qmcharges(:)
++    integer, intent(in)            :: nclatoms
++    _REAL_,  intent(in)            :: clcoords(:,:)
++    type(genfx_nml_type), intent(in) :: genfx_nml
++    logical, intent(in)            :: do_grad
++    integer, intent(in)            :: charge, spinmult
++    integer, intent(in)            :: natom
++    integer, intent(in)            :: nstep
++    _REAL_,  intent(in)            :: ucell(:,:)
++    integer, intent(in)            :: ntb
++    integer, intent(in)            :: nsteps
++
++    integer, parameter :: iunit = 351
++    integer            :: i, ierr
++    logical, save      :: first_call = .true.
++
++    ! for system call
++    integer :: system
++    integer :: stat
++
++    call debug_enter_function( 'write_inpfile', module_name, genfx_nml%debug )
++
++    open(iunit, file=inpfile, iostat=ierr)
++    if ( ierr /= 0 ) then
++       call sander_bomb('write_inpfile (qm2_extern_genfx_module)', &
++            'Error opening Q-Chem inpfile '//inpfile//' for writing', &
++            'Will quit now.')
++    end if
++    
++    ! Write charge and spin multiplicity
++    write (iunit,'(6(i0,1x),i0)') nqmatoms, nclatoms, natom, charge, spinmult, nstep, nsteps
++    
++    ! Write QM atoms and coordinates
++    do i = 1, nqmatoms
++       write(iunit,'(3(f0.16,1x),a,1x,f0.16)') qmcoords(1:3,i), trim(elementSymbol(qmtypes(i))), qmcharges(i)/18.2223d0
++    end do
++    
++    ! When electrostatic embedding QM/MM is in use 
++    ! Write MM coordinates with point charges
++    if ( nclatoms > 0 ) then
++       do i = 1, nclatoms
++          write(iunit,'(4(f0.16,1x))') clcoords(:,i) 
++       end do
++    end if
++
++    if ( ntb == 0 ) then
++        do i = 1, 3
++           write(iunit,'(3(f0.16,1x))') 0.0, 0.0, 0.0
++        end do
++    else
++        do i = 1, 3
++           write(iunit,'(3(f0.16,1x))') ucell(:,i) 
++        end do
++    end if
++    
++    close(iunit, iostat=ierr)
++    if ( ierr /= 0 ) then
++       call sander_bomb('write_inpfile (qm2_extern_genfx_module)', &
++            'Error closing Q-Chem runfile after writing', &
++            'Will quit now.')
++    end if
++
++    first_call = .false.
++
++    call debug_exit_function( 'write_inpfile', module_name, genfx_nml%debug )
++
++  end subroutine write_inpfile
++  
++  ! QM or QM/MM results
++  subroutine read_results( outfile, nqmatoms, escf, dxyzqm,&
++    nclatoms, dxyzcl, dipxyz, dipole)
++
++    use constants, only: CODATA08_AU_TO_KCAL, CODATA08_A_TO_BOHRS
++    use UtilitiesModule, only     : Upcase
++    implicit none
++    
++    character(len=*), intent(in) :: outfile
++    integer, intent(in)          :: nqmatoms, nclatoms
++    _REAL_, intent(out)          :: escf, dxyzqm(3,nqmatoms), & 
++                                    dxyzcl(3,nclatoms) ! dxyzcl will return containing the electric field at x,y,z
++    _REAL_, intent(out)          :: dipxyz(3), dipole ! return in Debye
++
++    
++    integer :: ios, i
++    integer, parameter :: iunit = 351
++    character(len=120) :: read_buffer
++
++    open(iunit, file=outfile, status='old', iostat=ios)
++    if ( ios /= 0 ) then
++      call sander_bomb('read_results (qm2_extern_genfx_module)', &
++        'Error opening Q-Chem log file '//outfile//' (expected in same dir as input file).', &
++        'Will quit now')
++    end if
++
++    read (iunit, '((f22.16))', iostat = ios) escf
++
++    ! read QM gradients
++    do i = 1, nqmatoms
++       read(iunit, '(3(f25.20))', iostat = ios) dxyzqm(:,i)
++       if ( ios < 0 ) then
++          call sander_bomb('read_results (qm2_extern_genfx_module)',&
++               'Error reading QM gradients.',&
++               'Will quit now')
++       end if
++    end do
++
++    ! QM/MM with electrostatic embedding: E-field at point charges
++    if( nclatoms > 0 ) then       
++       do i = 1, nclatoms
++          read (iunit, '(3(f22.16))', iostat = ios) dxyzcl(:,i)
++          if (ios < 0) then
++             call sander_bomb('read_results (qm2_extern_genfx_module)', &
++                  'Error reading e-field at point charge positions.',&
++                  'Will quit now')
++             exit
++          end if
++       end do
++    end if
++    
++    close (iunit)
++
++  end subroutine read_results
++  
++end module qm2_extern_genfx_module
+diff -Naur '--exclude=*.o' '--exclude=*.mod' sander-orig/qm2_extern_module.F90 sander/qm2_extern_module.F90
+--- sander-orig/qm2_extern_module.F90	2017-10-03 16:50:59.797334965 -0500
++++ sander/qm2_extern_module.F90	2017-10-04 17:21:38.638882620 -0500
+@@ -38,6 +38,7 @@
+ #ifdef LIO
+   use qm2_extern_lio_module   , only: get_lio_forces 
+ #endif 
++  use qm2_extern_genfx_module    , only: get_genfx_forces
+   implicit none
+ 
+   private
+@@ -45,8 +46,8 @@
+   
+   contains
+ 
+-  subroutine qm2_extern_get_qm_forces(nstep, nqmatoms, qmcoords, qmtypes, &
+-       nclatoms, clcoords, escf, dxyzqm, dxyzcl)
++  subroutine qm2_extern_get_qm_forces(nstep, nqmatoms, qmcoords, qmtypes, qmcharges, &
++       nclatoms, clcoords, natom, ucell, ntb, escf, dxyzqm, dxyzcl)
+ 
+     use neb_vars, only: ineb
+     use pimd_vars, only: ipimd
+@@ -62,8 +63,12 @@
+     integer, intent(in) :: nqmatoms             ! Number QM of atoms
+     _REAL_,  intent(in) :: qmcoords(3,nqmatoms) ! QM atom coordinates
+     integer, intent(in) :: qmtypes(nqmatoms)    ! QM atom types (nuclear charge in au)
++    _REAL_,  intent(in) :: qmcharges(nqmatoms)  ! QM atom RESP charges in au
+     integer, intent(in) :: nclatoms             ! Number of MM atoms
+     _REAL_,  intent(in) :: clcoords(4,nclatoms) ! MM atom coordinates and charges in au
++    integer, intent(in) :: natom                ! Number of REAL atoms
++    _REAL_,  intent(in) :: ucell(3,3)           ! Unit cell vectors
++    integer, intent(in) :: ntb
+     _REAL_, intent(out) :: escf                 ! SCF energy
+     _REAL_, intent(out) :: dxyzqm(3,nqmatoms)   ! SCF QM gradient
+     _REAL_, intent(out) :: dxyzcl(3,nclatoms)   ! SCF MM gradient
+@@ -157,6 +162,16 @@
+       call sander_bomb("qm2_extern_get_qm_forces", "Lio is not enabled", &
+            "Check your installation or reconfigure with the -lio option.")
+ #endif
++    case('genfx')
++      if ( imin == 0 ) then
++         call get_genfx_forces(do_gradient, nstep, ntpr, id, nqmatoms, qmcoords,&
++              qmtypes, qmcharges, nclatoms, clcoords, escf, dxyzqm, dxyzcl, &
++              qmmm_nml%qmcharge, qmmm_nml%spin, natom, ucell, ntb, nstlim-1)
++      else if ( imin == 1 ) then
++         call get_genfx_forces(do_gradient, nstep, ntpr, id, nqmatoms, qmcoords,&
++              qmtypes, qmcharges, nclatoms, clcoords, escf, dxyzqm, dxyzcl, &
++              qmmm_nml%qmcharge, qmmm_nml%spin, natom, ucell, ntb, maxcyc)
++      end if
+     case default
+       call sander_bomb("qm2_extern_get_qm_forces","External namelist not found", &
+            "Please check your input.")
+@@ -171,9 +186,9 @@
+     implicit none
+ 
+     integer :: i, ifind
+-    character(len=20) :: programs(10) = (/'adf   ', 'gms   ', 'tc    ', 'gau   ', &
++    character(len=20) :: programs(11) = (/'adf   ', 'gms   ', 'tc    ', 'gau   ', &
+                                          'orc   ', 'nw    ', 'qc    ', 'genmpi', &
+-                                         'lio   ','mrcc  '/)
++                                         'lio   ','mrcc  ','genfx '/)
+     character(len=20), intent(out) :: extern_program
+ 
+     ! Select which external program to use
+diff -Naur '--exclude=*.o' '--exclude=*.mod' sander-orig/qm2_extern_util_module.F90 sander/qm2_extern_util_module.F90
+--- sander-orig/qm2_extern_util_module.F90	2017-10-03 16:51:00.065335013 -0500
++++ sander/qm2_extern_util_module.F90	2017-09-29 15:35:45.662376117 -0500
+@@ -74,9 +74,9 @@
+     logical, optional, intent(out)   :: found
+     character(len=*), optional, intent(out) :: path
+ 
+-    character(len=80) :: read_buffer
+-    character(len=80) :: call_buffer
+-    character(len=80) :: filename
++    character(len=100) :: read_buffer
++    character(len=100) :: call_buffer
++    character(len=100) :: filename
+     integer :: iunit = 77
+     integer :: stat
+     integer :: system
+diff -Naur '--exclude=*.o' '--exclude=*.mod' sander-orig/qm_mm.F90 sander/qm_mm.F90
+--- sander-orig/qm_mm.F90	2017-10-03 16:51:00.210335150 -0500
++++ sander/qm_mm.F90	2017-10-04 16:51:00.539674948 -0500
+@@ -47,7 +47,7 @@
+ subroutine qm_mm(coords, natom, scaled_mm_charges, f, escf, periodic, &
+                  born_radii, one_born_radii, intdiel, extdiel, Arad, mmcut2, &
+                  scf_mchg, ntype, atom_name, atom_type, atomic_mass, &
+-                 atom_type_index, nstep)
++                 atom_type_index, nstep, ntb)
+ 
+   use qmmm_module, only : qmmm_nml, qmmm_struct, qm2_struct, qmewald, qm_gb, &
+                           qmmm_mpi, qmmm_scratch, qmmm_opnq, get_atomic_number
+@@ -57,7 +57,7 @@
+   use constants, only : EV_TO_KCAL, KCAL_TO_EV, zero, one, alpb_alpha
+ 
+   use parms, only : cn1, cn2, nttyp
+-  use nblist,only: alpha,beta,gamma
++  use nblist,only: alpha,beta,gamma,ucell
+   use qm2_extern_module, only: qm2_extern_get_qm_forces
+   use abfqmmm_module, only: abfqmmm_param
+ 
+@@ -70,7 +70,7 @@
+ #endif
+ 
+   ! Passed in
+-  integer, intent(in) :: natom,periodic,nstep, ntype
++  integer, intent(in) :: natom,periodic,nstep, ntype, ntb
+   _REAL_ , intent(inout)  :: coords(natom*3) ! Amber array - note that this
+                                              ! is adjusted for link atoms
+   _REAL_ , intent(in)  :: scaled_mm_charges(natom)
+@@ -397,8 +397,9 @@
+     call qm2_extern_get_qm_forces(nstep, qmmm_struct%nquant_nlink, &
+                                   qmmm_struct%qm_coords, &
+                                   qmmm_struct%iqm_atomic_numbers, &
+-                                  nclatoms, qmmm_struct%qm_xcrd, escf, &
+-                                  qmmm_struct%dxyzqm, qmmm_struct%dxyzcl)
++                                  qmmm_struct%qm_resp_charges, &
++                                  nclatoms, qmmm_struct%qm_xcrd, natom, ucell, ntb, &
++                                  escf, qmmm_struct%dxyzqm, qmmm_struct%dxyzcl)
+ !  else if (qmmm_nml%qmtheory%QUICKHF) then
+ !
+ !    ! CHECK

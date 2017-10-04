@@ -58,9 +58,8 @@ class NAMD(MMBase):
 
         # Load unit cell information
         start = 1 + self.n_qm_atoms + self.n_mm_atoms
-        stop = start + 4
-        cell_list = np.loadtxt(lines[start:stop], dtype=float)
-        self.cell_basis = cell_list[0:3]
+        stop = start + 3
+        self.cell_basis = np.loadtxt(lines[start:stop], dtype=float)
 
         if np.all(self.cell_basis == 0.0):
             self.cell_basis = None

@@ -1,6 +1,15 @@
-diff -Naur src/ComputeQM.C src-modified/ComputeQM.C
---- src/ComputeQM.C	2017-07-25 01:37:05.000000000 -0500
-+++ src-modified/ComputeQM.C	2017-07-25 17:00:54.175871798 -0500
+diff -Naur src-orig/ComputeQM.C src/ComputeQM.C
+--- src-orig/ComputeQM.C	2017-10-04 12:23:34.632602209 -0500
++++ src/ComputeQM.C	2017-10-04 14:34:56.114900306 -0500
+@@ -323,7 +323,7 @@
+     int numAllAtoms ; // Including dummy atoms.
+     int numRealPntChrgs;
+     int numAllPntChrgs; // Inlcuding point charges created to handle QM-MM bonds.
+-    Real charge, multiplicity;
++    int charge, multiplicity;
+     BigReal constants;
+     bool secProcOn ;
+     bool prepProcOn ;
 @@ -638,7 +638,7 @@
      numQMGrps = molPtr->get_qmNumGrps();
      qmGrpIDArray = molPtr->get_qmGrpID() ;
@@ -19,7 +28,14 @@ diff -Naur src/ComputeQM.C src-modified/ComputeQM.C
          msg->swdist = simParams->switchingDist;
          msg->pcScheme = simParams->qmPCScheme;
          msg->qmAtmChrgMode = simParams->qmChrgMode;
-@@ -4418,13 +4418,12 @@
+@@ -4433,19 +4433,20 @@
+     qmCommand.append(msg->execPath) ;
+     qmCommand.append(" ") ;
+     qmCommand.append(inputFileName) ;
++    qmCommand.append(" namd") ;
+     
+     // Builds the file name where orca will place the gradient
+     // This will be relative to the input file
      outputFileName = inputFileName ;
      outputFileName.append(".result") ;
      
@@ -34,12 +50,13 @@ diff -Naur src/ComputeQM.C src-modified/ComputeQM.C
 +    int stepNum = qmCoordMsgs[0]->timestep - simParams->firstTimestep;
 +    int numSteps = simParams->N - simParams->firstTimestep;
 +
-+    iret = fprintf(inputFile,"%d %d %d %d %d\n",
-+                   msg->numAllAtoms,msg->numAllPntChrgs,numAtoms,stepNum,numSteps);
++    iret = fprintf(inputFile,"%d %d %d %d %d %d %d\n",
++                   msg->numAllAtoms,msg->numAllPntChrgs,numAtoms,
++                   msg->charge,msg->multiplicity,stepNum,numSteps);
      if ( iret < 0 ) { NAMD_die(strerror(errno)); }
      
      DebugM(4, "Writing " << msg->numAllAtoms << " QM atom coords in file " << 
-@@ -4435,37 +4434,51 @@
+@@ -4456,37 +4457,51 @@
      QMAtomData *atmP = msg->data ;
      for (size_t i=0; i<msg->numAllAtoms; ++i, ++atmP ) {
          
@@ -102,7 +119,7 @@ diff -Naur src/ComputeQM.C src-modified/ComputeQM.C
      DebugM(4,"Closing input file\n");
      fclose(inputFile);
      
-@@ -4555,26 +4568,13 @@
+@@ -4576,26 +4591,13 @@
      // Reads the data form the output file created by the QM software.
      // Gradients over the QM atoms, and Charges for QM atoms will be read.
      
@@ -131,7 +148,7 @@ diff -Naur src/ComputeQM.C src-modified/ComputeQM.C
      size_t atmIndx;
      double localForce[3];
      double localCharge;
-@@ -4632,31 +4632,10 @@
+@@ -4653,31 +4655,10 @@
              Force mmForce(0), qmForce(0), 
                  linkForce(localForce[0], localForce[1], localForce[2]);
              
@@ -167,7 +184,7 @@ diff -Naur src/ComputeQM.C src-modified/ComputeQM.C
              
              resForce[qmInd].force += qmForce;
              resForce[msg->numQMAtoms + mmInd].force += mmForce;
-@@ -4667,59 +4646,47 @@
+@@ -4688,59 +4669,47 @@
      // atoms, since the dummy atoms have no representation in NAMD
      int pcIndx = msg->numQMAtoms;
      
@@ -259,7 +276,7 @@ diff -Naur src/ComputeQM.C src-modified/ComputeQM.C
      
      // In case charges are not to be read form the QM software output,
      // we load the origianl atom charges.
-@@ -4751,77 +4718,9 @@
+@@ -4772,77 +4741,9 @@
      }
      
      // remove force file
@@ -340,7 +357,7 @@ diff -Naur src/ComputeQM.C src-modified/ComputeQM.C
      
      // Adjusts forces from PME, canceling contributions from the QM and 
      // direct Coulomb forces calculated here.
-@@ -4838,6 +4737,8 @@
+@@ -4859,6 +4760,8 @@
              BigReal p_i_charge = atmP[i].charge ;
              Position pos_i = atmP[i].position ;
              
@@ -349,7 +366,7 @@ diff -Naur src/ComputeQM.C src-modified/ComputeQM.C
              for (size_t j=i+1; j < msg->numQMAtoms; j++) {
                  
                  BigReal p_j_charge = atmP[j].charge ;
-@@ -4854,9 +4755,7 @@
+@@ -4875,9 +4778,7 @@
  //                 BigReal recip_energy = (1-tmp_b)/r = erf(tmp_a)/r;
                  BigReal recip_energy = (1-tmp_b)/r;
                  
@@ -360,7 +377,7 @@ diff -Naur src/ComputeQM.C src-modified/ComputeQM.C
                  
                  // Final force and energy correction for this pair of atoms.
                  BigReal energy = kq_i * p_j_charge * recip_energy ;
-@@ -4889,8 +4788,6 @@
+@@ -4910,8 +4811,6 @@
              
              const BigReal kq_i = p_i_charge * constants;
              
@@ -369,7 +386,7 @@ diff -Naur src/ComputeQM.C src-modified/ComputeQM.C
              for (size_t j=0; j<msg->numQMAtoms; ++j ) {
                  
                  BigReal p_j_charge = atmP[j].charge ;
-@@ -4907,24 +4804,28 @@
+@@ -4928,24 +4827,28 @@
  //                 BigReal recip_energy = (1-tmp_b)/r = erf(tmp_a)/r;
                  BigReal recip_energy = (1-tmp_b)/r;
                  
@@ -407,10 +424,10 @@ diff -Naur src/ComputeQM.C src-modified/ComputeQM.C
          }
          
      }
-diff -Naur src/SimParameters.C src-modified/SimParameters.C
---- src/SimParameters.C	2017-07-25 01:37:05.000000000 -0500
-+++ src-modified/SimParameters.C	2017-07-25 15:21:49.419969551 -0500
-@@ -1633,6 +1633,8 @@
+diff -Naur src-orig/SimParameters.C src/SimParameters.C
+--- src-orig/SimParameters.C	2017-10-04 12:23:34.805602372 -0500
++++ src/SimParameters.C	2017-10-04 12:25:44.811688068 -0500
+@@ -1635,6 +1635,8 @@
        "Do we use Conditional SMD option?", &qmCSMD, FALSE);
     opts.optional("QMForces", "QMCSMDFile",
                  "File for Conditional SMD information",qmCSMDFile);
@@ -419,7 +436,7 @@ diff -Naur src/SimParameters.C src-modified/SimParameters.C
     
     //print which bad contacts are being moved downhill
     opts.optionalB("main", "printBadContacts", "Print atoms with huge forces?",
-@@ -4310,6 +4312,15 @@
+@@ -4312,6 +4314,15 @@
          
          if (qmCSMD && (! opts.defined("QMCSMDFile") ))
              NAMD_die("QM Conditional SMD is ON, but no CSMD configuration file was profided!");
@@ -435,11 +452,11 @@ diff -Naur src/SimParameters.C src-modified/SimParameters.C
      }
  }
  
-diff -Naur src/SimParameters.h src-modified/SimParameters.h
---- src/SimParameters.h	2017-07-25 01:37:05.000000000 -0500
-+++ src-modified/SimParameters.h	2017-07-25 15:19:49.144870610 -0500
-@@ -482,6 +482,8 @@
-         
+diff -Naur src-orig/SimParameters.h src/SimParameters.h
+--- src-orig/SimParameters.h	2017-10-04 12:23:34.304601900 -0500
++++ src/SimParameters.h	2017-10-04 12:25:44.820688068 -0500
+@@ -483,6 +483,8 @@
+         int qmEnergyOutFreq ;
          int qmOutFreq ;
          int qmPosOutFreq ;
 +

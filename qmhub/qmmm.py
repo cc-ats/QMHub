@@ -8,7 +8,8 @@ from . import qmtools
 
 
 class QMMM(object):
-    def __init__(self, fin, qmSoftware, qmCharge, qmMult,
+    def __init__(self, fin=sys.argv[1], mmSoftware=sys.argv[2],
+                 qmCharge=None, qmMult=None, qmSoftware=None,
                  qmEmbedNear=None, qmEmbedFar=None,
                  qmElement=None, qmRefCharge=True,
                  qmSwitchingType='shift',
@@ -17,6 +18,7 @@ class QMMM(object):
         """
         Creat a QMMM object.
         """
+        self.mmSoftware = mmSoftware
         self.qmSoftware = qmSoftware
         self.qmCharge = qmCharge
         self.qmMult = qmMult
@@ -31,7 +33,13 @@ class QMMM(object):
         self.postProc = postProc
 
         # Initialize the system
-        self.system = mmtools.NAMD(fin)
+        self.system = mmtools.choose_mmtool(self.mmSoftware)(fin)
+
+        if self.qmCharge is None:
+            self.qmCharge = self.system.qm_charge
+
+        if self.qmMult is None:
+            self.qmMult = self.system.qm_mult
 
         # Set up embedding scheme
         self.embed = embedtools.choose_embedtool(self.qmEmbedNear, self.qmEmbedFar)(

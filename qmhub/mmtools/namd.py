@@ -19,6 +19,10 @@ class NAMD(MMBase):
         Number of MM atoms including virtual particles
     n_atoms: int
         Number of total atoms in the whole system
+    qm_charge : int
+        Total charge of QM subsystem
+    qm_mult : int
+        Multiplicity of QM subsystem
     step : int
         Current step number
     n_step : int
@@ -38,8 +42,9 @@ class NAMD(MMBase):
         f.close()
 
         # Load system information
-        self.n_qm_atoms, self.n_mm_atoms, self.n_atoms, self.step, self.n_steps = \
-            np.fromstring(lines[0], dtype=int, count=5, sep=' ')
+        self.n_qm_atoms, self.n_mm_atoms, self.n_atoms, \
+            self.qm_charge, self.qm_mult, self.step, self.n_steps = \
+            np.fromstring(lines[0], dtype=int, count=7, sep=' ')
 
         # Load QM information
         f = io.StringIO("".join(lines[1:(self.n_qm_atoms + 1)]))
@@ -131,10 +136,11 @@ class NAMD(MMBase):
 
     def save_results(self):
         """Save the results of QM calculation to file."""
-        if os.path.isfile(self.fin + ".result"):
-            os.remove(self.fin + ".result")
+        fout = self.fin + ".result"
+        if os.path.isfile(fout):
+            os.remove(fout)
 
-        with open(self.fin + ".result", 'wb') as f:
+        with open(fout, 'wb') as f:
             f.write(b"%22.14e\n" % self.qm_energy)
             np.savetxt(f, np.column_stack((self.qm_force, self.qm_atoms.charge)), fmt='%22.14e')
             np.savetxt(f, self.mm_force, fmt='%22.14e')

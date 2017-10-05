@@ -80,8 +80,8 @@ diff -Naur '--exclude=*.o' '--exclude=*.mod' sander-orig/Makefile sander/Makefil
      lmod.LES.o trajene.o ew_box.LES.o minrit.LES.o set.LES.o qm_mm.LES.o amd.o scaledMD.o
 diff -Naur '--exclude=*.o' '--exclude=*.mod' sander-orig/qm2_extern_genfx_module.F90 sander/qm2_extern_genfx_module.F90
 --- sander-orig/qm2_extern_genfx_module.F90	1969-12-31 18:00:00.000000000 -0600
-+++ sander/qm2_extern_genfx_module.F90	2017-10-04 17:29:38.483197297 -0500
-@@ -0,0 +1,365 @@
++++ sander/qm2_extern_genfx_module.F90	2017-10-05 15:04:09.393835753 -0500
+@@ -0,0 +1,373 @@
 +#include "../include/dprec.fh"
 +module qm2_extern_genfx_module
 +  use qm2_extern_util_module, only: debug_enter_function, debug_exit_function
@@ -106,7 +106,7 @@ diff -Naur '--exclude=*.o' '--exclude=*.mod' sander-orig/qm2_extern_genfx_module
 +  ! Get QM energy and forces from Q-Chem
 +  ! --------------------------------------------
 +  subroutine get_genfx_forces(do_grad, nstep, ntpr_default, id, nqmatoms, qmcoords,&
-+    qmtypes, qmcharges, nclatoms, clcoords, escf, dxyzqm, dxyzcl, charge, spinmult, natom, ucell, ntb, nsteps)
++    qmtypes, qmcharges, nclatoms, clcoords, escf, dxyzqm, dxyzcl, charge, spinmult, natom, ucell, ntb, nlink, nsteps)
 +
 +    use qm2_extern_util_module, only: check_installation, print_results, write_dipole
 +    use constants, only: CODATA08_AU_TO_KCAL, CODATA08_A_TO_BOHRS, ZERO
@@ -132,6 +132,7 @@ diff -Naur '--exclude=*.o' '--exclude=*.mod' sander-orig/qm2_extern_genfx_module
 +    integer, intent(in) :: natom                ! Number of REAL atoms
 +    _REAL_,  intent(in) :: ucell(3,3)           ! Unit cell vectors
 +    integer, intent(in) :: ntb                  ! Flag to control PBC
++    integer, intent(in) :: nlink                ! Total number of link atoms
 +    integer, intent(in) :: nsteps               ! Number of steps to run
 +
 +    type(genfx_nml_type), save      :: genfx_nml
@@ -199,7 +200,7 @@ diff -Naur '--exclude=*.o' '--exclude=*.mod' sander-orig/qm2_extern_genfx_module
 +    
 +    call write_inpfile( trim(inpfile), &
 +      nqmatoms, qmcoords, qmtypes, qmcharges, nclatoms, clcoords, genfx_nml, do_grad, charge, spinmult, &
-+      natom, nstep, ucell, ntb, nsteps )
++      natom, nstep, ucell, ntb, nlink, nsteps )
 +
 +    ! Run Q-Chem
 +    call_buffer = trim(genfx_nml%program)//' '//trim(inpfile)//' sander'
@@ -313,7 +314,7 @@ diff -Naur '--exclude=*.o' '--exclude=*.mod' sander-orig/qm2_extern_genfx_module
 +  ! -----------------------------
 +  subroutine write_inpfile( inpfile, nqmatoms, qmcoords, &
 +    qmtypes, qmcharges, nclatoms, clcoords, genfx_nml, do_grad, charge, spinmult, &
-+    natom, nstep, ucell, ntb, nsteps )
++    natom, nstep, ucell, ntb, nlink, nsteps )
 +
 +    use ElementOrbitalIndex, only : elementSymbol
 +    use UtilitiesModule, only     : Upcase
@@ -333,6 +334,7 @@ diff -Naur '--exclude=*.o' '--exclude=*.mod' sander-orig/qm2_extern_genfx_module
 +    integer, intent(in)            :: nstep
 +    _REAL_,  intent(in)            :: ucell(:,:)
 +    integer, intent(in)            :: ntb
++    integer, intent(in)            :: nlink
 +    integer, intent(in)            :: nsteps
 +
 +    integer, parameter :: iunit = 351
@@ -355,16 +357,22 @@ diff -Naur '--exclude=*.o' '--exclude=*.mod' sander-orig/qm2_extern_genfx_module
 +    ! Write charge and spin multiplicity
 +    write (iunit,'(6(i0,1x),i0)') nqmatoms, nclatoms, natom, charge, spinmult, nstep, nsteps
 +    
-+    ! Write QM atoms and coordinates
-+    do i = 1, nqmatoms
-+       write(iunit,'(3(f0.16,1x),a,1x,f0.16)') qmcoords(1:3,i), trim(elementSymbol(qmtypes(i))), qmcharges(i)/18.2223d0
++    ! Write Real QM atoms and coordinates
++    do i = 1, nqmatoms-nlink
++       write(iunit,'(3(f0.16,1x),a,1x,f0.16,1x,i0)') qmcoords(1:3,i), trim(elementSymbol(qmtypes(i))), qmcharges(i)/18.2223d0, 0
++    end do
++
++    ! Write Link QM atoms and coordinates
++    do i = 1, nlink
++       write(iunit,'(3(f0.16,1x),a,1x,f0.16,1x,i0)') qmcoords(1:3,nqmatoms-nlink+i), &
++           trim(elementSymbol(qmtypes(nqmatoms-nlink+i))), qmcharges(nqmatoms-nlink+i)/18.2223d0, -1
 +    end do
 +    
 +    ! When electrostatic embedding QM/MM is in use 
 +    ! Write MM coordinates with point charges
 +    if ( nclatoms > 0 ) then
 +       do i = 1, nclatoms
-+          write(iunit,'(4(f0.16,1x))') clcoords(:,i) 
++          write(iunit,'(4(f0.16,1x),i0)') clcoords(:,i), 0 
 +       end do
 +    end if
 +
@@ -449,7 +457,7 @@ diff -Naur '--exclude=*.o' '--exclude=*.mod' sander-orig/qm2_extern_genfx_module
 +end module qm2_extern_genfx_module
 diff -Naur '--exclude=*.o' '--exclude=*.mod' sander-orig/qm2_extern_module.F90 sander/qm2_extern_module.F90
 --- sander-orig/qm2_extern_module.F90	2017-10-03 16:50:59.797334965 -0500
-+++ sander/qm2_extern_module.F90	2017-10-04 17:21:38.638882620 -0500
++++ sander/qm2_extern_module.F90	2017-10-05 14:59:27.733645418 -0500
 @@ -38,6 +38,7 @@
  #ifdef LIO
    use qm2_extern_lio_module   , only: get_lio_forces 
@@ -465,11 +473,11 @@ diff -Naur '--exclude=*.o' '--exclude=*.mod' sander-orig/qm2_extern_module.F90 s
 -  subroutine qm2_extern_get_qm_forces(nstep, nqmatoms, qmcoords, qmtypes, &
 -       nclatoms, clcoords, escf, dxyzqm, dxyzcl)
 +  subroutine qm2_extern_get_qm_forces(nstep, nqmatoms, qmcoords, qmtypes, qmcharges, &
-+       nclatoms, clcoords, natom, ucell, ntb, escf, dxyzqm, dxyzcl)
++       nclatoms, clcoords, natom, ucell, ntb, nlink, escf, dxyzqm, dxyzcl)
  
      use neb_vars, only: ineb
      use pimd_vars, only: ipimd
-@@ -62,8 +63,12 @@
+@@ -62,8 +63,13 @@
      integer, intent(in) :: nqmatoms             ! Number QM of atoms
      _REAL_,  intent(in) :: qmcoords(3,nqmatoms) ! QM atom coordinates
      integer, intent(in) :: qmtypes(nqmatoms)    ! QM atom types (nuclear charge in au)
@@ -478,11 +486,12 @@ diff -Naur '--exclude=*.o' '--exclude=*.mod' sander-orig/qm2_extern_module.F90 s
      _REAL_,  intent(in) :: clcoords(4,nclatoms) ! MM atom coordinates and charges in au
 +    integer, intent(in) :: natom                ! Number of REAL atoms
 +    _REAL_,  intent(in) :: ucell(3,3)           ! Unit cell vectors
-+    integer, intent(in) :: ntb
++    integer, intent(in) :: ntb                  ! Flag to control PBC
++    integer, intent(in) :: nlink                ! Total number of link atoms
      _REAL_, intent(out) :: escf                 ! SCF energy
      _REAL_, intent(out) :: dxyzqm(3,nqmatoms)   ! SCF QM gradient
      _REAL_, intent(out) :: dxyzcl(3,nclatoms)   ! SCF MM gradient
-@@ -157,6 +162,16 @@
+@@ -157,6 +163,16 @@
        call sander_bomb("qm2_extern_get_qm_forces", "Lio is not enabled", &
             "Check your installation or reconfigure with the -lio option.")
  #endif
@@ -490,16 +499,16 @@ diff -Naur '--exclude=*.o' '--exclude=*.mod' sander-orig/qm2_extern_module.F90 s
 +      if ( imin == 0 ) then
 +         call get_genfx_forces(do_gradient, nstep, ntpr, id, nqmatoms, qmcoords,&
 +              qmtypes, qmcharges, nclatoms, clcoords, escf, dxyzqm, dxyzcl, &
-+              qmmm_nml%qmcharge, qmmm_nml%spin, natom, ucell, ntb, nstlim-1)
++              qmmm_nml%qmcharge, qmmm_nml%spin, natom, ucell, ntb, nlink, nstlim-1)
 +      else if ( imin == 1 ) then
 +         call get_genfx_forces(do_gradient, nstep, ntpr, id, nqmatoms, qmcoords,&
 +              qmtypes, qmcharges, nclatoms, clcoords, escf, dxyzqm, dxyzcl, &
-+              qmmm_nml%qmcharge, qmmm_nml%spin, natom, ucell, ntb, maxcyc)
++              qmmm_nml%qmcharge, qmmm_nml%spin, natom, ucell, ntb, nlink, maxcyc)
 +      end if
      case default
        call sander_bomb("qm2_extern_get_qm_forces","External namelist not found", &
             "Please check your input.")
-@@ -171,9 +186,9 @@
+@@ -171,9 +187,9 @@
      implicit none
  
      integer :: i, ifind
@@ -529,7 +538,7 @@ diff -Naur '--exclude=*.o' '--exclude=*.mod' sander-orig/qm2_extern_util_module.
      integer :: system
 diff -Naur '--exclude=*.o' '--exclude=*.mod' sander-orig/qm_mm.F90 sander/qm_mm.F90
 --- sander-orig/qm_mm.F90	2017-10-03 16:51:00.210335150 -0500
-+++ sander/qm_mm.F90	2017-10-04 16:51:00.539674948 -0500
++++ sander/qm_mm.F90	2017-10-05 14:57:18.911558039 -0500
 @@ -47,7 +47,7 @@
  subroutine qm_mm(coords, natom, scaled_mm_charges, f, escf, periodic, &
                   born_radii, one_born_radii, intdiel, extdiel, Arad, mmcut2, &
@@ -557,14 +566,15 @@ diff -Naur '--exclude=*.o' '--exclude=*.mod' sander-orig/qm_mm.F90 sander/qm_mm.
    _REAL_ , intent(inout)  :: coords(natom*3) ! Amber array - note that this
                                               ! is adjusted for link atoms
    _REAL_ , intent(in)  :: scaled_mm_charges(natom)
-@@ -397,8 +397,9 @@
+@@ -397,8 +397,10 @@
      call qm2_extern_get_qm_forces(nstep, qmmm_struct%nquant_nlink, &
                                    qmmm_struct%qm_coords, &
                                    qmmm_struct%iqm_atomic_numbers, &
 -                                  nclatoms, qmmm_struct%qm_xcrd, escf, &
 -                                  qmmm_struct%dxyzqm, qmmm_struct%dxyzcl)
 +                                  qmmm_struct%qm_resp_charges, &
-+                                  nclatoms, qmmm_struct%qm_xcrd, natom, ucell, ntb, &
++                                  nclatoms, qmmm_struct%qm_xcrd, natom, &
++                                  ucell, ntb, qmmm_struct%nlink, &
 +                                  escf, qmmm_struct%dxyzqm, qmmm_struct%dxyzcl)
  !  else if (qmmm_nml%qmtheory%QUICKHF) then
  !

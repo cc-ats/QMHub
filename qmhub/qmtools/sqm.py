@@ -54,6 +54,9 @@ class SQM(QMBase):
             raise ValueError("Please set method for SQM.")
 
         if self.method.lower() in ['dftb2', 'dftb3']:
+            if self._mm_charge is not None:
+                raise ValueError("Electrostatic embedding with electron density is not supported in DFTB.")
+
             if skfpath is not None:
                 self.skfpath = " dftb_slko_path= '" + os.path.join(skfpath, '') + "',\n"
             else:
@@ -262,7 +265,20 @@ class SQM(QMBase):
     def get_mm_force_eed(self, output=None):
         """Get external point charge forces from output of QM calculation."""
 
-        raise NotImplementedError()
+        if output is None:
+            output = self.load_output(self.basedir + "sqm.out")
+
+        for i in range(len(output)):
+            if "Forces on MM atoms from SCF calculation" in output[i]:
+                self.mm_force_eed = np.empty((self._n_mm_atoms, 3), dtype=float)
+                for j in range(self._n_mm_atoms):
+                    line = output[i + 1 + j]
+                    self.mm_force_eed[j] = [-1 * float(n) for n in line.split()[-3:]]
+                break
+
+        self.mm_force_eed /= units.F_AU
+
+        return self.mm_force_eed
 
     def get_mm_force_near(self, output=None):
         """Get external point charge forces from output of QM calculation."""
@@ -287,4 +303,18 @@ class SQM(QMBase):
     def get_mm_esp_eed(self, output=None):
         """Get ESP at MM atoms in the near field from QM density."""
 
-        raise NotImplementedError()
+        if output is None:
+            output = self.load_output(self.basedir + "sqm.out")
+
+        for i in range(len(output)):
+            if "Electrostatic Potential on MM atoms from QM Atoms" in output[i]:
+                self.mm_esp_eed = np.empty(self._n_mm_atoms, dtype=float)
+                for j in range(self._n_mm_atoms):
+                    line = output[i + 1 + j]
+                    self.mm_esp_eed[j] = float(line.split()[-1])
+                break
+
+        self.mm_esp_eed = np.nan_to_num(self.mm_esp_eed)
+        self.mm_esp_eed /= units.E_AU
+
+        return self.mm_esp_eed

@@ -8,7 +8,7 @@ from . import qmtools
 
 
 class QMMM(object):
-    def __init__(self, fin=sys.argv[1], mmSoftware=sys.argv[2],
+    def __init__(self, fin=sys.argv[1], mmSoftware=None,
                  qmCharge=None, qmMult=None, qmSoftware=None,
                  qmEmbedNear=None, qmEmbedFar=None,
                  qmElement=None, qmRefCharge=True,
@@ -33,6 +33,9 @@ class QMMM(object):
         self.postProc = postProc
 
         # Initialize the system
+        if self.mmSoftware is None:
+            self.mmSoftware = sys.argv[2]
+
         self.system = mmtools.choose_mmtool(self.mmSoftware)(fin)
 
         if self.qmCharge is None:

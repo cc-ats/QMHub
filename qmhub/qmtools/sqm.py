@@ -141,7 +141,7 @@ class SQM(QMBase):
     def parse_output(self):
         """Parse the output of QM calculation."""
 
-        output = self.load_output(self.basedir + "sqm.out")
+        output = self.load_output(os.path.join(self.basedir, "sqm.out"))
 
         self.get_qm_energy(output)
         self.get_qm_charge(output)
@@ -183,7 +183,7 @@ class SQM(QMBase):
         """Get QM energy from output of QM calculation."""
 
         if output is None:
-            output = self.load_output(self.basedir + "sqm.out")
+            output = self.load_output(os.path.join(self.basedir, "sqm.out"))
 
         for line in output:
             line = line.strip().expandtabs()
@@ -206,7 +206,7 @@ class SQM(QMBase):
         """Get Mulliken charges from output of QM calculation."""
 
         if output is None:
-            output = self.load_output(self.basedir + "sqm.out")
+            output = self.load_output(os.path.join(self.basedir, "sqm.out"))
 
         for i in range(len(output)):
             if "Atomic Charges" in output[i]:
@@ -222,7 +222,7 @@ class SQM(QMBase):
         """Get QM forces from output of QM calculation."""
 
         if output is None:
-            output = self.load_output(self.basedir + "sqm.out")
+            output = self.load_output(os.path.join(self.basedir, "sqm.out"))
 
         for i in range(len(output)):
             if "Forces on QM atoms from SCF calculation" in output[i]:
@@ -266,7 +266,7 @@ class SQM(QMBase):
         """Get external point charge forces from output of QM calculation."""
 
         if output is None:
-            output = self.load_output(self.basedir + "sqm.out")
+            output = self.load_output(os.path.join(self.basedir, "sqm.out"))
 
         for i in range(len(output)):
             if "Forces on MM atoms from SCF calculation" in output[i]:
@@ -304,7 +304,7 @@ class SQM(QMBase):
         """Get ESP at MM atoms in the near field from QM density."""
 
         if output is None:
-            output = self.load_output(self.basedir + "sqm.out")
+            output = self.load_output(os.path.join(self.basedir, "sqm.out"))
 
         for i in range(len(output)):
             if "Electrostatic Potential on MM atoms from QM Atoms" in output[i]:

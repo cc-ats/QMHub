@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='QMHub',
-      version='2.12.1',
+      version='0.1',
       description='A universal QM/MM interface.',
       url='https://github.com/cc-ats/QMHub',
       author='Xiaoliang Pan',

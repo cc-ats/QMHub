@@ -1,8 +1,8 @@
 import importlib
 
-MMCLASS = {'namd': "NAMD", 'sander': "Sander"}
+MMCLASS = {'namd': "NAMD", 'sander': "Sander", 'openmm': "OpenMM"}
 
-MMMODULE = {'NAMD': ".namd", 'Sander': ".sander"}
+MMMODULE = {'NAMD': ".namd", 'Sander': ".sander", 'OpenMM': ".openmm"}
 
 
 def choose_mmtool(mmSoftware):
@@ -10,7 +10,7 @@ def choose_mmtool(mmSoftware):
         mm_class = MMCLASS[mmSoftware.lower()]
         mm_module = MMMODULE[mm_class]
     except:
-        raise ValueError("Please choose 'namd', or 'sander' for mmSoftware.")
+        raise ValueError("Please choose 'namd', 'sander', or 'openmm' for mmSoftware.")
 
     mmtool = importlib.import_module(mm_module, package='qmhub.mmtools').__getattribute__(mm_class)
 

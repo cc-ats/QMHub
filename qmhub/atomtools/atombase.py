@@ -60,6 +60,7 @@ class AtomBase(object):
     @position.setter
     def position(self, position):
         self._set_property(self._atoms.position.view((float, 3)), position)
+        self._elec._init_property()
 
     @property
     def element(self):

@@ -14,6 +14,7 @@ class QMBase(object):
         """
 
         self.basedir = basedir
+        self._embed = embed
 
         if charge is not None:
             self.charge = charge
@@ -24,9 +25,11 @@ class QMBase(object):
         else:
             self.mult = 1
 
-        # Load the system
-        self.get_qm_system(embed)
-        self.get_mm_system(embed)
+        self.update()
+
+    def update(self):
+        self.get_qm_system(self._embed)
+        self.get_mm_system(self._embed)
 
     @staticmethod
     def get_nproc():

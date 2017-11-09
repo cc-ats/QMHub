@@ -25,6 +25,9 @@ class EmbedBase(object):
         self.mm_atoms = system.mm_atoms
         self.cell_basis = system.cell_basis
 
+        self.update()
+
+    def update(self):
         # Initialize properties
         self._qmmm_esp_near = None
         self._qmmm_efield_near = None

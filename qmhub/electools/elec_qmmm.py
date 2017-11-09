@@ -22,6 +22,9 @@ class ElecQMMM(object):
         # Get array mask to cancel 1-2 and 1-3 interactions for coulomb
         self.coulomb_mask = np.ones((self._n_mm_atoms, self._n_qm_atoms), dtype=bool)
 
+        self._init_property()
+
+    def _init_property(self):
         self._rij = None
         self._dij2 = None
         self._dij = None

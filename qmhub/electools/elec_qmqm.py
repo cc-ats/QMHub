@@ -8,14 +8,14 @@ from .. import units
 
 class ElecQMQM(object):
 
-    def __init__(self, qm_atoms, cell_basis=None):
+    def __init__(self, qm_atoms, cell_basis):
 
         self._qm_position = qm_atoms.position
+        self._cell_basis = cell_basis
+        self._init_property()
 
-        if cell_basis is not None:
-            self.ewald = EwaldSum(cell_basis)
-        else:
-            self.ewald = None
+    def _init_property(self):
+        self._ewald = None
 
         self._rij = None
         self._dij2 = None
@@ -30,6 +30,15 @@ class ElecQMQM(object):
         self._ewald_recip_esp = None
         self._ewald_recip_efield = None
         self._ewald_self_esp = None
+
+    @property
+    def ewald(self):
+        if self._ewald is None:
+            if self._cell_basis is not None:
+                self._ewald = EwaldSum(self._cell_basis)
+            else:
+                self._ewald = None
+        return self._ewald
 
     @property
     def rij(self):

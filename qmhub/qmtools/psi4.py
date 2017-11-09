@@ -113,7 +113,7 @@ class PSI4(QMBase):
     def run(self):
         """Run QM calculation."""
 
-        psi4.core.set_output_file(self.basedir + "psi4.out", False)
+        psi4.core.set_output_file(os.path.join(self.basedir, "psi4.out"), False)
 
         psi4_io = psi4.core.IOManager.shared_object()
         psi4_io.set_default_path(self.basedir)

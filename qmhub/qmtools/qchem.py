@@ -153,12 +153,12 @@ class QChem(QMBase):
     def parse_output(self):
         """Parse the output of QM calculation."""
 
-        output = self.load_output(self.basedir + "qchem.out")
+        output = self.load_output(os.path.join(self.basedir, "qchem.out"))
 
         self.get_qm_energy(output)
         self.get_qm_charge(output)
 
-        output = self.load_output(self.basedir + "efield.dat")
+        output = self.load_output(os.path.join(self.basedir, "efield.dat"))
         self.get_qm_force(output)
 
         if self._mm_charge is not None:
@@ -197,7 +197,7 @@ class QChem(QMBase):
         """Get QM energy from output of QM calculation."""
 
         if output is None:
-            output = self.load_output(self.basedir + "qchem.out")
+            output = self.load_output(os.path.join(self.basedir, "qchem.out"))
 
         for line in output:
             line = line.strip().expandtabs()
@@ -224,7 +224,7 @@ class QChem(QMBase):
         """Get Mulliken charges from output of QM calculation."""
 
         if output is None:
-            output = self.load_output(self.basedir + "qchem.out")
+            output = self.load_output(os.path.join(self.basedir, "qchem.out"))
 
         if self._qm_esp is not None:
             charge_string = "Merz-Kollman ESP Net Atomic Charges"
@@ -245,7 +245,7 @@ class QChem(QMBase):
         """Get QM forces from output of QM calculation."""
 
         if output is None:
-            output = self.load_output(self.basedir + "efield.dat")
+            output = self.load_output(os.path.join(self.basedir, "efield.dat"))
 
         self.qm_force = -1 * np.loadtxt(output[(-1 * self._n_qm_atoms):], dtype=float)
 
@@ -281,7 +281,7 @@ class QChem(QMBase):
         """Get external point charge forces from output of QM calculation."""
 
         if output is None:
-            output = self.load_output(self.basedir + "efield.dat")
+            output = self.load_output(os.path.join(self.basedir, "efield.dat"))
 
         self.mm_force_eed = (np.loadtxt(output[:self._n_mm_atoms], dtype=float)
                              * self._mm_charge[:, np.newaxis])
@@ -312,7 +312,7 @@ class QChem(QMBase):
         """Get ESP at MM atoms in the near field from QM density."""
 
         if output is None:
-            output = self.load_output(self.basedir + "esp.dat")
+            output = self.load_output(os.path.join(self.basedir, "esp.dat"))
 
         self.mm_esp_eed = np.loadtxt(output)
 

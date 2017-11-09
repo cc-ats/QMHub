@@ -131,7 +131,7 @@ class MOPAC(QMBase):
     def parse_output(self):
         """Parse the output of QM calculation."""
 
-        output = self.load_output(self.basedir + "mopac.aux")
+        output = self.load_output(os.path.join(self.basedir, "mopac.aux"))
 
         self.get_qm_energy(output)
         self.get_qm_charge(output)
@@ -157,7 +157,7 @@ class MOPAC(QMBase):
         """Get QM energy from output of QM calculation."""
 
         if output is None:
-            output = self.load_output(self.basedir + "mopac.aux")
+            output = self.load_output(os.path.join(self.basedir, "mopac.aux"))
 
         for line in output:
             if "TOTAL_ENERGY" in line:
@@ -176,7 +176,7 @@ class MOPAC(QMBase):
         """Get QM forces from output of QM calculation."""
 
         if output is None:
-            output = self.load_output(self.basedir + "mopac.aux")
+            output = self.load_output(os.path.join(self.basedir, "mopac.aux"))
 
         n_lines = int(np.ceil(self._n_qm_atoms * 3 / 10))
 
@@ -240,7 +240,7 @@ class MOPAC(QMBase):
         """Get Mulliken charges from output of QM calculation."""
 
         if output is None:
-            output = self.load_output(self.basedir + "mopac.aux")
+            output = self.load_output(os.path.join(self.basedir, "mopac.aux"))
 
         n_lines = int(np.ceil(self._n_qm_atoms / 10))
 

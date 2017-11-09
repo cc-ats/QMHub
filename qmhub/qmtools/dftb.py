@@ -120,14 +120,14 @@ class DFTB(QMBase):
     def rm_guess(self):
         """Remove save from previous QM calculation."""
 
-        qmsave = self.basedir + "charges.bin"
+        qmsave = os.path.join(self.basedir, "charges.bin")
         if os.path.isfile(qmsave):
             os.remove(qmsave)
 
     def parse_output(self):
         """Parse the output of QM calculation."""
 
-        output = self.load_output(self.basedir + "results.tag")
+        output = self.load_output(os.path.join(self.basedir, "results.tag"))
 
         self.get_qm_energy(output)
         self.get_qm_charge(output)
@@ -143,7 +143,7 @@ class DFTB(QMBase):
         """Get QM energy from output of QM calculation."""
 
         if output is None:
-            output = self.load_output(self.basedir + "results.tag")
+            output = self.load_output(os.path.join(self.basedir, "results.tag"))
 
         self.qm_energy = np.loadtxt(output[1:2], dtype=float)
 
@@ -153,7 +153,7 @@ class DFTB(QMBase):
         """Get Mulliken charges from output of QM calculation."""
 
         if output is None:
-            output = self.load_output(self.basedir + "results.tag")
+            output = self.load_output(os.path.join(self.basedir, "results.tag"))
 
         self.qm_charge = np.array([], dtype=float)
 
@@ -170,7 +170,7 @@ class DFTB(QMBase):
         """Get QM forces from output of QM calculation."""
 
         if output is None:
-            output = self.load_output(self.basedir + "results.tag")
+            output = self.load_output(os.path.join(self.basedir, "results.tag"))
 
         self.qm_force = np.loadtxt(output[5:(self._n_qm_atoms + 5)], dtype=float)
 
@@ -180,7 +180,7 @@ class DFTB(QMBase):
         """Get external point charge forces from output of QM calculation."""
 
         if output is None:
-            output = self.load_output(self.basedir + "results.tag")
+            output = self.load_output(os.path.join(self.basedir, "results.tag"))
 
         start = self._n_qm_atoms + 6
         stop = start + self._n_mm_atoms

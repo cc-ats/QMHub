@@ -117,14 +117,14 @@ class ORCA(QMBase):
     def rm_guess(self):
         """Remove save from previous QM calculation."""
 
-        qmsave = self.basedir + "orca.gbw"
+        qmsave = os.path.join(self.basedir, "orca.gbw")
         if os.path.isfile(qmsave):
             os.remove(qmsave)
 
     def parse_output(self):
         """Parse the output of QM calculation."""
 
-        output = self.load_output(self.basedir + "orca.out")
+        output = self.load_output(os.path.join(self.basedir, "orca.out"))
 
         self.get_qm_energy(output)
         self.get_qm_charge(output)
@@ -143,7 +143,7 @@ class ORCA(QMBase):
         """Get QM energy from output of QM calculation."""
 
         if output is None:
-            output = self.load_output(self.basedir + "orca.out")
+            output = self.load_output(os.path.join(self.basedir, "orca.out"))
 
         for line in output:
             line = line.strip().expandtabs()
@@ -158,7 +158,7 @@ class ORCA(QMBase):
         """Get Mulliken charges from output of QM calculation."""
 
         if output is None:
-            output = self.load_output(self.basedir + "orca.out")
+            output = self.load_output(os.path.join(self.basedir, "orca.out"))
 
         for i in range(len(output)):
             if "MULLIKEN ATOMIC CHARGES" in output[i]:
@@ -175,7 +175,7 @@ class ORCA(QMBase):
         """Get QM forces from output of QM calculation."""
 
         if output is None:
-            output = self.load_output(self.basedir + "orca.engrad")
+            output = self.load_output(os.path.join(self.basedir, "orca.engrad"))
 
         start = 11
         stop = start + self._n_qm_atoms * 3
@@ -187,7 +187,7 @@ class ORCA(QMBase):
         """Get external point charge forces from output of QM calculation."""
 
         if output is None:
-            output = self.load_output(self.basedir + "orca.pcgrad")
+            output = self.load_output(os.path.join(self.basedir, "orca.pcgrad"))
 
         self.mm_force = -1 * np.loadtxt(output[1:(self._n_mm_atoms + 1)])
 
@@ -197,7 +197,7 @@ class ORCA(QMBase):
         """Get ESP at MM atoms in the near field from QM density."""
 
         if output is None:
-            output = self.load_output(self.basedir + "orca.pntvpot.out")
+            output = self.load_output(os.path.join(self.basedir, "orca.pntvpot.out"))
 
         self.mm_esp_eed = np.loadtxt(output[1:(self._n_mm_atoms + 1)], usecols=3)
 

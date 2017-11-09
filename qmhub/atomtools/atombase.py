@@ -57,6 +57,18 @@ class AtomBase(object):
     def position(self):
         return self.atoms.position.view((float, 3))
 
+    @position.setter
+    def position(self, position):
+        self._set_property(self._atoms.position.view((float, 3)), position)
+
+    @property
+    def element(self):
+        return self.atoms.element
+
+    @element.setter
+    def element(self, element):
+        self._atoms.element = element
+
     @property
     def charge(self):
         return self.atoms.charge

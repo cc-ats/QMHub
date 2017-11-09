@@ -8,7 +8,7 @@ from . import qmtools
 
 
 class QMMM(object):
-    def __init__(self, fin=sys.argv[1], mmSoftware=None,
+    def __init__(self, fin=None, baseDir=None, mmSoftware=None,
                  qmCharge=None, qmMult=None, qmSoftware=None,
                  qmEmbedNear=None, qmEmbedFar=None,
                  qmElement=None, qmRefCharge=True,
@@ -18,6 +18,7 @@ class QMMM(object):
         """
         Creat a QMMM object.
         """
+        self.baseDir = baseDir
         self.mmSoftware = mmSoftware
         self.qmSoftware = qmSoftware
         self.qmCharge = qmCharge
@@ -36,6 +37,9 @@ class QMMM(object):
         if self.mmSoftware is None:
             self.mmSoftware = sys.argv[2]
 
+        if fin is None:
+            fin = sys.argv[1]
+
         self.system = mmtools.choose_mmtool(self.mmSoftware)(fin)
 
         if self.qmCharge is None:
@@ -49,9 +53,10 @@ class QMMM(object):
             self.system, self.qmRefCharge, self.qmSwitchingType, self.qmCutoff, self.qmSwdist)
 
         # Initialize the QM system
-        self.basedir = os.path.dirname(os.path.abspath(fin)) + "/"
+        if self.baseDir is None:
+            self.baseDir = os.path.dirname(os.path.abspath(fin)) + "/"
         self.qm = qmtools.choose_qmtool(self.qmSoftware)(
-            self.basedir, self.embed, self.qmCharge, self.qmMult, self.qmElement)
+            self.baseDir, self.embed, self.qmCharge, self.qmMult, self.qmElement)
 
         if self.qmReadGuess and not self.system.step == 0:
             self.qm.read_guess = True
@@ -77,7 +82,7 @@ class QMMM(object):
             self.qm.get_qm_params(**kwargs)
             self.qm.gen_input()
         else:
-            raise ValueError("dryrun_qm() can only be used with postProc=True.""")
+            raise ValueError("dryrun_qm() can only be used with postProc=True.")
 
     def parse_output(self):
         """Parse the output of QM calculation."""

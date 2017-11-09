@@ -42,6 +42,9 @@ class QMMM(object):
 
         self.system = mmtools.choose_mmtool(self.mmSoftware)(fin)
 
+        if self.qmElement is not None:
+            self.system.qm_atoms.element = np.asarray(self.qmElement)
+
         if self.qmCharge is None:
             self.qmCharge = self.system.qm_charge
 
@@ -56,7 +59,7 @@ class QMMM(object):
         if self.baseDir is None:
             self.baseDir = os.path.dirname(os.path.abspath(fin)) + "/"
         self.qm = qmtools.choose_qmtool(self.qmSoftware)(
-            self.baseDir, self.embed, self.qmCharge, self.qmMult, self.qmElement)
+            self.baseDir, self.embed, self.qmCharge, self.qmMult)
 
         if self.qmReadGuess and not self.system.step == 0:
             self.qm.read_guess = True

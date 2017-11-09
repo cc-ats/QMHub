@@ -8,7 +8,7 @@ class QMBase(object):
 
     QMTOOL = None
 
-    def __init__(self, basedir, embed, charge=None, mult=None, element=None):
+    def __init__(self, basedir, embed, charge=None, mult=None):
         """
         Creat a QM object.
         """
@@ -27,9 +27,6 @@ class QMBase(object):
         # Load the system
         self.get_qm_system(embed)
         self.get_mm_system(embed)
-
-        if element is not None:
-            self.qm_atoms.element = np.asarray(element)
 
     @staticmethod
     def get_nproc():

@@ -229,7 +229,9 @@ class SQM(QMBase):
                 self.qm_force = np.empty((self._n_qm_atoms, 3), dtype=float)
                 for j in range(self._n_qm_atoms):
                     line = output[i + 1 + j]
-                    self.qm_force[j] = [-1 * float(n) for n in line.split()[-3:]]
+                    self.qm_force[j][0] = -1 * float(line[18:38])
+                    self.qm_force[j][1] = -1 * float(line[38:58])
+                    self.qm_force[j][2] = -1 * float(line[58:78])
                 break
 
         self.qm_force /= units.F_AU

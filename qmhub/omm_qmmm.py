@@ -5,6 +5,7 @@ import numpy as np
 from itertools import combinations
 from constforceplugin import ConstForce
 
+from simtk import openmm
 import simtk.unit as u
 from .qmmm import QMMM as QMMMBase
 from . import units
@@ -102,7 +103,7 @@ class QMMMForce(ConstForce):
             self.setParticleForce(i, j, force[i])
 
 
-def QMMMStruct(struct, qm_index, qm_charge, qm_mult, copy=True):
+def QMMMStruct(struct, qm_index, qm_charge, qm_mult, qm_cutoff=None, copy=True):
 
     class QMMMStruct(struct.__class__):
         QMMM_FORCE_GROUP = 13
@@ -148,6 +149,7 @@ def QMMMStruct(struct, qm_index, qm_charge, qm_mult, copy=True):
                                                   qm_atom_charge, mm_atom_charge,
                                                   qm_element, mm_element, cell_basis)
             self._add_force_to_system(system, self.qmmm_force)
+            self.remove_qmmm_elec_force(system, qm_index, mm_index, qm_cutoff)
 
             return system
 
@@ -155,6 +157,34 @@ def QMMMStruct(struct, qm_index, qm_charge, qm_mult, copy=True):
 
             force = QMMMForce(*args, **kwargs)
             force.setForceGroup(self.QMMM_FORCE_GROUP)
+
+            return force
+
+        def remove_qmmm_elec_force(self, system, qm_index, mm_index, qm_cutoff):
+            forces = { force.__class__.__name__ : force for force in system.getForces() }
+            reference_force = forces['NonbondedForce']
+            ONE_4PI_EPS0 = 138.935456
+
+            if qm_cutoff is None:
+                qm_cutoff = reference_force.getCutoffDistance()
+
+            expression = '-1*ONE_4PI_EPS0*charge1*charge2/r;'
+            expression += 'ONE_4PI_EPS0 = %.16e;' % (ONE_4PI_EPS0)
+
+            force = openmm.CustomNonbondedForce(expression)
+            force.addPerParticleParameter("charge")
+            force.setUseSwitchingFunction(False)
+            force.setCutoffDistance(qm_cutoff)
+            force.setUseLongRangeCorrection(False)
+            for index in range(reference_force.getNumParticles()):
+                [charge, sigma, epsilon] = reference_force.getParticleParameters(index)
+                force.addParticle([charge])
+            for index in range(reference_force.getNumExceptions()):
+                [iatom, jatom, chargeprod, sigma, epsilon] = reference_force.getExceptionParameters(index)
+                force.addExclusion(iatom, jatom)
+            force.setForceGroup(reference_force.getForceGroup())
+            force.addInteractionGroup(qm_index, mm_index)
+            system.addForce(force)
 
             return force
 

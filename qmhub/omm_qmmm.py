@@ -7,6 +7,7 @@ from constforceplugin import ConstForce
 
 import simtk.unit as u
 from .qmmm import QMMM as QMMMBase
+from . import units
 
 
 class QMMM(QMMMBase):
@@ -163,8 +164,8 @@ def QMMMStruct(struct, qm_index, qm_charge, qm_mult, copy=True):
             qmmm.update_force()
 
             qmmm_force = np.concatenate((qmmm.system.qm_force, qmmm.system.mm_force))
-            self.qmmm_force.setForce(qmmm_force)
-            self.qmmm_force.setEnergy(qmmm.qm_energy)
+            self.qmmm_force.setForce(qmmm_force * units.KCAL_TO_JOULE * 10)
+            self.qmmm_force.setEnergy(qmmm.qm_energy * units.KCAL_TO_JOULE)
 
             self.qmmm_force.updateForceInContext(context)
 

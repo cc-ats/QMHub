@@ -22,3 +22,4 @@ KE = E_AU * L_AU
 
 # Unit conversion
 EH_TO_EV = 2.721138602e+01
+KCAL_TO_JOULE = 4.184

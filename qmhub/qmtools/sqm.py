@@ -188,8 +188,8 @@ class SQM(QMBase):
         for line in output:
             line = line.strip().expandtabs()
 
-            if "Total energy" in line:
-                scf_energy = line.split()[-2]
+            if "Heat of formation" in line:
+                scf_energy = line.split()[-5]
                 break
 
         self.qm_energy = float(scf_energy) / units.E_AU

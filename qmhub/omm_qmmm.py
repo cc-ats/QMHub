@@ -168,7 +168,8 @@ def QMMMStruct(struct, qm_index, qm_charge, qm_mult, qm_cutoff=None, copy=True):
             if qm_cutoff is None:
                 qm_cutoff = reference_force.getCutoffDistance()
 
-            expression = '-1*ONE_4PI_EPS0*charge1*charge2/r;'
+            expression = '-1*ONE_4PI_EPS0*chargeprod/r;'
+            expression += 'chargeprod = charge1*charge2;'
             expression += 'ONE_4PI_EPS0 = %.16e;' % (ONE_4PI_EPS0)
 
             force = openmm.CustomNonbondedForce(expression)

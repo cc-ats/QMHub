@@ -2,7 +2,6 @@ import os
 import sys
 import numpy as np
 
-from copy import deepcopy
 from itertools import combinations
 from constforceplugin import ConstForce
 
@@ -271,9 +270,7 @@ def QMMMStruct(struct, qm_index, qm_charge, qm_mult, copy=True):
             for i, j in combinations(qm_index, 2):
                 self.atoms[i].exclude(self.atoms[j])
 
-    if copy:
-        struct = deepcopy(struct)
-
+    struct = struct.from_structure(struct, copy=copy)
     struct.__class__ = QMMMStruct
     struct.remove_qm_forcefield()
 
